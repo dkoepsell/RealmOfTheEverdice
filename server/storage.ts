@@ -18,7 +18,7 @@ const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // Session store
-  sessionStore: session.Store;
+  sessionStore: any;
   
   // User methods
   getUser(id: number): Promise<User | undefined>;
@@ -67,7 +67,7 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.Store;
+  sessionStore;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
