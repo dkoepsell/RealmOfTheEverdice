@@ -6,16 +6,19 @@ import {
   Adventure, InsertAdventure,
   Npc, InsertNpc,
   Quest, InsertQuest,
-  GameLog, InsertGameLog
+  GameLog, InsertGameLog,
+  users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs
 } from "@shared/schema";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { eq, and, desc, sql } from "drizzle-orm";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
   
   // User methods
   getUser(id: number): Promise<User | undefined>;
@@ -63,236 +66,196 @@ export interface IStorage {
   createGameLog(gameLog: InsertGameLog): Promise<GameLog>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private characters: Map<number, Character>;
-  private campaigns: Map<number, Campaign>;
-  private campaignCharacters: Map<number, CampaignCharacter>;
-  private adventures: Map<number, Adventure>;
-  private npcs: Map<number, Npc>;
-  private quests: Map<number, Quest>;
-  private gameLogs: Map<number, GameLog>;
-  
-  sessionStore: session.SessionStore;
-  
-  private userIdCounter: number = 1;
-  private characterIdCounter: number = 1;
-  private campaignIdCounter: number = 1;
-  private campaignCharacterIdCounter: number = 1;
-  private adventureIdCounter: number = 1;
-  private npcIdCounter: number = 1;
-  private questIdCounter: number = 1;
-  private gameLogIdCounter: number = 1;
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
-    this.characters = new Map();
-    this.campaigns = new Map();
-    this.campaignCharacters = new Map();
-    this.adventures = new Map();
-    this.npcs = new Map();
-    this.quests = new Map();
-    this.gameLogs = new Map();
-    
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // prune expired entries every 24h
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
     });
   }
 
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const createdAt = new Date();
-    const user: User = { ...insertUser, id, createdAt };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   // Character methods
   async getCharacter(id: number): Promise<Character | undefined> {
-    return this.characters.get(id);
+    const [character] = await db.select().from(characters).where(eq(characters.id, id));
+    return character;
   }
 
   async getCharactersByUserId(userId: number): Promise<Character[]> {
-    return Array.from(this.characters.values()).filter(
-      (character) => character.userId === userId
-    );
+    return db.select().from(characters).where(eq(characters.userId, userId));
   }
 
   async createCharacter(insertCharacter: InsertCharacter): Promise<Character> {
-    const id = this.characterIdCounter++;
-    const createdAt = new Date();
-    const character: Character = { ...insertCharacter, id, createdAt };
-    this.characters.set(id, character);
+    const [character] = await db.insert(characters).values(insertCharacter).returning();
     return character;
   }
 
   async updateCharacter(id: number, characterUpdate: Partial<Character>): Promise<Character | undefined> {
-    const character = this.characters.get(id);
-    if (!character) return undefined;
-    
-    const updatedCharacter = { ...character, ...characterUpdate };
-    this.characters.set(id, updatedCharacter);
+    const [updatedCharacter] = await db
+      .update(characters)
+      .set(characterUpdate)
+      .where(eq(characters.id, id))
+      .returning();
     return updatedCharacter;
   }
 
   async deleteCharacter(id: number): Promise<boolean> {
-    return this.characters.delete(id);
+    const result = await db.delete(characters).where(eq(characters.id, id)).returning();
+    return result.length > 0;
   }
 
   // Campaign methods
   async getCampaign(id: number): Promise<Campaign | undefined> {
-    return this.campaigns.get(id);
+    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+    return campaign;
   }
 
   async getCampaignsByDmId(dmId: number): Promise<Campaign[]> {
-    return Array.from(this.campaigns.values()).filter(
-      (campaign) => campaign.dmId === dmId
-    );
+    return db.select().from(campaigns).where(eq(campaigns.dmId, dmId));
   }
 
   async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
-    const id = this.campaignIdCounter++;
-    const createdAt = new Date();
-    const campaign: Campaign = { ...insertCampaign, id, createdAt };
-    this.campaigns.set(id, campaign);
+    const [campaign] = await db.insert(campaigns).values(insertCampaign).returning();
     return campaign;
   }
 
   async updateCampaign(id: number, campaignUpdate: Partial<Campaign>): Promise<Campaign | undefined> {
-    const campaign = this.campaigns.get(id);
-    if (!campaign) return undefined;
-    
-    const updatedCampaign = { ...campaign, ...campaignUpdate };
-    this.campaigns.set(id, updatedCampaign);
+    const [updatedCampaign] = await db
+      .update(campaigns)
+      .set(campaignUpdate)
+      .where(eq(campaigns.id, id))
+      .returning();
     return updatedCampaign;
   }
 
   async deleteCampaign(id: number): Promise<boolean> {
-    return this.campaigns.delete(id);
+    const result = await db.delete(campaigns).where(eq(campaigns.id, id)).returning();
+    return result.length > 0;
   }
 
   // Campaign Character methods
   async addCharacterToCampaign(insertCampaignCharacter: InsertCampaignCharacter): Promise<CampaignCharacter> {
-    const id = this.campaignCharacterIdCounter++;
-    const campaignCharacter: CampaignCharacter = { ...insertCampaignCharacter, id };
-    this.campaignCharacters.set(id, campaignCharacter);
+    const [campaignCharacter] = await db
+      .insert(campaignCharacters)
+      .values(insertCampaignCharacter)
+      .returning();
     return campaignCharacter;
   }
 
   async getCampaignCharacters(campaignId: number): Promise<CampaignCharacter[]> {
-    return Array.from(this.campaignCharacters.values()).filter(
-      (cc) => cc.campaignId === campaignId
-    );
+    return db
+      .select()
+      .from(campaignCharacters)
+      .where(eq(campaignCharacters.campaignId, campaignId));
   }
 
   async removeCharacterFromCampaign(campaignId: number, characterId: number): Promise<boolean> {
-    const campaignCharacterEntry = Array.from(this.campaignCharacters.entries()).find(
-      ([_, cc]) => cc.campaignId === campaignId && cc.characterId === characterId
-    );
-    
-    if (!campaignCharacterEntry) return false;
-    return this.campaignCharacters.delete(campaignCharacterEntry[0]);
+    const result = await db
+      .delete(campaignCharacters)
+      .where(
+        and(
+          eq(campaignCharacters.campaignId, campaignId),
+          eq(campaignCharacters.characterId, characterId)
+        )
+      )
+      .returning();
+    return result.length > 0;
   }
 
   // Adventure methods
   async getAdventure(id: number): Promise<Adventure | undefined> {
-    return this.adventures.get(id);
+    const [adventure] = await db.select().from(adventures).where(eq(adventures.id, id));
+    return adventure;
   }
 
   async getAdventuresByCampaignId(campaignId: number): Promise<Adventure[]> {
-    return Array.from(this.adventures.values()).filter(
-      (adventure) => adventure.campaignId === campaignId
-    );
+    return db.select().from(adventures).where(eq(adventures.campaignId, campaignId));
   }
 
   async createAdventure(insertAdventure: InsertAdventure): Promise<Adventure> {
-    const id = this.adventureIdCounter++;
-    const createdAt = new Date();
-    const adventure: Adventure = { ...insertAdventure, id, createdAt };
-    this.adventures.set(id, adventure);
+    const [adventure] = await db.insert(adventures).values(insertAdventure).returning();
     return adventure;
   }
 
   async updateAdventure(id: number, adventureUpdate: Partial<Adventure>): Promise<Adventure | undefined> {
-    const adventure = this.adventures.get(id);
-    if (!adventure) return undefined;
-    
-    const updatedAdventure = { ...adventure, ...adventureUpdate };
-    this.adventures.set(id, updatedAdventure);
+    const [updatedAdventure] = await db
+      .update(adventures)
+      .set(adventureUpdate)
+      .where(eq(adventures.id, id))
+      .returning();
     return updatedAdventure;
   }
 
   // NPC methods
   async getNpc(id: number): Promise<Npc | undefined> {
-    return this.npcs.get(id);
+    const [npc] = await db.select().from(npcs).where(eq(npcs.id, id));
+    return npc;
   }
 
   async getNpcsByCampaignId(campaignId: number): Promise<Npc[]> {
-    return Array.from(this.npcs.values()).filter(
-      (npc) => npc.campaignId === campaignId
-    );
+    return db.select().from(npcs).where(eq(npcs.campaignId, campaignId));
   }
 
   async createNpc(insertNpc: InsertNpc): Promise<Npc> {
-    const id = this.npcIdCounter++;
-    const npc: Npc = { ...insertNpc, id };
-    this.npcs.set(id, npc);
+    const [npc] = await db.insert(npcs).values(insertNpc).returning();
     return npc;
   }
 
   // Quest methods
   async getQuest(id: number): Promise<Quest | undefined> {
-    return this.quests.get(id);
+    const [quest] = await db.select().from(quests).where(eq(quests.id, id));
+    return quest;
   }
 
   async getQuestsByAdventureId(adventureId: number): Promise<Quest[]> {
-    return Array.from(this.quests.values()).filter(
-      (quest) => quest.adventureId === adventureId
-    );
+    return db.select().from(quests).where(eq(quests.adventureId, adventureId));
   }
 
   async createQuest(insertQuest: InsertQuest): Promise<Quest> {
-    const id = this.questIdCounter++;
-    const quest: Quest = { ...insertQuest, id };
-    this.quests.set(id, quest);
+    const [quest] = await db.insert(quests).values(insertQuest).returning();
     return quest;
   }
 
   async updateQuest(id: number, questUpdate: Partial<Quest>): Promise<Quest | undefined> {
-    const quest = this.quests.get(id);
-    if (!quest) return undefined;
-    
-    const updatedQuest = { ...quest, ...questUpdate };
-    this.quests.set(id, updatedQuest);
+    const [updatedQuest] = await db
+      .update(quests)
+      .set(questUpdate)
+      .where(eq(quests.id, id))
+      .returning();
     return updatedQuest;
   }
 
   // Game Log methods
   async getGameLogsByCampaignId(campaignId: number, limit: number = 50): Promise<GameLog[]> {
-    return Array.from(this.gameLogs.values())
-      .filter((log) => log.campaignId === campaignId)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, limit);
+    return db
+      .select()
+      .from(gameLogs)
+      .where(eq(gameLogs.campaignId, campaignId))
+      .orderBy(desc(gameLogs.timestamp))
+      .limit(limit);
   }
 
   async createGameLog(insertGameLog: InsertGameLog): Promise<GameLog> {
-    const id = this.gameLogIdCounter++;
-    const timestamp = new Date();
-    const gameLog: GameLog = { ...insertGameLog, id, timestamp };
-    this.gameLogs.set(id, gameLog);
+    const [gameLog] = await db.insert(gameLogs).values(insertGameLog).returning();
     return gameLog;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

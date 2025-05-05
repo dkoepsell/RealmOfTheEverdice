@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, json, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, json, timestamp, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User model
 export const users = pgTable("users", {
@@ -155,6 +156,72 @@ export type InsertQuest = z.infer<typeof insertQuestSchema>;
 
 export type GameLog = typeof gameLogs.$inferSelect;
 export type InsertGameLog = z.infer<typeof insertGameLogSchema>;
+
+// Define relations
+export const usersRelations = relations(users, ({ many }) => ({
+  characters: many(characters),
+  campaigns: many(campaigns, { relationName: "dmCampaigns" })
+}));
+
+export const charactersRelations = relations(characters, ({ one, many }) => ({
+  user: one(users, {
+    fields: [characters.userId],
+    references: [users.id]
+  }),
+  campaignCharacters: many(campaignCharacters)
+}));
+
+export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
+  dm: one(users, {
+    fields: [campaigns.dmId],
+    references: [users.id],
+    relationName: "dmCampaigns"
+  }),
+  campaignCharacters: many(campaignCharacters),
+  adventures: many(adventures),
+  npcs: many(npcs),
+  gameLogs: many(gameLogs)
+}));
+
+export const campaignCharactersRelations = relations(campaignCharacters, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [campaignCharacters.campaignId],
+    references: [campaigns.id]
+  }),
+  character: one(characters, {
+    fields: [campaignCharacters.characterId],
+    references: [characters.id]
+  })
+}));
+
+export const adventuresRelations = relations(adventures, ({ one, many }) => ({
+  campaign: one(campaigns, {
+    fields: [adventures.campaignId],
+    references: [campaigns.id]
+  }),
+  quests: many(quests)
+}));
+
+export const npcsRelations = relations(npcs, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [npcs.campaignId],
+    references: [campaigns.id]
+  })
+}));
+
+export const questsRelations = relations(quests, ({ one }) => ({
+  adventure: one(adventures, {
+    fields: [quests.adventureId],
+    references: [adventures.id]
+  })
+}));
+
+export const gameLogsRelations = relations(gameLogs, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [gameLogs.campaignId],
+    references: [campaigns.id]
+  })
+}));
 
 // Type definitions for character stats
 export type CharacterStats = {
