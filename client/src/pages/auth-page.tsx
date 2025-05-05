@@ -119,7 +119,7 @@ export default function AuthPage() {
                           <FormControl>
                             <Input
                               {...field}
-                              className="bg-parchment border-accent"
+                              className="bg-parchment border-accent relative z-10"
                               placeholder="Enter your username"
                             />
                           </FormControl>
@@ -137,7 +137,7 @@ export default function AuthPage() {
                             <Input
                               {...field}
                               type="password"
-                              className="bg-parchment border-accent"
+                              className="bg-parchment border-accent relative z-10"
                               placeholder="Enter your password"
                             />
                           </FormControl>
@@ -167,7 +167,7 @@ export default function AuthPage() {
                           <FormControl>
                             <Input
                               {...field}
-                              className="bg-parchment border-accent"
+                              className="bg-parchment border-accent relative z-10"
                               placeholder="Choose a username"
                             />
                           </FormControl>
@@ -185,7 +185,7 @@ export default function AuthPage() {
                             <Input
                               {...field}
                               type="email"
-                              className="bg-parchment border-accent"
+                              className="bg-parchment border-accent relative z-10"
                               placeholder="Enter your email"
                             />
                           </FormControl>
@@ -203,7 +203,7 @@ export default function AuthPage() {
                             <Input
                               {...field}
                               type="password"
-                              className="bg-parchment border-accent"
+                              className="bg-parchment border-accent relative z-10"
                               placeholder="Create a password"
                             />
                           </FormControl>
@@ -221,7 +221,7 @@ export default function AuthPage() {
                             <Input
                               {...field}
                               type="password"
-                              className="bg-parchment border-accent"
+                              className="bg-parchment border-accent relative z-10"
                               placeholder="Confirm your password"
                             />
                           </FormControl>
@@ -253,10 +253,10 @@ export default function AuthPage() {
         </div>
 
         {/* Hero Section */}
-        <div className="md:w-1/2 bg-darkBrown text-white p-8 flex flex-col justify-center">
+        <div className="md:w-1/2 bg-darkBrown text-parchment p-8 flex flex-col justify-center">
           <div className="max-w-md mx-auto">
             <h2 className="text-3xl font-medieval text-accent mb-6">Adventure Awaits</h2>
-            <div className="space-y-4 mb-6">
+            <div className="space-y-4 mb-6 text-parchment font-medium">
               <div className="flex items-start">
                 <svg
                   viewBox="0 0 24 24"
