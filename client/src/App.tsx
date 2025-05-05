@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
-import AuthPage from "@/pages/auth-page";
+import SimplifiedAuthPage from "@/pages/simplified-auth";
 import CharacterCreation from "@/pages/character-creation";
 import CampaignPage from "@/pages/campaign-page";
 import LearnPage from "@/pages/learn-page";
@@ -15,7 +15,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 function Router() {
   return (
     <Switch>
-      <Route path="/auth" component={AuthPage} />
+      <Route path="/auth" component={SimplifiedAuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/characters/create" component={CharacterCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
