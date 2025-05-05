@@ -51,6 +51,7 @@ export const campaigns = pgTable("campaigns", {
   dmId: integer("dm_id").notNull(),
   status: text("status").notNull().default("active"),
   setting: text("setting"),
+  isAiDm: boolean("is_ai_dm").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow()
 });
 
@@ -132,6 +133,52 @@ export const insertGameLogSchema = createInsertSchema(gameLogs).omit({
   timestamp: true
 });
 
+// Friends model
+export const friendships = pgTable("friendships", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  friendId: integer("friend_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending, accepted, declined
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => {
+  return {
+    uniqFriendship: primaryKey({ columns: [table.userId, table.friendId] })
+  };
+});
+
+export const insertFriendshipSchema = createInsertSchema(friendships).omit({
+  id: true,
+  createdAt: true
+});
+
+// User session/online status
+export const userSessions = pgTable("user_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  lastActive: timestamp("last_active").defaultNow(),
+  status: text("status").notNull().default("online") // online, away, offline, in-game
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true
+});
+
+// Campaign Invitations
+export const campaignInvitations = pgTable("campaign_invitations", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull(),
+  inviterId: integer("inviter_id").notNull(),
+  inviteeId: integer("invitee_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending, accepted, declined
+  role: text("role").notNull().default("player"), // player, spectator
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertCampaignInvitationSchema = createInsertSchema(campaignInvitations).omit({
+  id: true,
+  createdAt: true
+});
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -157,10 +204,44 @@ export type InsertQuest = z.infer<typeof insertQuestSchema>;
 export type GameLog = typeof gameLogs.$inferSelect;
 export type InsertGameLog = z.infer<typeof insertGameLogSchema>;
 
+export type Friendship = typeof friendships.$inferSelect;
+export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
+
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+
+export type CampaignInvitation = typeof campaignInvitations.$inferSelect;
+export type InsertCampaignInvitation = z.infer<typeof insertCampaignInvitationSchema>;
+
 // Define relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   characters: many(characters),
-  campaigns: many(campaigns, { relationName: "dmCampaigns" })
+  campaigns: many(campaigns, { relationName: "dmCampaigns" }),
+  sentFriendRequests: many(friendships, { 
+    fields: [users.id],
+    references: [friendships.userId],
+    relationName: "userFriendships" 
+  }),
+  receivedFriendRequests: many(friendships, { 
+    fields: [users.id],
+    references: [friendships.friendId],
+    relationName: "friendUserFriendships" 
+  }),
+  session: one(userSessions, { 
+    fields: [users.id],
+    references: [userSessions.userId],
+    relationName: "userSession" 
+  }),
+  sentCampaignInvitations: many(campaignInvitations, { 
+    fields: [users.id],
+    references: [campaignInvitations.inviterId],
+    relationName: "inviterInvitations" 
+  }),
+  receivedCampaignInvitations: many(campaignInvitations, { 
+    fields: [users.id],
+    references: [campaignInvitations.inviteeId],
+    relationName: "inviteeInvitations" 
+  })
 }));
 
 export const charactersRelations = relations(characters, ({ one, many }) => ({
@@ -180,7 +261,8 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
   campaignCharacters: many(campaignCharacters),
   adventures: many(adventures),
   npcs: many(npcs),
-  gameLogs: many(gameLogs)
+  gameLogs: many(gameLogs),
+  invitations: many(campaignInvitations)
 }));
 
 export const campaignCharactersRelations = relations(campaignCharacters, ({ one }) => ({
@@ -220,6 +302,44 @@ export const gameLogsRelations = relations(gameLogs, ({ one }) => ({
   campaign: one(campaigns, {
     fields: [gameLogs.campaignId],
     references: [campaigns.id]
+  })
+}));
+
+export const friendshipsRelations = relations(friendships, ({ one }) => ({
+  user: one(users, {
+    fields: [friendships.userId],
+    references: [users.id],
+    relationName: "userFriendships"
+  }),
+  friend: one(users, {
+    fields: [friendships.friendId],
+    references: [users.id],
+    relationName: "friendUserFriendships"
+  })
+}));
+
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+    relationName: "userSession"
+  })
+}));
+
+export const campaignInvitationsRelations = relations(campaignInvitations, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [campaignInvitations.campaignId],
+    references: [campaigns.id]
+  }),
+  inviter: one(users, {
+    fields: [campaignInvitations.inviterId],
+    references: [users.id],
+    relationName: "inviterInvitations"
+  }),
+  invitee: one(users, {
+    fields: [campaignInvitations.inviteeId],
+    references: [users.id],
+    relationName: "inviteeInvitations"
   })
 }));
 
