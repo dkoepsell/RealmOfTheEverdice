@@ -182,10 +182,10 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Email (Optional)</FormLabel>
                           <FormControl>
-                            <Input
+                            <input
                               {...field}
                               type="email"
-                              className="bg-parchment border-accent relative z-10"
+                              className="flex h-10 w-full rounded-md border border-accent bg-parchment px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pointer-events-auto"
                               placeholder="Enter your email"
                             />
                           </FormControl>
@@ -200,10 +200,10 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Password</FormLabel>
                           <FormControl>
-                            <Input
+                            <input
                               {...field}
                               type="password"
-                              className="bg-parchment border-accent relative z-10"
+                              className="flex h-10 w-full rounded-md border border-accent bg-parchment px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pointer-events-auto"
                               placeholder="Create a password"
                             />
                           </FormControl>
@@ -218,10 +218,10 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Confirm Password</FormLabel>
                           <FormControl>
-                            <Input
+                            <input
                               {...field}
                               type="password"
-                              className="bg-parchment border-accent relative z-10"
+                              className="flex h-10 w-full rounded-md border border-accent bg-parchment px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pointer-events-auto"
                               placeholder="Confirm your password"
                             />
                           </FormControl>
