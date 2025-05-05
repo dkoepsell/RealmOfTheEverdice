@@ -385,7 +385,7 @@ export default function CharacterCreation() {
                                     <SelectValue placeholder="Select a race" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent className="bg-parchment">
+                                <SelectContent className="bg-white border border-accent z-50">
                                   {races.map((race) => (
                                     <SelectItem key={race} value={race}>
                                       {race}
@@ -418,7 +418,7 @@ export default function CharacterCreation() {
                                     <SelectValue placeholder="Select a class" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent className="bg-parchment">
+                                <SelectContent className="bg-white border border-accent z-50">
                                   {classes.map((cls) => (
                                     <SelectItem key={cls} value={cls}>
                                       {cls}
@@ -467,7 +467,7 @@ export default function CharacterCreation() {
                                   <SelectValue placeholder="Select a background" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent className="bg-parchment">
+                              <SelectContent className="bg-white border border-accent z-50">
                                 {backgrounds.map((background) => (
                                   <SelectItem key={background} value={background}>
                                     {background}
