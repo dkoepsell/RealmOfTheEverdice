@@ -225,3 +225,49 @@ export async function generateDialogue(npcInfo: string, context: string, playerP
     throw new Error("Failed to generate NPC dialogue");
   }
 }
+
+export interface CampaignGenerationOptions {
+  genre?: string;
+  theme?: string;
+  tone?: string;
+}
+
+export async function generateCampaign(options: CampaignGenerationOptions = {}) {
+  const {
+    genre = "fantasy",
+    theme = "adventure",
+    tone = "heroic"
+  } = options;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert Dungeons & Dragons Dungeon Master. Create a detailed and unique D&D campaign setting with creative worldbuilding elements."
+        },
+        {
+          role: "user",
+          content: `Create a D&D campaign setting with the following parameters:
+          - Genre: ${genre}
+          - Theme: ${theme}
+          - Tone: ${tone}
+          
+          Format your response as a JSON object with these fields:
+          - name: A distinctive campaign name that evokes the world and its themes
+          - description: A detailed description (300-400 words) covering geography, notable locations, major factions or kingdoms, current political situation or conflicts, unique magical elements, and potential adventure hooks.
+          - setting: The official D&D setting this is most similar to (Forgotten Realms, Eberron, etc.) or "Homebrew" if it's totally unique`
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1000,
+      temperature: 0.8,
+    });
+
+    return JSON.parse(response.choices[0].message.content);
+  } catch (error) {
+    console.error("Error generating campaign:", error);
+    throw new Error("Failed to generate campaign");
+  }
+}

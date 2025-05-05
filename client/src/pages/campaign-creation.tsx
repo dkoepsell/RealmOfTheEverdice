@@ -36,7 +36,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertCampaignSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import Navbar from "@/components/navbar";
-import { Dice5, MapPin, Users, BookOpen } from "lucide-react";
+import { Dice5, MapPin, Users, BookOpen, Wand2, Loader2 } from "lucide-react";
 
 // Campaign settings
 const settings = [
@@ -68,6 +68,7 @@ export default function CampaignCreation() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Initialize form with default values
   const form = useForm<CampaignFormValues>({
@@ -110,6 +111,45 @@ export default function CampaignCreation() {
       });
     },
   });
+  
+  // Generate random campaign mutation
+  const generateCampaignMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/generate/campaign", {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      // Update form with generated data
+      form.reset({
+        ...form.getValues(),
+        name: data.name,
+        description: data.description,
+        setting: data.setting || "Homebrew",
+        confirmCreate: true,
+      });
+      
+      setIsGenerating(false);
+      
+      toast({
+        title: "Campaign Generated",
+        description: "A new campaign world has been created! Review and submit to begin your adventure.",
+      });
+    },
+    onError: (error) => {
+      setIsGenerating(false);
+      toast({
+        title: "Generation Failed",
+        description: `Failed to generate campaign: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Generate random campaign
+  const handleGenerateCampaign = () => {
+    setIsGenerating(true);
+    generateCampaignMutation.mutate();
+  };
 
   // Handle form submission
   const onSubmit = (values: CampaignFormValues) => {
@@ -235,13 +275,40 @@ export default function CampaignCreation() {
                     )}
                   />
 
-                  <div className="flex justify-end">
+                  <div className="flex flex-col md:flex-row justify-between gap-4">
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      className="w-full md:w-auto"
+                      onClick={handleGenerateCampaign}
+                      disabled={isGenerating || createCampaignMutation.isPending}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="mr-2 h-4 w-4" />
+                          Generate Random Campaign
+                        </>
+                      )}
+                    </Button>
+                    
                     <Button 
                       type="submit" 
                       className="w-full md:w-auto"
-                      disabled={createCampaignMutation.isPending}
+                      disabled={createCampaignMutation.isPending || isGenerating}
                     >
-                      {createCampaignMutation.isPending ? "Creating..." : "Create Campaign"}
+                      {createCampaignMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        "Create Campaign"
+                      )}
                     </Button>
                   </div>
                 </form>

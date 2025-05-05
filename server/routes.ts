@@ -2,7 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { generateAdventure, generateCharacter, generateGameNarration, generateNPC, generateDialogue } from "./openai";
+import { 
+  generateAdventure, 
+  generateCharacter, 
+  generateGameNarration, 
+  generateNPC, 
+  generateDialogue, 
+  generateCampaign 
+} from "./openai";
 import { z } from "zod";
 import { insertCharacterSchema, insertCampaignSchema, insertAdventureSchema } from "@shared/schema";
 
@@ -266,6 +273,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // AI Generation Routes
+  app.post("/api/generate/campaign", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const options = {
+        genre: req.body.genre,
+        theme: req.body.theme,
+        tone: req.body.tone,
+      };
+      
+      const generatedCampaign = await generateCampaign(options);
+      res.json(generatedCampaign);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate campaign" });
+    }
+  });
+  
   app.post("/api/generate/adventure", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
