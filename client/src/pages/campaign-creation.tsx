@@ -36,7 +36,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertCampaignSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import Navbar from "@/components/navbar";
-import { Dice5, MapPin, Users, BookOpen, Wand2, Loader2 } from "lucide-react";
+import { AddCharacterDialog } from "@/components/add-character-dialog";
+import { Dice5, MapPin, Users, BookOpen, Wand2, Loader2, UserPlus } from "lucide-react";
 
 // Campaign settings
 const settings = [
@@ -69,6 +70,8 @@ export default function CampaignCreation() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
+  const [newCampaignId, setNewCampaignId] = useState<number | null>(null);
 
   // Initialize form with default values
   const form = useForm<CampaignFormValues>({
@@ -101,7 +104,10 @@ export default function CampaignCreation() {
         description: "Your campaign has been created successfully!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      navigate(`/campaigns/${campaign.id}`);
+      
+      // Store the new campaign ID and show the character dialog
+      setNewCampaignId(campaign.id);
+      setShowAddCharacterDialog(true);
     },
     onError: (error) => {
       toast({

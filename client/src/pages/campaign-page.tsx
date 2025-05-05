@@ -9,9 +9,10 @@ import Navbar from "@/components/navbar";
 import { CharacterPanel } from "@/components/character-panel";
 import { GameArea } from "@/components/game-area";
 import { WorldInfoPanel } from "@/components/world-info-panel";
+import { AddCharacterDialog } from "@/components/add-character-dialog";
 import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 
 export default function CampaignPage() {
   const { id } = useParams();
@@ -20,6 +21,7 @@ export default function CampaignPage() {
   const { toast } = useToast();
   const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
   const [gameLogs, setGameLogs] = useState<GameLog[]>([]);
+  const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
   
   // Fetch campaign data
   const { 
@@ -201,9 +203,32 @@ export default function CampaignPage() {
           <div className="text-center max-w-md p-6 bg-accent/10 rounded-lg">
             <h2 className="text-2xl font-medieval text-accent mb-2">No Character Found</h2>
             <p className="mb-4">You don't have any characters in this campaign.</p>
-            <Button variant="default" onClick={() => window.location.href = "/characters/create"}>
-              Create Character
-            </Button>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button variant="outline" onClick={() => window.location.href = "/characters/create"}>
+                Create New Character
+              </Button>
+              <Button 
+                variant="default" 
+                onClick={() => setShowAddCharacterDialog(true)}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Existing Character
+              </Button>
+            </div>
+            
+            {/* Add Character Dialog */}
+            <AddCharacterDialog
+              campaignId={campaignId}
+              open={showAddCharacterDialog}
+              onOpenChange={setShowAddCharacterDialog}
+              onCharacterAdded={() => {
+                // Refresh campaign data
+                queryClient.invalidateQueries({ 
+                  queryKey: [`/api/campaigns/${campaignId}/characters`] 
+                });
+              }}
+            />
           </div>
         </div>
       </div>
