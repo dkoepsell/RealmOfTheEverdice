@@ -12,8 +12,10 @@ import { WorldInfoPanel } from "@/components/world-info-panel";
 import { AddCharacterDialog } from "@/components/add-character-dialog";
 import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Users } from "lucide-react";
+import { Loader2, UserPlus, Users, Bot, UserCog } from "lucide-react";
 
 export default function CampaignPage() {
   const { id } = useParams();
