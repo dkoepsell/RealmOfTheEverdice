@@ -141,7 +141,7 @@
   
   .medieval-border::before {
     content: "";
-    @apply absolute -top-1 -left-1 -right-1 -bottom-1 border border-foreground pointer-events-none;
+    @apply absolute -top-1 -left-1 -right-1 -bottom-1 border border-foreground pointer-events-none z-0;
   }
   
   .scroll-container {

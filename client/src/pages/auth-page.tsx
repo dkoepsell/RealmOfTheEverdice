@@ -94,7 +94,7 @@ export default function AuthPage() {
             <p className="text-muted-foreground">Your D&D companion for epic adventures</p>
           </div>
 
-          <Card className="bg-parchment/90 medieval-border">
+          <Card className="bg-parchment/90 medieval-border" style={{ position: 'relative', zIndex: 1 }}>
             <CardHeader>
               <CardTitle className="text-2xl font-medieval text-primary">
                 {isLogin ? "Welcome Back, Adventurer!" : "Join the Adventure"}
@@ -117,9 +117,9 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Username</FormLabel>
                           <FormControl>
-                            <Input
+                            <input
                               {...field}
-                              className="bg-parchment border-accent relative z-10"
+                              className="flex h-10 w-full rounded-md border border-accent bg-parchment px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pointer-events-auto"
                               placeholder="Enter your username"
                             />
                           </FormControl>
@@ -134,10 +134,10 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Password</FormLabel>
                           <FormControl>
-                            <Input
+                            <input
                               {...field}
                               type="password"
-                              className="bg-parchment border-accent relative z-10"
+                              className="flex h-10 w-full rounded-md border border-accent bg-parchment px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pointer-events-auto"
                               placeholder="Enter your password"
                             />
                           </FormControl>
@@ -165,9 +165,9 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Username</FormLabel>
                           <FormControl>
-                            <Input
+                            <input
                               {...field}
-                              className="bg-parchment border-accent relative z-10"
+                              className="flex h-10 w-full rounded-md border border-accent bg-parchment px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pointer-events-auto"
                               placeholder="Choose a username"
                             />
                           </FormControl>
