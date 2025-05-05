@@ -1,5 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Campaign, Character, Quest, Adventure, Npc } from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
+import { useAuth } from "@/hooks/use-auth";
+import { UserPlus } from "lucide-react";
 
 interface CharacterSummary {
   id: number;
@@ -94,12 +98,28 @@ export const WorldInfoPanel = ({
     return quest.isMainQuest ? "Main Quest" : "Side Quest • 1/3 Completed";
   };
 
+  const { user } = useAuth();
+  
+  // Check if the current user is the DM of the campaign
+  const isUserDM = user?.id === campaign.dmId;
+
   return (
     <div className="w-full lg:w-1/4 bg-parchment border-l border-accent overflow-y-auto">
       <div className="p-4">
         {/* Party Members */}
         <div className="mb-6">
-          <h2 className="text-xl font-medieval text-secondary mb-3">Party Members</h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-xl font-medieval text-secondary">Party Members</h2>
+            
+            {/* Only show the invite button if the user is the DM */}
+            {isUserDM && (
+              <InviteToCampaignDialog
+                campaignId={campaign.id}
+                campaignName={campaign.name}
+              />
+            )}
+          </div>
+          
           <div className="space-y-2">
             {partyMembers.map((member) => (
               <div key={member.id} className="flex items-center p-2 rounded-lg hover:bg-accent/10 cursor-pointer">
@@ -123,6 +143,15 @@ export const WorldInfoPanel = ({
                 </div>
               </div>
             ))}
+            
+            {partyMembers.length === 0 && (
+              <div className="text-center p-4 text-muted-foreground">
+                <p>No party members yet</p>
+                {isUserDM && (
+                  <p className="text-sm mt-1">Invite friends to join your campaign</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
         

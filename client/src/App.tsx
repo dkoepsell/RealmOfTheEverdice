@@ -10,6 +10,7 @@ import CharacterCreation from "@/pages/character-creation";
 import CampaignCreation from "@/pages/campaign-creation";
 import CampaignPage from "@/pages/campaign-page";
 import LearnPage from "@/pages/learn-page";
+import SocialPage from "@/pages/social-page";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
 
@@ -22,6 +23,7 @@ function Router() {
       <ProtectedRoute path="/campaigns/create" component={CampaignCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
       <ProtectedRoute path="/learn" component={LearnPage} />
+      <ProtectedRoute path="/social" component={SocialPage} />
       <Route component={NotFound} />
     </Switch>
   );

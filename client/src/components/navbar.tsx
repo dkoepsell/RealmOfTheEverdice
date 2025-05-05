@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, X, Bell, ChevronDown, User, LogOut } from "lucide-react";
+import { Menu, X, Bell, ChevronDown, User, LogOut, Users } from "lucide-react";
 
 export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -24,6 +24,7 @@ export const Navbar = () => {
   const navItems = [
     { name: "Campaigns", href: "/" },
     { name: "Characters", href: "/characters" },
+    { name: "Social", href: "/social", icon: <Users className="inline-block mr-1 h-4 w-4" /> },
     { name: "Learn D&D", href: "/learn" },
     { name: "Rulebook", href: "/rulebook" },
   ];
