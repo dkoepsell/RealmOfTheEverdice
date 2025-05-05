@@ -7,7 +7,11 @@ import {
   Npc, InsertNpc,
   Quest, InsertQuest,
   GameLog, InsertGameLog,
-  users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs
+  Friendship, InsertFriendship,
+  UserSession, InsertUserSession,
+  CampaignInvitation, InsertCampaignInvitation,
+  users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
+  friendships, userSessions, campaignInvitations
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
