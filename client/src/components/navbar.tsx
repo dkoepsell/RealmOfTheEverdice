@@ -22,11 +22,11 @@ export const Navbar = () => {
   };
 
   const navItems = [
-    { name: "Campaigns", href: "/" },
-    { name: "Characters", href: "/characters" },
+    { name: "Campaigns", href: "/", icon: <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg> },
+    { name: "Characters", href: "/characters", icon: <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> },
     { name: "Social", href: "/social", icon: <Users className="inline-block mr-1 h-4 w-4" /> },
-    { name: "Learn D&D", href: "/learn" },
-    { name: "Rulebook", href: "/rulebook" },
+    { name: "Learn D&D", href: "/learn", icon: <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg> },
+    { name: "Rulebook", href: "/rulebook", icon: <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg> },
   ];
 
   return (
@@ -73,7 +73,7 @@ export const Navbar = () => {
                           : "text-parchment hover:bg-secondary hover:text-white"
                       }`}
                     >
-                      {item.name}
+                      {item.icon}{item.name}
                     </a>
                   </Link>
                 ))}
@@ -110,12 +110,29 @@ export const Navbar = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/profile">
-                      <a className="w-full">Profile</a>
+                      <a className="w-full">
+                        <User className="mr-2 h-4 w-4 inline-block" />
+                        Profile
+                      </a>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/social">
+                      <a className="w-full">
+                        <Users className="mr-2 h-4 w-4 inline-block" />
+                        Friends & Invitations
+                      </a>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/settings">
-                      <a className="w-full">Settings</a>
+                      <a className="w-full">
+                        <svg className="mr-2 h-4 w-4 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="3"></circle>
+                          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        Settings
+                      </a>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -143,7 +160,7 @@ export const Navbar = () => {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                {item.name}
+                {item.icon}{item.name}
               </a>
             </Link>
           ))}
