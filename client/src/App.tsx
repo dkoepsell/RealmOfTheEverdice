@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import SimplifiedAuthPage from "@/pages/simplified-auth";
+import CharactersPage from "@/pages/characters-page";
 import CharacterCreation from "@/pages/character-creation";
 import CampaignCreation from "@/pages/campaign-creation";
 import CampaignPage from "@/pages/campaign-page";
@@ -19,6 +20,7 @@ function Router() {
     <Switch>
       <Route path="/auth" component={SimplifiedAuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/characters" component={CharactersPage} />
       <ProtectedRoute path="/characters/create" component={CharacterCreation} />
       <ProtectedRoute path="/campaigns/create" component={CampaignCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
