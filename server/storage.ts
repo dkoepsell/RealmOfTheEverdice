@@ -68,6 +68,26 @@ export interface IStorage {
   // Game Log methods
   getGameLogsByCampaignId(campaignId: number, limit?: number): Promise<GameLog[]>;
   createGameLog(gameLog: InsertGameLog): Promise<GameLog>;
+  
+  // Friendship methods
+  getFriendship(userId: number, friendId: number): Promise<Friendship | undefined>;
+  getFriendshipsByUserId(userId: number): Promise<Friendship[]>;
+  createFriendship(friendship: InsertFriendship): Promise<Friendship>;
+  updateFriendship(userId: number, friendId: number, status: string): Promise<Friendship | undefined>;
+  deleteFriendship(userId: number, friendId: number): Promise<boolean>;
+  
+  // User session methods
+  getUserSession(userId: number): Promise<UserSession | undefined>;
+  createOrUpdateUserSession(session: InsertUserSession): Promise<UserSession>;
+  getOnlineUsers(): Promise<UserSession[]>;
+  
+  // Campaign invitation methods
+  getCampaignInvitation(id: number): Promise<CampaignInvitation | undefined>;
+  getCampaignInvitationsByUserId(userId: number): Promise<CampaignInvitation[]>;
+  getCampaignInvitationsByCampaignId(campaignId: number): Promise<CampaignInvitation[]>;
+  createCampaignInvitation(invitation: InsertCampaignInvitation): Promise<CampaignInvitation>;
+  updateCampaignInvitation(id: number, status: string): Promise<CampaignInvitation | undefined>;
+  deleteCampaignInvitation(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -259,6 +279,165 @@ export class DatabaseStorage implements IStorage {
   async createGameLog(insertGameLog: InsertGameLog): Promise<GameLog> {
     const [gameLog] = await db.insert(gameLogs).values(insertGameLog).returning();
     return gameLog;
+  }
+
+  // Friendship methods
+  async getFriendship(userId: number, friendId: number): Promise<Friendship | undefined> {
+    const [friendship] = await db
+      .select()
+      .from(friendships)
+      .where(
+        and(
+          eq(friendships.userId, userId),
+          eq(friendships.friendId, friendId)
+        )
+      );
+    return friendship;
+  }
+
+  async getFriendshipsByUserId(userId: number): Promise<Friendship[]> {
+    // Get friendships where the user is either the initiator or the recipient
+    const sentFriendships = await db
+      .select()
+      .from(friendships)
+      .where(eq(friendships.userId, userId));
+    
+    const receivedFriendships = await db
+      .select()
+      .from(friendships)
+      .where(eq(friendships.friendId, userId));
+    
+    return [...sentFriendships, ...receivedFriendships];
+  }
+
+  async createFriendship(friendship: InsertFriendship): Promise<Friendship> {
+    const [newFriendship] = await db
+      .insert(friendships)
+      .values(friendship)
+      .returning();
+    return newFriendship;
+  }
+
+  async updateFriendship(userId: number, friendId: number, status: string): Promise<Friendship | undefined> {
+    const [updatedFriendship] = await db
+      .update(friendships)
+      .set({ status })
+      .where(
+        and(
+          eq(friendships.userId, userId),
+          eq(friendships.friendId, friendId)
+        )
+      )
+      .returning();
+    return updatedFriendship;
+  }
+
+  async deleteFriendship(userId: number, friendId: number): Promise<boolean> {
+    const result = await db
+      .delete(friendships)
+      .where(
+        and(
+          eq(friendships.userId, userId),
+          eq(friendships.friendId, friendId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+
+  // User session methods
+  async getUserSession(userId: number): Promise<UserSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.userId, userId));
+    return session;
+  }
+
+  async createOrUpdateUserSession(session: InsertUserSession): Promise<UserSession> {
+    // Check if session exists for this user
+    const existing = await this.getUserSession(session.userId);
+    
+    if (existing) {
+      // Update existing session
+      const [updatedSession] = await db
+        .update(userSessions)
+        .set({
+          lastActive: new Date(),
+          status: session.status
+        })
+        .where(eq(userSessions.userId, session.userId))
+        .returning();
+      return updatedSession;
+    } else {
+      // Create new session
+      const [newSession] = await db
+        .insert(userSessions)
+        .values(session)
+        .returning();
+      return newSession;
+    }
+  }
+
+  async getOnlineUsers(): Promise<UserSession[]> {
+    // Consider users who were active in the last 5 minutes as online
+    const fiveMinutesAgo = new Date();
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+    
+    return db
+      .select()
+      .from(userSessions)
+      .where(
+        sql`${userSessions.lastActive} > ${fiveMinutesAgo}` 
+      );
+  }
+
+  // Campaign invitation methods
+  async getCampaignInvitation(id: number): Promise<CampaignInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(campaignInvitations)
+      .where(eq(campaignInvitations.id, id));
+    return invitation;
+  }
+
+  async getCampaignInvitationsByUserId(userId: number): Promise<CampaignInvitation[]> {
+    return db
+      .select()
+      .from(campaignInvitations)
+      .where(eq(campaignInvitations.inviteeId, userId));
+  }
+
+  async getCampaignInvitationsByCampaignId(campaignId: number): Promise<CampaignInvitation[]> {
+    return db
+      .select()
+      .from(campaignInvitations)
+      .where(eq(campaignInvitations.campaignId, campaignId));
+  }
+
+  async createCampaignInvitation(invitation: InsertCampaignInvitation): Promise<CampaignInvitation> {
+    const [newInvitation] = await db
+      .insert(campaignInvitations)
+      .values(invitation)
+      .returning();
+    return newInvitation;
+  }
+
+  async updateCampaignInvitation(id: number, status: string): Promise<CampaignInvitation | undefined> {
+    const [updatedInvitation] = await db
+      .update(campaignInvitations)
+      .set({ status })
+      .where(eq(campaignInvitations.id, id))
+      .returning();
+    return updatedInvitation;
+  }
+
+  async deleteCampaignInvitation(id: number): Promise<boolean> {
+    const result = await db
+      .delete(campaignInvitations)
+      .where(eq(campaignInvitations.id, id))
+      .returning();
+    return result.length > 0;
   }
 }
 
