@@ -77,7 +77,6 @@ export default function CampaignCreation() {
       name: "",
       description: "",
       setting: "Forgotten Realms",
-      level: 1,
       status: "active",
       confirmCreate: false,
     },
@@ -186,25 +185,12 @@ export default function CampaignCreation() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="level"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Starting Level</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              type="number"
-                              min={1}
-                              max={20}
-                              className="bg-parchment border-accent"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="bg-parchment border border-accent rounded-md p-4">
+                      <h3 className="font-medieval text-lg">Campaign Settings</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Your campaign will start with level 1 characters by default.
+                      </p>
+                    </div>
                   </div>
 
                   <FormField
