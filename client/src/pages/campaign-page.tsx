@@ -25,6 +25,7 @@ export default function CampaignPage() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
   const [gameLogs, setGameLogs] = useState<GameLog[]>([]);
   const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
+  const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
   
   // Fetch campaign data
   const { 
@@ -286,9 +287,56 @@ export default function CampaignPage() {
   // Reverse game logs for display (newest at the bottom)
   const displayLogs = [...gameLogs].reverse();
 
+  // Handle DM mode toggle
+  const handleDmModeToggle = () => {
+    setIsAutoDmMode(prevMode => !prevMode);
+    
+    // Notify the user about the DM mode change
+    toast({
+      title: isAutoDmMode ? "Human DM Mode Activated" : "Auto-DM Mode Activated",
+      description: isAutoDmMode 
+        ? "A human Dungeon Master will now control the narrative." 
+        : "The AI Dungeon Master will now guide your adventure.",
+      variant: "default",
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
+      
+      {/* DM Mode Toggle Bar */}
+      <div className="bg-primary/10 py-2 px-4">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="text-lg font-medieval text-primary">
+            {campaign.name}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="dm-mode" className="text-sm font-medium">
+                {isAutoDmMode ? (
+                  <div className="flex items-center">
+                    <Bot className="h-4 w-4 mr-1" />
+                    Auto-DM
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <UserCog className="h-4 w-4 mr-1" />
+                    Human DM
+                  </div>
+                )}
+              </Label>
+              <Switch
+                id="dm-mode"
+                checked={isAutoDmMode}
+                onCheckedChange={handleDmModeToggle}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <main className="flex-grow flex flex-col lg:flex-row overflow-hidden">
         {/* Character Panel */}
         <CharacterPanel character={currentCharacter} />
@@ -300,6 +348,7 @@ export default function CampaignPage() {
           currentCharacter={currentCharacter}
           gameLogs={displayLogs}
           onAddGameLog={handleAddGameLog}
+          isAutoDmMode={isAutoDmMode}
         />
         
         {/* World Info Panel */}

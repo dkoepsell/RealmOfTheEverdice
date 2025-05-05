@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
+import { Send, UserCog, Bot } from "lucide-react";
 import { Campaign, Character, GameLog } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
@@ -22,6 +22,7 @@ interface GameAreaProps {
   currentCharacter: Character;
   gameLogs: GameLog[];
   onAddGameLog: (log: GameLog) => void;
+  isAutoDmMode?: boolean; // Indicates whether the AI DM is active or a human DM
 }
 
 export const GameArea = ({ 
@@ -29,9 +30,11 @@ export const GameArea = ({
   currentAdventure, 
   currentCharacter, 
   gameLogs,
-  onAddGameLog
+  onAddGameLog,
+  isAutoDmMode = true // Default to Auto-DM if not specified
 }: GameAreaProps) => {
   const [playerAction, setPlayerAction] = useState("");
+  const [dmNarration, setDmNarration] = useState("");
   const [decisionOptions, setDecisionOptions] = useState<string[]>([
     "Investigate the area",
     "Talk to nearby NPCs",
@@ -104,8 +107,16 @@ export const GameArea = ({
       // Create log in database
       createLogMutation.mutate(playerLog);
       
-      // Generate narration response
-      narrationMutation.mutate(playerAction);
+      // Only generate AI narration if in Auto-DM mode
+      if (isAutoDmMode) {
+        // Generate narration response using AI
+        narrationMutation.mutate(playerAction);
+      } else {
+        // In Human DM mode, we don't automatically generate narrative responses
+        // The human DM would need to provide the narration manually
+        // We could show a notification or some UI element here to indicate
+        // that the DM should respond
+      }
       
       // Clear input
       setPlayerAction("");
@@ -115,6 +126,26 @@ export const GameArea = ({
   const handleDecisionClick = (decision: string) => {
     setPlayerAction(decision);
     handleSubmitAction({ preventDefault: () => {} } as React.FormEvent);
+  };
+  
+  // Function for the human DM to add narration
+  const handleDmNarrationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (dmNarration.trim()) {
+      // Add DM narration to game logs
+      const narrativeLog: Partial<GameLog> = {
+        campaignId: campaign.id,
+        content: dmNarration,
+        type: "narrative"
+      };
+      
+      // Create log in database
+      createLogMutation.mutate(narrativeLog);
+      
+      // Clear input
+      setDmNarration("");
+    }
   };
 
   return (
@@ -191,6 +222,31 @@ export const GameArea = ({
           </div>
         </div>
       </div>
+      
+      {/* Human DM Input - Only shown when in Human DM mode */}
+      {!isAutoDmMode && (
+        <div className="bg-primary/20 p-3 border-t border-primary/30">
+          <div className="flex items-center mb-2">
+            <UserCog className="h-5 w-5 mr-2 text-primary" />
+            <span className="text-sm font-medieval text-primary">DM Narration</span>
+          </div>
+          <form onSubmit={handleDmNarrationSubmit} className="flex space-x-2">
+            <Input 
+              value={dmNarration}
+              onChange={(e) => setDmNarration(e.target.value)}
+              className="flex-grow bg-parchment/90 border border-primary/50 rounded p-2 font-body" 
+              placeholder="Describe what happens next as the DM..."
+            />
+            <Button 
+              type="submit" 
+              className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/80"
+              disabled={!dmNarration.trim()}
+            >
+              <Send className="mr-1 h-4 w-4" /> Narrate
+            </Button>
+          </form>
+        </div>
+      )}
       
       {/* Player Input */}
       <div className="bg-darkBrown/20 p-3">
