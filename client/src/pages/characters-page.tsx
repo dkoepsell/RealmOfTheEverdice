@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Character } from "@shared/schema";
@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Link, useLocation } from "wouter";
 import { PlusCircle, Sword, Shield, BookOpen, GitBranch, Trash2 } from "lucide-react";
 import Navbar from "@/components/navbar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CharacterSheet } from "@/components/character-sheet";
 import {
@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Drawer,
@@ -30,7 +31,6 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
-import { DialogClose } from "@radix-ui/react-dialog";
 
 export default function CharactersPage() {
   const { user } = useAuth();
@@ -83,10 +83,8 @@ export default function CharactersPage() {
           <h1 className="text-3xl font-bold">Your Characters</h1>
           <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
             <Link href="/characters/create">
-              <a className="flex items-center">
-                <PlusCircle className="mr-2 h-5 w-5" />
-                Create Character
-              </a>
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Create Character
             </Link>
           </Button>
         </div>
@@ -149,7 +147,7 @@ export default function CharactersPage() {
                     </div>
                     <div className="flex items-center">
                       <GitBranch className="h-4 w-4 mr-2 text-primary" />
-                      <span>Align: <span className="font-medium">{character.background?.includes("Alignment:") ? character.background.split("Alignment:")[1].trim().split(" ")[0] : "Neutral"}</span></span>
+                      <span>Background: <span className="font-medium">{character.background?.split("\n")[0] || "Unknown"}</span></span>
                     </div>
                   </div>
                 </CardContent>
@@ -214,10 +212,8 @@ export default function CharactersPage() {
             </p>
             <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
               <Link href="/characters/create">
-                <a className="flex items-center">
-                  <PlusCircle className="mr-2 h-5 w-5" />
-                  Create Your First Character
-                </a>
+                <PlusCircle className="mr-2 h-5 w-5" />
+                Create Your First Character
               </Link>
             </Button>
           </div>
