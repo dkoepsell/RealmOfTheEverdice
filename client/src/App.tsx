@@ -8,6 +8,7 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import CharacterCreation from "@/pages/character-creation";
 import CampaignPage from "@/pages/campaign-page";
+import LearnPage from "@/pages/learn-page";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
 
@@ -18,6 +19,7 @@ function Router() {
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/characters/create" component={CharacterCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
+      <ProtectedRoute path="/learn" component={LearnPage} />
       <Route component={NotFound} />
     </Switch>
   );

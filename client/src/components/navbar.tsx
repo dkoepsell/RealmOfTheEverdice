@@ -24,6 +24,7 @@ export const Navbar = () => {
   const navItems = [
     { name: "Campaigns", href: "/" },
     { name: "Characters", href: "/characters" },
+    { name: "Learn D&D", href: "/learn" },
     { name: "Rulebook", href: "/rulebook" },
   ];
 

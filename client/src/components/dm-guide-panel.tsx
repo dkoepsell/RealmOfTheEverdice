@@ -8,7 +8,16 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, HelpCircle, Info, ScrollText, Lightbulb, AlertCircle } from "lucide-react";
+import { 
+  BookOpen, 
+  HelpCircle, 
+  Info, 
+  ScrollText, 
+  Lightbulb, 
+  AlertCircle, 
+  MessageSquare, 
+  MapPin 
+} from "lucide-react";
 
 interface DMGuidePanelProps {
   onClose: () => void;
@@ -406,7 +415,7 @@ export const DMGuidePanel = ({ onClose, currentContext = "general" }: DMGuidePan
             <div className="space-y-4">
               <div className="bg-accent/10 p-4 rounded-md">
                 <h3 className="text-lg font-medieval text-primary flex items-center">
-                  <Map className="mr-2 h-5 w-5" />
+                  <MapPin className="mr-2 h-5 w-5" />
                   Exploration & Adventure
                 </h3>
                 <p className="mt-2">
