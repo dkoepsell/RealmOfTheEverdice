@@ -1,0 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Roboto:wght@300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Base colors */
+  --background: 40 50% 95%;
+  --foreground: 30 45% 15%;
+  
+  /* Primary color - Red */
+  --primary: 5 64% 40%;
+  --primary-foreground: 60 9.1% 97.8%;
+  
+  /* Secondary color - Blue */
+  --secondary: 215 50% 31%;
+  --secondary-foreground: 0 0% 98%;
+  
+  /* Accent color - Gold */
+  --accent: 35 65% 63%;
+  --accent-foreground: 30 45% 15%;
+  
+  /* Muted tones */
+  --muted: 30 10% 85%;
+  --muted-foreground: 30 40% 35%;
+  
+  /* Card styling */
+  --card: 40 50% 97%;
+  --card-foreground: 30 45% 15%;
+  
+  /* Popover styling */
+  --popover: 40 50% 97%;
+  --popover-foreground: 30 45% 15%;
+  
+  /* Border colors */
+  --border: 35 65% 63%;
+  --input: 35 65% 63%;
+  
+  /* Destructive colors */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 9.1% 97.8%;
+  
+  /* Success color */
+  --success: 120 40% 33%;
+  
+  /* Ring focus */
+  --ring: 35 65% 63%;
+  
+  /* Chart colors */
+  --chart-1: 5 64% 40%;
+  --chart-2: 215 50% 31%;
+  --chart-3: 35 65% 63%;
+  --chart-4: 120 40% 33%;
+  --chart-5: 275 60% 40%;
+  
+  /* Sidebar */
+  --sidebar-background: 30 45% 15%;
+  --sidebar-foreground: 40 50% 95%;
+  --sidebar-primary: 35 65% 63%;
+  --sidebar-primary-foreground: 30 45% 15%;
+  --sidebar-accent: 35 20% 85%;
+  --sidebar-accent-foreground: 30 45% 15%;
+  --sidebar-border: 35 65% 43%;
+  --sidebar-ring: 35 65% 63%;
+  
+  /* Radius */
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 30 35% 10%;
+  --foreground: 40 50% 95%;
+  
+  --primary: 5 64% 40%;
+  --primary-foreground: 60 9.1% 97.8%;
+  
+  --secondary: 215 50% 31%;
+  --secondary-foreground: 0 0% 98%;
+  
+  --accent: 35 65% 63%;
+  --accent-foreground: 30 45% 15%;
+  
+  --muted: 30 35% 20%;
+  --muted-foreground: 30 40% 80%;
+  
+  --card: 30 35% 12%;
+  --card-foreground: 40 50% 95%;
+  
+  --popover: 30 35% 12%;
+  --popover-foreground: 40 50% 95%;
+  
+  --border: 35 65% 43%;
+  --input: 35 65% 43%;
+  
+  --destructive: 0 70% 45%;
+  --destructive-foreground: 0 0% 98%;
+  
+  --success: 120 40% 43%;
+  
+  --ring: 35 65% 63%;
+  
+  --chart-1: 5 70% 55%;
+  --chart-2: 215 60% 50%;
+  --chart-3: 35 80% 73%;
+  --chart-4: 120 50% 53%;
+  --chart-5: 275 70% 60%;
+  
+  --sidebar-background: 30 35% 10%;
+  --sidebar-foreground: 40 50% 95%;
+  --sidebar-primary: 35 65% 63%;
+  --sidebar-primary-foreground: 30 45% 15%;
+  --sidebar-accent: 35 65% 43%;
+  --sidebar-accent-foreground: 40 50% 95%;
+  --sidebar-border: 35 65% 43%;
+  --sidebar-ring: 35 65% 63%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html, body {
+    @apply h-full;
+  }
+  
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medieval;
+  }
+}
+
+@layer components {
+  .medieval-border {
+    @apply relative border-2 border-accent;
+  }
+  
+  .medieval-border::before {
+    content: "";
+    @apply absolute -top-1 -left-1 -right-1 -bottom-1 border border-foreground pointer-events-none;
+  }
+  
+  .scroll-container {
+    background-image: url('https://images.unsplash.com/photo-1581866879292-b18e8f752443?q=80&w=1000&auto=format&fit=crop');
+    background-size: cover;
+    background-position: center;
+  }
+  
+  .dice {
+    @apply transition-transform duration-700 ease-in-out;
+  }
+  
+  .dice-rolling {
+    animation: diceRoll 1s ease-in-out;
+  }
+  
+  @keyframes diceRoll {
+    0% { transform: rotateX(0) rotateY(0); }
+    25% { transform: rotateX(180deg) rotateY(90deg); }
+    50% { transform: rotateX(270deg) rotateY(180deg); }
+    75% { transform: rotateX(180deg) rotateY(270deg); }
+    100% { transform: rotateX(360deg) rotateY(360deg); }
+  }
+}
+
+/* Custom font classes */
+.font-medieval {
+  font-family: 'MedievalSharp', cursive;
+}
+
+.font-body {
+  font-family: 'Crimson Text', serif;
+}
+
+.font-ui {
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-accent rounded-sm;
+}
