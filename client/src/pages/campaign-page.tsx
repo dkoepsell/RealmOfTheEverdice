@@ -21,7 +21,7 @@ import { Loader2, UserPlus, Users, Bot, UserCog, MessageSquare } from "lucide-re
 
 export default function CampaignPage() {
   const { id } = useParams();
-  const campaignId = parseInt(id);
+  const campaignId = parseInt(id || "0");
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
@@ -67,15 +67,19 @@ export default function CampaignPage() {
     error: logsError
   } = useQuery<GameLog[]>({
     queryKey: [`/api/campaigns/${campaignId}/logs`],
-    enabled: !!campaignId && !!user,
-    onSuccess: (data) => {
+    enabled: !!campaignId && !!user
+  });
+  
+  // Update game logs when fetchedLogs changes
+  useEffect(() => {
+    if (fetchedLogs) {
       // Sort logs by timestamp in descending order
-      const sortedLogs = [...data].sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      const sortedLogs = [...fetchedLogs].sort((a, b) => 
+        new Date(b.timestamp || new Date()).getTime() - new Date(a.timestamp || new Date()).getTime()
       );
       setGameLogs(sortedLogs);
     }
-  });
+  }, [fetchedLogs]);
   
   // Use the first character as the selected character initially
   useEffect(() => {
@@ -315,7 +319,30 @@ export default function CampaignPage() {
             {campaign.name}
           </div>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
+            {/* Panel toggle buttons */}
+            <div className="hidden sm:flex items-center space-x-2">
+              <Button
+                variant={rightPanelTab === "info" ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setRightPanelTab("info")}
+                className="h-8"
+              >
+                <Users className="h-4 w-4 mr-1" />
+                Party Info
+              </Button>
+              <Button
+                variant={rightPanelTab === "chat" ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setRightPanelTab("chat")}
+                className="h-8"
+              >
+                <MessageSquare className="h-4 w-4 mr-1" />
+                Chat
+              </Button>
+            </div>
+            
+            {/* DM Mode Toggle */}
             <div className="flex items-center space-x-2">
               <Label htmlFor="dm-mode" className="text-sm font-medium">
                 {isAutoDmMode ? (
@@ -347,21 +374,65 @@ export default function CampaignPage() {
         {/* Game Area */}
         <GameArea 
           campaign={campaign} 
-          currentAdventure={currentAdventure} 
+          currentAdventure={currentAdventure ? {
+            title: currentAdventure.title || "",
+            description: currentAdventure.description || "",
+            location: currentAdventure.location || ""
+          } : undefined} 
           currentCharacter={currentCharacter}
           gameLogs={displayLogs}
           onAddGameLog={handleAddGameLog}
           isAutoDmMode={isAutoDmMode}
         />
         
-        {/* World Info Panel */}
-        <WorldInfoPanel 
-          campaign={campaign}
-          partyMembers={partyMembers}
-          currentAdventure={currentAdventure}
-          currentLocation={currentAdventure?.location || "Unknown"}
-          quests={[]} // Quests would be fetched in a real implementation
-        />
+        {/* Right Panel with Tabs for World Info & Chat */}
+        <div className="w-80 border-l border-border shrink-0 flex flex-col h-screen max-h-screen overflow-hidden">
+          <Tabs value={rightPanelTab} className="flex flex-col h-full" onValueChange={(val) => setRightPanelTab(val as "info" | "chat")}>
+            <TabsList className="grid w-full grid-cols-2 m-2">
+              <TabsTrigger value="info" className="flex items-center">
+                <Users className="h-4 w-4 mr-1" />
+                Info
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="flex items-center">
+                <MessageSquare className="h-4 w-4 mr-1" />
+                Chat
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* World Info Tab */}
+            <TabsContent value="info" className="flex-grow flex flex-col m-0 overflow-auto">
+              <WorldInfoPanel 
+                campaign={campaign}
+                partyMembers={partyMembers}
+                currentAdventure={currentAdventure ? {
+                  id: currentAdventure.id,
+                  title: currentAdventure.title,
+                  description: currentAdventure.description || "",
+                  location: currentAdventure.location || "",
+                  createdAt: currentAdventure.createdAt,
+                  status: currentAdventure.status,
+                  campaignId: currentAdventure.campaignId
+                } : undefined}
+                currentLocation={currentAdventure?.location || "Unknown"}
+                quests={[]} // Quests would be fetched in a real implementation
+              />
+            </TabsContent>
+            
+            {/* Chat Tab */}
+            <TabsContent value="chat" className="flex-grow flex flex-col m-0 overflow-hidden">
+              <CampaignChat 
+                campaignId={campaignId}
+                usernames={
+                  // Create a map of user IDs to usernames from the party members
+                  partyMembers.reduce((acc, member) => {
+                    acc[member.id] = member.name;
+                    return acc;
+                  }, {} as Record<number, string>)
+                }
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
     </div>
   );
