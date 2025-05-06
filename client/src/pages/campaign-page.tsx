@@ -10,6 +10,8 @@ import { CharacterPanel } from "@/components/character-panel";
 import { GameArea } from "@/components/game-area";
 import { WorldInfoPanel } from "@/components/world-info-panel";
 import { CampaignChat } from "@/components/campaign-chat";
+import { DiceRoller, DiceType } from "@/components/dice-roll";
+import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results";
 import { AddCharacterDialog } from "@/components/add-character-dialog";
 import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
 import { Button } from "@/components/ui/button";
@@ -17,7 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Users, Bot, UserCog, MessageSquare } from "lucide-react";
+import { useCampaignDiceHistory } from "@/hooks/use-dice-history";
+import { Loader2, UserPlus, Users, Bot, UserCog, MessageSquare, DicesIcon } from "lucide-react";
 
 export default function CampaignPage() {
   const { id } = useParams();
@@ -31,6 +34,9 @@ export default function CampaignPage() {
   const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat">("info");
   const [partyName, setPartyName] = useState<string>("");
   const [isEditingPartyName, setIsEditingPartyName] = useState(false);
+  
+  // Dice roll history
+  const { campaignRolls, addCampaignRoll, clearCampaignRolls } = useCampaignDiceHistory();
   
   // Fetch campaign data
   const { 
@@ -345,6 +351,44 @@ export default function CampaignPage() {
       variant: "default",
     });
   };
+  
+  // Handle dice roll
+  const handleDiceRoll = (
+    type: DiceType, 
+    result: number, 
+    modifier: number = 0, 
+    purpose?: string,
+    threshold?: number
+  ) => {
+    if (!currentCharacter) return;
+    
+    const diceRoll: DiceRollResult = {
+      id: Math.random().toString(36).substring(2, 15),
+      characterName: currentCharacter.name,
+      diceType: type,
+      result,
+      modifier,
+      total: result + modifier,
+      timestamp: new Date(),
+      purpose,
+      threshold,
+      isSuccess: threshold ? (result + modifier >= threshold) : undefined
+    };
+    
+    // Add roll to campaign history
+    addCampaignRoll(diceRoll);
+    
+    // Optionally log the roll to game logs
+    const rollDescription = `${currentCharacter.name} rolled ${result} on a ${type}${modifier ? ` with a modifier of ${modifier > 0 ? '+' : ''}${modifier}` : ''}${purpose ? ` for ${purpose}` : ''}. Total: ${result + modifier}`;
+    
+    const rollLog: Partial<GameLog> = {
+      campaignId,
+      content: rollDescription,
+      type: "roll"
+    };
+    
+    createLogMutation.mutate(rollLog);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -421,6 +465,8 @@ export default function CampaignPage() {
           gameLogs={displayLogs}
           onAddGameLog={handleAddGameLog}
           isAutoDmMode={isAutoDmMode}
+          onDiceRoll={handleDiceRoll}
+          diceRollResults={campaignRolls}
         />
         
         {/* Right Panel with Tabs for World Info & Chat */}

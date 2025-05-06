@@ -7,10 +7,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, UserCog, Bot } from "lucide-react";
+import { Send, UserCog, Bot, DicesIcon } from "lucide-react";
 import { Campaign, Character, GameLog } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
+import { DiceRoller, DiceType } from "@/components/dice-roll";
+import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results";
 
 interface GameAreaProps {
   campaign: Campaign;
@@ -23,6 +25,8 @@ interface GameAreaProps {
   gameLogs: GameLog[];
   onAddGameLog: (log: GameLog) => void;
   isAutoDmMode?: boolean; // Indicates whether the AI DM is active or a human DM
+  onDiceRoll?: (type: DiceType, result: number, modifier?: number, purpose?: string, threshold?: number) => void;
+  diceRollResults?: DiceRollResult[];
 }
 
 export const GameArea = ({ 
@@ -31,7 +35,9 @@ export const GameArea = ({
   currentCharacter, 
   gameLogs,
   onAddGameLog,
-  isAutoDmMode = true // Default to Auto-DM if not specified
+  isAutoDmMode = true, // Default to Auto-DM if not specified
+  onDiceRoll,
+  diceRollResults = []
 }: GameAreaProps) => {
   const [playerAction, setPlayerAction] = useState("");
   const [dmNarration, setDmNarration] = useState("");
@@ -202,6 +208,29 @@ export const GameArea = ({
                 <div className="h-4 bg-secondary/20 rounded w-1/2"></div>
               </div>
             )}
+          </div>
+          
+          {/* Dice Roll Results */}
+          {diceRollResults.length > 0 && (
+            <div className="mb-6">
+              <DiceRollResults results={diceRollResults} maxResults={8} />
+            </div>
+          )}
+          
+          {/* Dice Roller */}
+          <div className="mb-6">
+            <DiceRoller 
+              characterName={currentCharacter.name}
+              onRollResult={onDiceRoll}
+              characterModifiers={{
+                STR: Math.floor(((currentCharacter.stats as any)?.strength || 10) - 10) / 2,
+                DEX: Math.floor(((currentCharacter.stats as any)?.dexterity || 10) - 10) / 2,
+                CON: Math.floor(((currentCharacter.stats as any)?.constitution || 10) - 10) / 2,
+                INT: Math.floor(((currentCharacter.stats as any)?.intelligence || 10) - 10) / 2,
+                WIS: Math.floor(((currentCharacter.stats as any)?.wisdom || 10) - 10) / 2,
+                CHA: Math.floor(((currentCharacter.stats as any)?.charisma || 10) - 10) / 2
+              }}
+            />
           </div>
           
           {/* Decision Point */}
