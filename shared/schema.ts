@@ -52,6 +52,7 @@ export const campaigns = pgTable("campaigns", {
   status: text("status").notNull().default("active"),
   setting: text("setting"),
   isAiDm: boolean("is_ai_dm").notNull().default(false),
+  partyName: text("party_name"),
   createdAt: timestamp("created_at").defaultNow()
 });
 

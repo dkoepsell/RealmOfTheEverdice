@@ -181,6 +181,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.patch("/api/campaigns/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      const campaign = await storage.getCampaign(campaignId);
+      
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM can update campaign
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updatedCampaign = await storage.updateCampaign(campaignId, req.body);
+      res.json(updatedCampaign);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update campaign" });
+    }
+  });
+  
   // Campaign Characters Routes
   app.get("/api/campaigns/:id/characters", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
