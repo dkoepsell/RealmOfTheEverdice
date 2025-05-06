@@ -7,7 +7,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, UserCog, Bot, DicesIcon } from "lucide-react";
+import { 
+  Send, 
+  UserCog, 
+  Bot, 
+  DicesIcon, 
+  Sword, 
+  MessagesSquare, 
+  Footprints, 
+  SearchCode, 
+  UserCheck, 
+  Fingerprint 
+} from "lucide-react";
 import { Campaign, Character, GameLog } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
@@ -118,15 +129,10 @@ export const GameArea = ({
     }
   });
   
-  // Generate new decision options
+  // This function is kept for backwards compatibility but we don't restrict player choices anymore
   const generateDecisionOptions = async () => {
-    // In a real app, you might use AI to generate these based on the story context
-    setDecisionOptions([
-      "Continue exploring the ruins",
-      "Inspect the strange markings",
-      "Set up camp for the night",
-      "Head back to town"
-    ]);
+    // We're moving away from pre-set options to embrace full player freedom
+    // This function is kept to maintain compatibility with existing code
   };
   
   // Handle taking a turn/advancing the story
@@ -337,20 +343,37 @@ export const GameArea = ({
             </Button>
           </div>
           
-          {/* Decision Point */}
+          {/* Open-ended Adventure Guidance */}
           <div className="bg-darkBrown/10 p-4 rounded-lg mt-6">
             <h3 className="font-medieval text-lg mb-2">What will you do?</h3>
-            <div className="space-y-2">
-              {decisionOptions.map((option, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="w-full text-left justify-start p-2 bg-parchment hover:bg-accent/20 border border-accent rounded"
-                  onClick={() => handleDecisionClick(option)}
-                >
-                  {option}
-                </Button>
-              ))}
+            <p className="text-sm text-muted-foreground mb-3">
+              The world is open to you. Describe any action you wish to take, and the adventure will respond accordingly. You could:
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+              <div className="flex items-start">
+                <Sword className="h-3 w-3 mr-1 mt-0.5" />
+                <span>Fight or defend yourself</span>
+              </div>
+              <div className="flex items-start">
+                <MessagesSquare className="h-3 w-3 mr-1 mt-0.5" />
+                <span>Talk or negotiate with NPCs</span>
+              </div>
+              <div className="flex items-start">
+                <Footprints className="h-3 w-3 mr-1 mt-0.5" />
+                <span>Explore the environment</span>
+              </div>
+              <div className="flex items-start">
+                <SearchCode className="h-3 w-3 mr-1 mt-0.5" />
+                <span>Solve puzzles or investigate</span>
+              </div>
+              <div className="flex items-start">
+                <UserCheck className="h-3 w-3 mr-1 mt-0.5" />
+                <span>Help others or be heroic</span>
+              </div>
+              <div className="flex items-start">
+                <Fingerprint className="h-3 w-3 mr-1 mt-0.5" />
+                <span>Use your special skills or abilities</span>
+              </div>
             </div>
           </div>
         </div>

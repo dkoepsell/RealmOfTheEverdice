@@ -80,14 +80,40 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
 
 export async function generateGameNarration(context: string, playerAction: string, isAutoAdvance: boolean = false) {
   try {
-    let systemPrompt = "You are an expert Dungeon Master narrating a D&D game. Provide vivid, engaging descriptions and narrative responses to player actions. Keep responses concise but immersive, focusing on the consequences of actions and maintaining the fantasy atmosphere.";
+    let systemPrompt = `You are an expert Dungeon Master narrating a D&D game, creating a truly open-world experience. You adapt fluidly to ANY player action or decision, no matter how unexpected.
+    
+As the Auto-DM, your role is to:
+1. Create a dynamic world that reacts realistically to player choices
+2. Balance different types of encounters (puzzles, combat, social interactions, exploration)
+3. Present meaningful moral choices that could affect character alignment
+4. Introduce surprising but coherent plot developments based on player decisions
+5. Remember details from earlier in the adventure and weave them into ongoing narrative
+6. Allow player freedom while maintaining narrative cohesion
+
+Your narration should be vivid and concise, focusing on immersion and meaningful player agency. When appropriate, suggest checks or rolls that would be required, but don't force specific choices on the player.`;
+
     let userPrompt = "";
     
     if (isAutoAdvance) {
-      systemPrompt += " For this specific request, you are advancing the story automatically. Create a natural progression that introduces new elements, encounters, or developments to move the adventure forward.";
-      userPrompt = `Context: ${context}\n\nThe player wants to advance the story. Create a compelling narrative that progresses the adventure by introducing a new element, encounter, or development. Describe what happens next in vivid detail as if you were the Dungeon Master moving the story forward.`;
+      userPrompt = `Context: ${context}
+
+The player wants to advance the story. Create a compelling narrative that progresses the adventure by introducing a new element, encounter, or development. Consider including one of the following (choose what makes most sense given the context):
+- A moral dilemma that might affect character alignment
+- A puzzle or mystery that requires creative thinking
+- A potential combat encounter with appropriate challenge
+- A social interaction that reveals important information
+- An environmental challenge or exploration opportunity
+- A surprising twist that builds on previous story elements
+
+Describe what happens next in vivid detail as the Dungeon Master, moving the story forward in an open-ended way that gives the player genuine agency in how to respond.`;
     } else {
-      userPrompt = `Context: ${context}\n\nPlayer Action: ${playerAction}\n\nProvide a narrative response as the DM, describing what happens next. Include any checks or rolls that might be required.`;
+      userPrompt = `Context: ${context}
+
+Player Action: ${playerAction}
+
+Provide a narrative response as the DM, describing what happens next based on this specific player action. Allow this action to meaningfully impact the world and story direction. If this action could have alignment implications, subtly note this. If checks or rolls would be required, mention them but don't resolve them yourself.
+
+Your response should open up new possibilities rather than constrain them, adapting to the player's approach whether it's combat-focused, diplomacy, stealth, creative problem-solving, or something unexpected.`;
     }
     
     const response = await openai.chat.completions.create({
@@ -101,7 +127,8 @@ export async function generateGameNarration(context: string, playerAction: strin
           role: "user",
           content: userPrompt
         }
-      ]
+      ],
+      temperature: 0.8 // Slightly increased creativity while maintaining coherence
     });
 
     return response.choices[0].message.content;
@@ -169,11 +196,17 @@ export async function generateCharacter(options: CharacterGenerationOptions = {}
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
-          content: "You are a D&D character creator specializing in generating detailed player characters."
+          content: `You are a D&D character creator specializing in generating detailed player characters with nuanced moral alignments. 
+          
+Characters should have rich, evolving moral compasses that can shift over time based on their choices, not static alignments. Characters should start with tendencies or inclinations that can evolve along two axes:
+- The Law-Chaos axis (respect for order vs. freedom)
+- The Good-Evil axis (altruism vs. selfishness)
+
+These alignments should be presented as nuanced positions, not just simple labels.`
         },
         {
           role: "user",
@@ -189,10 +222,14 @@ export async function generateCharacter(options: CharacterGenerationOptions = {}
           - class: Character's class
           - background: Character's background
           - level: Character level
-          - alignment: Character alignment
+          - alignment: Character alignment (e.g. "Chaotic Good")
+          - alignmentDescription: A paragraph explaining the character's moral compass, personal ethics, and how their alignment might evolve based on different choices
+          - lawChaosValue: A number from 0-100 representing where they fall on Law (0) to Chaos (100) axis
+          - goodEvilValue: A number from 0-100 representing where they fall on Good (0) to Evil (100) axis
           - appearance: Physical description
           - personality: Personality traits
           - backstory: Brief character history
+          - moralChoices: Array of 3 past moral decisions that helped shape their current alignment
           - stats: Object with strength, dexterity, constitution, intelligence, wisdom, charisma values
           - hp: Hit points value
           - maxHp: Maximum hit points
@@ -203,7 +240,8 @@ export async function generateCharacter(options: CharacterGenerationOptions = {}
           - traits: Character traits`
         }
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      temperature: 0.8 // Add more creative variation
     });
 
     return JSON.parse(response.choices[0].message.content);
@@ -251,11 +289,21 @@ export async function generateCampaign(options: CampaignGenerationOptions = {}) 
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
-          content: "You are an expert Dungeons & Dragons Dungeon Master. Create a detailed and unique D&D campaign setting with creative worldbuilding elements."
+          content: `You are an expert Dungeons & Dragons Dungeon Master specializing in creating open-world sandbox campaigns. 
+          
+Your campaigns should:
+1. Provide rich, explorable worlds with multiple paths and possibilities
+2. Allow for true player agency and unpredictable choices
+3. Include diverse encounter types (combat, exploration, social, puzzles, moral dilemmas)
+4. Present interesting factions with complex motivations and relationships
+5. Feature opportunities for character growth and alignment evolution
+6. Balance structure with freedom to improvise
+
+Create a detailed and unique D&D campaign setting that supports this open-world play style.`
         },
         {
           role: "user",
@@ -267,11 +315,14 @@ export async function generateCampaign(options: CampaignGenerationOptions = {}) 
           Format your response as a JSON object with these fields:
           - name: A distinctive campaign name that evokes the world and its themes
           - description: A detailed description (300-400 words) covering geography, notable locations, major factions or kingdoms, current political situation or conflicts, unique magical elements, and potential adventure hooks.
-          - setting: The official D&D setting this is most similar to (Forgotten Realms, Eberron, etc.) or "Homebrew" if it's totally unique`
+          - setting: The official D&D setting this is most similar to (Forgotten Realms, Eberron, etc.) or "Homebrew" if it's totally unique
+          - openWorldElements: Array of 5-7 elements that make this campaign suitable for open-world play (faction conflicts, mysterious locations, rumors, etc.)
+          - moralDilemmas: Array of 3-5 potential moral choices players might face that could affect their character alignments
+          - adaptabilityNotes: Brief notes on how the campaign can adapt to unexpected player choices`
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1000,
+      max_tokens: 1500,
       temperature: 0.8,
     });
 
