@@ -702,6 +702,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced User Status Routes
+  app.put("/api/users/status", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const { lookingForFriends, lookingForParty, statusMessage } = req.body;
+      
+      // Get existing user session or create a new one if it doesn't exist
+      let userSession = await storage.getUserSession(req.user.id);
+      if (!userSession) {
+        userSession = await storage.createOrUpdateUserSession({
+          userId: req.user.id,
+          status: "online",
+        });
+      }
+      
+      // Update status fields
+      const updatedSession = await storage.updateUserStatus(req.user.id, {
+        lookingForFriends: lookingForFriends !== undefined ? lookingForFriends : userSession.lookingForFriends,
+        lookingForParty: lookingForParty !== undefined ? lookingForParty : userSession.lookingForParty,
+        statusMessage: statusMessage !== undefined ? statusMessage : userSession.statusMessage,
+        lastActive: new Date()
+      });
+      
+      res.json(updatedSession);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
+  
+  app.get("/api/users/looking-for-party", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const users = await storage.getLookingForPartyUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get users looking for party" });
+    }
+  });
+  
+  app.get("/api/users/looking-for-friends", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const users = await storage.getLookingForFriendsUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get users looking for friends" });
+    }
+  });
+  
+  // Chat Message Routes
+  app.get("/api/campaigns/:id/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      
+      // Verify user has access to this campaign (either as DM or player)
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Check if user is DM
+      const isDM = campaign.dmId === req.user.id;
+      
+      // If not DM, check if user has a character in this campaign
+      if (!isDM) {
+        const campaignCharacters = await storage.getCampaignCharacters(campaignId);
+        const userCharacters = await storage.getCharactersByUserId(req.user.id);
+        
+        const userCharacterIds = userCharacters.map(c => c.id);
+        const isPlayer = campaignCharacters.some(cc => 
+          userCharacterIds.includes(cc.characterId) && cc.isActive
+        );
+        
+        if (!isPlayer) {
+          return res.status(403).json({ message: "Unauthorized access to campaign chat" });
+        }
+      }
+      
+      const messages = await storage.getChatMessagesByCampaignId(campaignId, limit);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get chat messages" });
+    }
+  });
+  
+  app.post("/api/campaigns/:id/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      const content = req.body.content;
+      
+      if (!content) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+      
+      // Verify user has access to this campaign (either as DM or player)
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Check if user is DM
+      const isDM = campaign.dmId === req.user.id;
+      
+      // If not DM, check if user has a character in this campaign
+      if (!isDM) {
+        const campaignCharacters = await storage.getCampaignCharacters(campaignId);
+        const userCharacters = await storage.getCharactersByUserId(req.user.id);
+        
+        const userCharacterIds = userCharacters.map(c => c.id);
+        const isPlayer = campaignCharacters.some(cc => 
+          userCharacterIds.includes(cc.characterId) && cc.isActive
+        );
+        
+        if (!isPlayer) {
+          return res.status(403).json({ message: "Unauthorized access to campaign chat" });
+        }
+      }
+      
+      const validatedData = insertChatMessageSchema.parse({
+        campaignId,
+        userId: req.user.id,
+        content
+      });
+      
+      const message = await storage.createChatMessage(validatedData);
+      res.status(201).json(message);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid message data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to send chat message" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
