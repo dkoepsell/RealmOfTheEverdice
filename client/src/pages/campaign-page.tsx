@@ -238,14 +238,16 @@ export default function CampaignPage() {
     // Add roll to campaign history
     addCampaignRoll(diceRoll);
     
-    // Optionally log the roll to game logs
+    // Optionally log the roll to game logs with dice roll data embedded in content
     const rollDescription = `${currentCharacter.name} rolled ${result} on a ${type}${modifier ? ` with a modifier of ${modifier > 0 ? '+' : ''}${modifier}` : ''}${purpose ? ` for ${purpose}` : ''}. Total: ${result + modifier}`;
+    
+    // Store dice roll data as a JSON string in the content field
+    const rollData = JSON.stringify(diceRoll);
     
     const rollLog: Partial<GameLog> = {
       campaignId,
       content: rollDescription,
-      type: "roll",
-      metadata: JSON.stringify(diceRoll)
+      type: "roll"
     };
     
     createLogMutation.mutate(rollLog);
@@ -532,7 +534,15 @@ export default function CampaignPage() {
               <WorldInfoPanel 
                 campaign={campaign}
                 partyMembers={partyMembers}
-                currentAdventure={currentAdventure || undefined}
+                currentAdventure={currentAdventure ? {
+                  id: currentAdventure.id,
+                  title: currentAdventure.title || "",
+                  description: currentAdventure.description || "",
+                  location: currentAdventure.location || "",
+                  status: currentAdventure.status,
+                  campaignId: currentAdventure.campaignId,
+                  createdAt: currentAdventure.createdAt,
+                } : undefined}
                 currentLocation={currentAdventure?.location || "Unknown"}
                 quests={[]} // Quests would be fetched in a real implementation
                 onUpdatePartyName={handlePartyNameUpdate}

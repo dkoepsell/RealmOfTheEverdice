@@ -85,6 +85,60 @@ export const DiceRoller = ({
   
   const { rollDice } = useDice();
   
+  // Function to handle auto-rolling based on requested roll
+  const handleRequestedRoll = () => {
+    if (!requestedRoll || !autoRollEnabled) return;
+    
+    // Handle multi-dice rolls
+    if ((requestedRoll.count || 1) > 1) {
+      let totalResult = 0;
+      const results: number[] = [];
+      
+      for (let i = 0; i < (requestedRoll.count || 1); i++) {
+        const result = rollDice(requestedRoll.type);
+        results.push(result);
+        totalResult += result;
+      }
+      
+      // Create context for multi-dice rolls
+      const lastResult = results[results.length - 1];
+      
+      let modifier = 0;
+      let context = '';
+      let purpose = getPurposeLabel(requestedRoll.purpose);
+      
+      if (requestedRoll.purpose === "damage") {
+        context = `Damage Roll: ${results.join(' + ')} = ${totalResult}`;
+      } else {
+        context = `${purpose} with ${requestedRoll.count || 1} dice: ${results.join(', ')} (Total: ${totalResult})`;
+      }
+      
+      const newRoll = {
+        type: requestedRoll.type,
+        result: lastResult,
+        total: totalResult,
+        modifier,
+        context
+      };
+      
+      setLastRoll(newRoll);
+      
+      if (onRollResult) {
+        onRollResult(
+          requestedRoll.type, 
+          lastResult, 
+          modifier, 
+          `${purpose} (${requestedRoll.count || 1} dice)`, 
+          requestedRoll.dc
+        );
+      }
+    } else {
+      // Single dice roll
+      const result = rollDice(requestedRoll.type);
+      handleRoll(requestedRoll.type, result);
+    }
+  };
+  
   // Handle requested roll data
   useEffect(() => {
     if (requestedRoll) {
@@ -94,18 +148,16 @@ export const DiceRoller = ({
       setRollPrompt(requestedRoll.description || `Roll ${requestedRoll.count || 1}${requestedRoll.type} for ${getPurposeLabel(requestedRoll.purpose)}`);
       
       // Auto-roll if enabled
-      if (autoRollEnabled) {
-        const count = requestedRoll.count || 1;
-        const results = [];
-        
-        for (let i = 0; i < count; i++) {
-          const result = rollDice(requestedRoll.type);
-          results.push(result);
-          handleRoll(requestedRoll.type, result);
-        }
-      }
+      handleRequestedRoll();
     }
-  }, [requestedRoll, autoRollEnabled]);
+  }, [requestedRoll]);
+  
+  // Handle changes to auto-roll setting
+  useEffect(() => {
+    if (autoRollEnabled && requestedRoll) {
+      handleRequestedRoll();
+    }
+  }, [autoRollEnabled]);
   
   const getPurposeLabel = (purpose: string): string => {
     switch (purpose) {
