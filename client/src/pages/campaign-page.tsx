@@ -289,7 +289,7 @@ export default function CampaignPage() {
   
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex flex-col h-screen bg-background">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
@@ -303,7 +303,7 @@ export default function CampaignPage() {
   
   if (hasError || !campaign) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex flex-col h-screen bg-background">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center max-w-md p-6 bg-destructive/10 rounded-lg">
@@ -394,23 +394,24 @@ export default function CampaignPage() {
   }
   
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
       <Navbar />
       
+      {/* Campaign Header Bar */}
       <div className="bg-accent/5 py-3 px-4 border-b">
-        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div className="container mx-auto flex flex-wrap justify-between items-start sm:items-center gap-3">
           <div>
             <h1 className="text-2xl font-medieval text-primary">{campaign.name}</h1>
-            <div className="flex items-center text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center text-sm text-muted-foreground">
               <span>Adventure: {currentAdventure?.title || "None"}</span>
               <span className="mx-2">•</span>
               <span>Location: {currentAdventure?.location || "Unknown"}</span>
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Panel toggle buttons */}
-            <div className="hidden sm:flex items-center space-x-2">
+            <div className="hidden sm:flex items-center gap-2">
               <Button
                 variant={rightPanelTab === "info" ? "default" : "ghost"} 
                 size="sm"
@@ -484,27 +485,31 @@ export default function CampaignPage() {
       </div>
       
       <main className="flex-grow flex flex-col lg:flex-row overflow-hidden">
-        {/* Character Panel */}
-        <CharacterPanel character={currentCharacter} />
+        {/* Left sidebar: Character Panel */}
+        <div className="w-64 border-r border-border shrink-0 overflow-y-auto h-full">
+          <CharacterPanel character={currentCharacter} />
+        </div>
         
-        {/* Game Area */}
-        <GameArea 
-          campaign={campaign} 
-          currentAdventure={currentAdventure ? {
-            title: currentAdventure.title || "",
-            description: currentAdventure.description || "",
-            location: currentAdventure.location || ""
-          } : undefined} 
-          currentCharacter={currentCharacter}
-          gameLogs={displayLogs}
-          onAddGameLog={handleAddGameLog}
-          isAutoDmMode={isAutoDmMode}
-          onDiceRoll={handleDiceRoll}
-          diceRollResults={campaignRolls}
-        />
+        {/* Center: Game Area */}
+        <div className="flex-grow overflow-y-auto h-full">
+          <GameArea 
+            campaign={campaign} 
+            currentAdventure={currentAdventure ? {
+              title: currentAdventure.title || "",
+              description: currentAdventure.description || "",
+              location: currentAdventure.location || ""
+            } : undefined} 
+            currentCharacter={currentCharacter}
+            gameLogs={displayLogs}
+            onAddGameLog={handleAddGameLog}
+            isAutoDmMode={isAutoDmMode}
+            onDiceRoll={handleDiceRoll}
+            diceRollResults={campaignRolls}
+          />
+        </div>
         
         {/* Right Panel with Tabs for World Info, Chat, Party Management, & Voting */}
-        <div className="w-80 border-l border-border shrink-0 flex flex-col h-screen max-h-screen overflow-hidden">
+        <div className="w-80 border-l border-border shrink-0 flex flex-col h-full overflow-hidden">
           <Tabs value={rightPanelTab} className="flex flex-col h-full" onValueChange={(val) => setRightPanelTab(val as any)}>
             <TabsList className="grid w-full grid-cols-5 m-2">
               <TabsTrigger value="info" className="flex items-center">
