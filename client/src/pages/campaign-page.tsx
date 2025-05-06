@@ -25,25 +25,25 @@ import { useCampaignDiceHistory } from "@/hooks/use-dice-history";
 import { 
   Loader2, UserPlus, Users, Bot, UserCog, 
   MessageSquare, DicesIcon, Vote, Split, 
-  ClipboardList
+  ClipboardList, ScrollTextIcon
 } from "lucide-react";
 
 export default function CampaignPage() {
+  // URL parameters
   const { id } = useParams();
   const campaignId = parseInt(id || "0");
+  
+  // Auth and UI hooks
   const { user } = useAuth();
   const { toast } = useToast();
+  const { campaignRolls, addCampaignRoll, clearCampaignRolls } = useCampaignDiceHistory();
+  
+  // State management
   const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
   const [gameLogs, setGameLogs] = useState<GameLog[]>([]);
   const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
   const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat" | "party" | "voting" | "planning">("info");
-  // Temporarily remove party name until DB schema is updated
-  // const [partyName, setPartyName] = useState<string>(""); 
-  // const [isEditingPartyName, setIsEditingPartyName] = useState(false);
-  
-  // Dice roll history
-  const { campaignRolls, addCampaignRoll, clearCampaignRolls } = useCampaignDiceHistory();
   
   // Fetch campaign data
   const { 
@@ -85,23 +85,29 @@ export default function CampaignPage() {
     enabled: !!campaignId && !!user
   });
   
-  // Update game logs when fetchedLogs changes
-  useEffect(() => {
-    if (fetchedLogs) {
-      // Sort logs by timestamp in descending order
-      const sortedLogs = [...fetchedLogs].sort((a, b) => 
-        new Date(b.timestamp || new Date()).getTime() - new Date(a.timestamp || new Date()).getTime()
-      );
-      setGameLogs(sortedLogs);
+  // Create adventure mutation
+  const createAdventureMutation = useMutation({
+    mutationFn: async (adventure: Partial<Adventure>) => {
+      const res = await apiRequest("POST", `/api/campaigns/${campaignId}/adventures`, adventure);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/adventures`] });
     }
-  }, [fetchedLogs]);
+  });
   
-  // Use the first character as the selected character initially
-  useEffect(() => {
-    if (campaignCharacters && campaignCharacters.length > 0 && !selectedCharacterId) {
-      setSelectedCharacterId(campaignCharacters[0].id);
+  // Create game log mutation
+  const createLogMutation = useMutation({
+    mutationFn: async (log: Partial<GameLog>) => {
+      const res = await apiRequest("POST", `/api/campaigns/${campaignId}/logs`, log);
+      return await res.json();
+    },
+    onSuccess: (newLog) => {
+      // Add new log to the beginning of the array
+      setGameLogs(prevLogs => [newLog, ...prevLogs]);
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/logs`] });
     }
-  }, [campaignCharacters, selectedCharacterId]);
+  });
   
   // Generate adventure mutation
   const generateAdventureMutation = useMutation({
@@ -142,30 +148,45 @@ export default function CampaignPage() {
     }
   });
   
-  // Create adventure mutation
-  const createAdventureMutation = useMutation({
-    mutationFn: async (adventure: Partial<Adventure>) => {
-      const res = await apiRequest("POST", `/api/campaigns/${campaignId}/adventures`, adventure);
-      return await res.json();
+  // Update party name mutation (placeholder)
+  const updatePartyNameMutation = useMutation({
+    mutationFn: async (_updates: any) => {
+      // This will be implemented when we update the database schema
+      return null;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/adventures`] });
-    }
-  });
-  
-  // Create game log mutation
-  const createLogMutation = useMutation({
-    mutationFn: async (log: Partial<GameLog>) => {
-      const res = await apiRequest("POST", `/api/campaigns/${campaignId}/logs`, log);
-      return await res.json();
+      toast({
+        title: "Party name feature coming soon",
+        description: "The party naming feature will be available in a future update.",
+      });
     },
-    onSuccess: (newLog) => {
-      // Add new log to the beginning of the array
-      setGameLogs([newLog, ...gameLogs]);
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/logs`] });
-    }
+    onError: (error) => {
+      toast({
+        title: "Failed to update party name",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
   
+  // Update game logs when fetchedLogs changes
+  useEffect(() => {
+    if (fetchedLogs) {
+      // Sort logs by timestamp in descending order
+      const sortedLogs = [...fetchedLogs].sort((a, b) => 
+        new Date(b.timestamp || new Date()).getTime() - new Date(a.timestamp || new Date()).getTime()
+      );
+      setGameLogs(sortedLogs);
+    }
+  }, [fetchedLogs]);
+  
+  // Use the first character as the selected character initially
+  useEffect(() => {
+    if (campaignCharacters && campaignCharacters.length > 0 && !selectedCharacterId) {
+      setSelectedCharacterId(campaignCharacters[0].id);
+    }
+  }, [campaignCharacters, selectedCharacterId]);
+
   // Add a game log
   const handleAddGameLog = (log: GameLog) => {
     setGameLogs([log, ...gameLogs]);
@@ -177,11 +198,86 @@ export default function CampaignPage() {
     generateAdventureMutation.mutate({ setting: campaignSetting });
   };
   
+  // Handle DM mode toggle
+  const handleDmModeToggle = () => {
+    setIsAutoDmMode(prevMode => !prevMode);
+    
+    // Notify the user about the DM mode change
+    toast({
+      title: isAutoDmMode ? "Human DM Mode Activated" : "Auto-DM Mode Activated",
+      description: isAutoDmMode 
+        ? "A human Dungeon Master will now control the narrative." 
+        : "The AI Dungeon Master will now guide your adventure.",
+      variant: "default",
+    });
+  };
+  
+  // Handle dice roll
+  const handleDiceRoll = (
+    type: DiceType, 
+    result: number, 
+    modifier: number = 0, 
+    purpose?: string,
+    threshold?: number
+  ) => {
+    if (!currentCharacter) return;
+    
+    const diceRoll: DiceRollResult = {
+      id: Math.random().toString(36).substring(2, 15),
+      characterName: currentCharacter.name,
+      diceType: type,
+      result,
+      modifier,
+      total: result + modifier,
+      timestamp: new Date(),
+      purpose,
+      threshold,
+      isSuccess: threshold ? (result + modifier >= threshold) : undefined
+    };
+    
+    // Add roll to campaign history
+    addCampaignRoll(diceRoll);
+    
+    // Optionally log the roll to game logs
+    const rollDescription = `${currentCharacter.name} rolled ${result} on a ${type}${modifier ? ` with a modifier of ${modifier > 0 ? '+' : ''}${modifier}` : ''}${purpose ? ` for ${purpose}` : ''}. Total: ${result + modifier}`;
+    
+    const rollLog: Partial<GameLog> = {
+      campaignId,
+      content: rollDescription,
+      type: "roll",
+      metadata: JSON.stringify(diceRoll)
+    };
+    
+    createLogMutation.mutate(rollLog);
+  };
+  
+  // Placeholder for party name update function
+  const handlePartyNameUpdate = () => {
+    toast({
+      title: "Party name feature coming soon",
+      description: "The party naming feature will be available in a future update.",
+    });
+  };
+
   // Get current character
   const currentCharacter = campaignCharacters?.find(character => character.id === selectedCharacterId);
   
   // Get current adventure
   const currentAdventure = adventures?.[0];
+  
+  // Calculate character summaries for party display
+  const partyMembers = campaignCharacters?.map(character => ({
+    id: character.id,
+    name: character.name,
+    race: character.race,
+    class: character.class,
+    level: character.level,
+    hp: character.hp,
+    maxHp: character.maxHp
+  })) || [];
+  
+  // Reverse game logs for display (newest at the bottom)
+  const displayLogs = [...gameLogs].reverse();
   
   // Loading state
   const isLoading = campaignLoading || charactersLoading || adventuresLoading || logsLoading;
@@ -295,127 +391,19 @@ export default function CampaignPage() {
     );
   }
   
-  // Calculate character summaries for party display
-  const partyMembers = campaignCharacters?.map(character => ({
-    id: character.id,
-    name: character.name,
-    race: character.race,
-    class: character.class,
-    level: character.level,
-    hp: character.hp,
-    maxHp: character.maxHp
-  })) || [];
-  
-  // Reverse game logs for display (newest at the bottom)
-  const displayLogs = [...gameLogs].reverse();
-
-  // Party name update functionality will be added later when database schema is updated
-  // For now, we have a placeholder mutation that will be used later
-  const updatePartyNameMutation = useMutation({
-    mutationFn: async (_updates: any) => {
-      // This will be implemented when we update the database schema
-      return null;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Party name feature coming soon",
-        description: "The party naming feature will be available in a future update.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Failed to update party name",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
-  // Placeholder for party name update function
-  const handlePartyNameUpdate = () => {
-    toast({
-      title: "Party name feature coming soon",
-      description: "The party naming feature will be available in a future update.",
-    });
-  };
-  
-  // Temporarily disabled until schema is updated
-  /*
-  // Set initial party name from campaign data
-  useEffect(() => {
-    if (campaign?.partyName) {
-      setPartyName(campaign.partyName);
-    }
-  }, [campaign]);
-  
-  const handlePartyNameUpdate = () => {
-    if (partyName.trim()) {
-      updatePartyNameMutation.mutate({ partyName: partyName.trim() });
-    }
-  };
-  */
-  
-  // Handle DM mode toggle
-  const handleDmModeToggle = () => {
-    setIsAutoDmMode(prevMode => !prevMode);
-    
-    // Notify the user about the DM mode change
-    toast({
-      title: isAutoDmMode ? "Human DM Mode Activated" : "Auto-DM Mode Activated",
-      description: isAutoDmMode 
-        ? "A human Dungeon Master will now control the narrative." 
-        : "The AI Dungeon Master will now guide your adventure.",
-      variant: "default",
-    });
-  };
-  
-  // Handle dice roll
-  const handleDiceRoll = (
-    type: DiceType, 
-    result: number, 
-    modifier: number = 0, 
-    purpose?: string,
-    threshold?: number
-  ) => {
-    if (!currentCharacter) return;
-    
-    const diceRoll: DiceRollResult = {
-      id: Math.random().toString(36).substring(2, 15),
-      characterName: currentCharacter.name,
-      diceType: type,
-      result,
-      modifier,
-      total: result + modifier,
-      timestamp: new Date(),
-      purpose,
-      threshold,
-      isSuccess: threshold ? (result + modifier >= threshold) : undefined
-    };
-    
-    // Add roll to campaign history
-    addCampaignRoll(diceRoll);
-    
-    // Optionally log the roll to game logs
-    const rollDescription = `${currentCharacter.name} rolled ${result} on a ${type}${modifier ? ` with a modifier of ${modifier > 0 ? '+' : ''}${modifier}` : ''}${purpose ? ` for ${purpose}` : ''}. Total: ${result + modifier}`;
-    
-    const rollLog: Partial<GameLog> = {
-      campaignId,
-      content: rollDescription,
-      type: "roll"
-    };
-    
-    createLogMutation.mutate(rollLog);
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       
-      {/* DM Mode Toggle Bar */}
-      <div className="bg-primary/10 py-2 px-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="text-lg font-medieval text-primary">
-            {campaign.name}
+      <div className="bg-accent/5 py-3 px-4 border-b">
+        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+            <h1 className="text-2xl font-medieval text-primary">{campaign.name}</h1>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <span>Adventure: {currentAdventure?.title || "None"}</span>
+              <span className="mx-2">•</span>
+              <span>Location: {currentAdventure?.location || "Unknown"}</span>
+            </div>
           </div>
           
           <div className="flex items-center space-x-4">
