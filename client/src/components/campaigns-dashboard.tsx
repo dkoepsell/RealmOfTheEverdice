@@ -162,7 +162,7 @@ export function CampaignsDashboard() {
                   <TooltipTrigger asChild>
                     <div className="w-full flex items-center justify-center mt-2">
                       <Badge variant="outline" className="cursor-help">
-                        Party: {campaign.partyName || "Unnamed Party"}
+                        Party: {campaign.name || "Unnamed Party"}
                       </Badge>
                     </div>
                   </TooltipTrigger>

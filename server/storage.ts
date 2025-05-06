@@ -1,7 +1,7 @@
 import { 
   User, InsertUser, 
   Character, InsertCharacter, 
-  Campaign, InsertCampaign,
+  InsertCampaign,
   CampaignCharacter, InsertCampaignCharacter,
   Adventure, InsertAdventure,
   Npc, InsertNpc,
@@ -14,6 +14,18 @@ import {
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
   friendships, userSessions, chatMessages, campaignInvitations
 } from "@shared/schema";
+
+// Define our own Campaign type without partyName since it's not in the DB yet
+interface Campaign {
+  id: number;
+  name: string;
+  description: string | null;
+  dmId: number;
+  status: string;
+  setting: string | null;
+  isAiDm: boolean;
+  createdAt: Date | null;
+}
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { db, pool } from "./db";
@@ -155,12 +167,30 @@ export class DatabaseStorage implements IStorage {
 
   // Campaign methods
   async getCampaign(id: number): Promise<Campaign | undefined> {
-    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+    const [campaign] = await db.select({
+      id: campaigns.id,
+      name: campaigns.name,
+      description: campaigns.description,
+      dmId: campaigns.dmId,
+      status: campaigns.status,
+      setting: campaigns.setting,
+      isAiDm: campaigns.isAiDm,
+      createdAt: campaigns.createdAt
+    }).from(campaigns).where(eq(campaigns.id, id));
     return campaign;
   }
 
   async getCampaignsByDmId(dmId: number): Promise<Campaign[]> {
-    return db.select().from(campaigns).where(eq(campaigns.dmId, dmId));
+    return db.select({
+      id: campaigns.id,
+      name: campaigns.name,
+      description: campaigns.description,
+      dmId: campaigns.dmId,
+      status: campaigns.status,
+      setting: campaigns.setting,
+      isAiDm: campaigns.isAiDm,
+      createdAt: campaigns.createdAt
+    }).from(campaigns).where(eq(campaigns.dmId, dmId));
   }
 
   async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
