@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import Navbar from "@/components/navbar";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, Save, Zap } from "lucide-react";
+import { AlertTriangle, Save, Zap, UserRound, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -18,12 +21,80 @@ export default function SettingsPage() {
   const [displayTheme, setDisplayTheme] = useState("dark");
   const [audioEffects, setAudioEffects] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  const [lookingForParty, setLookingForParty] = useState(false);
+  const [lookingForFriends, setLookingForFriends] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  
+  // Fetch user status
+  const { data: userStatus } = useQuery({
+    queryKey: ["/api/users/status"],
+    queryFn: async () => {
+      try {
+        const session = await apiRequest("GET", `/api/user`);
+        const userData = await session.json();
+        return userData;
+      } catch (error) {
+        console.error("Failed to fetch user status", error);
+        return null;
+      }
+    },
+    enabled: !!user,
+  });
+  
+  // Update statuses from fetched data
+  useEffect(() => {
+    if (userStatus?.session) {
+      setLookingForParty(userStatus.session.lookingForParty || false);
+      setLookingForFriends(userStatus.session.lookingForFriends || false);
+      setStatusMessage(userStatus.session.statusMessage || "");
+    }
+  }, [userStatus]);
+  
+  // Status update mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async (data: { 
+      lookingForParty?: boolean; 
+      lookingForFriends?: boolean;
+      statusMessage?: string;
+    }) => {
+      const response = await apiRequest("PUT", "/api/users/status", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users/status"] });
+      toast({
+        title: "Status updated",
+        description: "Your status has been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Update failed",
+        description: "Failed to update your status. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Failed to update status:", error);
+    },
+  });
 
   if (!user) return null;
 
   const handleSaveSettings = async () => {
     setSaving(true);
-    // This would typically save to the backend
+    
+    // Update user status
+    try {
+      await updateStatusMutation.mutateAsync({
+        lookingForParty,
+        lookingForFriends,
+        statusMessage
+      });
+    } catch (error) {
+      console.error("Failed to update user status", error);
+    }
+    
+    // Regular settings save logic
     setTimeout(() => {
       setSaving(false);
       toast({
@@ -42,9 +113,10 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full md:w-1/2 grid-cols-3 mb-6">
+          <TabsList className="grid w-full md:w-1/2 grid-cols-4 mb-6">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="gameplay">Gameplay</TabsTrigger>
+            <TabsTrigger value="social">Social</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
           
@@ -130,6 +202,72 @@ export default function SettingsPage() {
                       checked={automaticDiceRolls} 
                       onCheckedChange={setAutomaticDiceRolls} 
                     />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="social">
+            <Card>
+              <CardHeader>
+                <CardTitle>Social Settings</CardTitle>
+                <CardDescription>
+                  Control your visibility and availability to other players.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex flex-col space-y-4">
+                  {/* Looking For Party Switch */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="looking-for-party" className="text-base">Looking For Party</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Show that you're looking to join a D&D campaign
+                      </p>
+                    </div>
+                    <Switch 
+                      id="looking-for-party" 
+                      checked={lookingForParty} 
+                      onCheckedChange={setLookingForParty} 
+                    />
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Looking For Friends Switch */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="looking-for-friends" className="text-base">Looking For Friends</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Show that you're looking to connect with other D&D players
+                      </p>
+                    </div>
+                    <Switch 
+                      id="looking-for-friends" 
+                      checked={lookingForFriends} 
+                      onCheckedChange={setLookingForFriends} 
+                    />
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Status Message */}
+                  <div>
+                    <Label htmlFor="status-message" className="text-base">Status Message</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Set a custom message for your profile
+                    </p>
+                    <Input
+                      id="status-message"
+                      placeholder="Enter a status message..."
+                      value={statusMessage}
+                      onChange={(e) => setStatusMessage(e.target.value)}
+                      maxLength={100}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1 text-right">
+                      {statusMessage.length}/100 characters
+                    </p>
                   </div>
                 </div>
               </CardContent>

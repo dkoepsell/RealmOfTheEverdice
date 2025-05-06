@@ -9,13 +9,15 @@ import Navbar from "@/components/navbar";
 import { CharacterPanel } from "@/components/character-panel";
 import { GameArea } from "@/components/game-area";
 import { WorldInfoPanel } from "@/components/world-info-panel";
+import { CampaignChat } from "@/components/campaign-chat";
 import { AddCharacterDialog } from "@/components/add-character-dialog";
 import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Users, Bot, UserCog } from "lucide-react";
+import { Loader2, UserPlus, Users, Bot, UserCog, MessageSquare } from "lucide-react";
 
 export default function CampaignPage() {
   const { id } = useParams();
@@ -26,6 +28,7 @@ export default function CampaignPage() {
   const [gameLogs, setGameLogs] = useState<GameLog[]>([]);
   const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
+  const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat">("info");
   
   // Fetch campaign data
   const { 
