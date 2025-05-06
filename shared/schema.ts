@@ -156,11 +156,28 @@ export const userSessions = pgTable("user_sessions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().unique(),
   lastActive: timestamp("last_active").defaultNow(),
-  status: text("status").notNull().default("online") // online, away, offline, in-game
+  status: text("status").notNull().default("online"), // online, away, offline, in-game
+  lookingForFriends: boolean("looking_for_friends").default(false),
+  lookingForParty: boolean("looking_for_party").default(false),
+  statusMessage: text("status_message")
 });
 
 export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
   id: true
+});
+
+// Campaign Chat Messages
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull(),
+  userId: integer("user_id").notNull(),
+  content: text("content").notNull(),
+  timestamp: timestamp("timestamp").defaultNow()
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  timestamp: true
 });
 
 // Campaign Invitations
@@ -209,6 +226,9 @@ export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
 
 export type UserSession = typeof userSessions.$inferSelect;
 export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 export type CampaignInvitation = typeof campaignInvitations.$inferSelect;
 export type InsertCampaignInvitation = z.infer<typeof insertCampaignInvitationSchema>;
@@ -262,6 +282,7 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
   adventures: many(adventures),
   npcs: many(npcs),
   gameLogs: many(gameLogs),
+  chatMessages: many(chatMessages),
   invitations: many(campaignInvitations)
 }));
 
@@ -323,6 +344,17 @@ export const userSessionsRelations = relations(userSessions, ({ one }) => ({
     fields: [userSessions.userId],
     references: [users.id],
     relationName: "userSession"
+  })
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [chatMessages.campaignId],
+    references: [campaigns.id]
+  }),
+  user: one(users, {
+    fields: [chatMessages.userId],
+    references: [users.id]
   })
 }));
 
