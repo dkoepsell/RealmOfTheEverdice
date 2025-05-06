@@ -58,7 +58,7 @@ export const Navbar = () => {
                   >
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                   </svg>
-                  <h1 className="ml-2 text-xl font-medieval tracking-wider">Dragon's Realm</h1>
+                  <h1 className="ml-2 text-xl font-medieval tracking-wider">Quest Tavern</h1>
                 </a>
               </Link>
             </div>

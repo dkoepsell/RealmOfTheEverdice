@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Tavern Building -->
+  <path d="M256 40L100 120V440H412V120L256 40Z" fill="#8B572A" stroke="#4B2810" stroke-width="12"/>
+  
+  <!-- Roof -->
+  <path d="M256 40L100 120H412L256 40Z" fill="#592C14" stroke="#4B2810" stroke-width="12"/>
+  
+  <!-- Door -->
+  <path d="M226 320H286V440H226V320Z" fill="#4B2810" stroke="#2E170A" stroke-width="8"/>
+  
+  <!-- Door Knob -->
+  <circle cx="272" cy="380" r="6" fill="#C9B037"/>
+  
+  <!-- Windows -->
+  <rect x="140" y="160" width="50" height="50" rx="2" fill="#FFEAD0" stroke="#4B2810" stroke-width="8"/>
+  <rect x="230" y="160" width="50" height="50" rx="2" fill="#FFEAD0" stroke="#4B2810" stroke-width="8"/>
+  <rect x="320" y="160" width="50" height="50" rx="2" fill="#FFEAD0" stroke="#4B2810" stroke-width="8"/>
+  <rect x="140" y="240" width="50" height="50" rx="2" fill="#FFEAD0" stroke="#4B2810" stroke-width="8"/>
+  <rect x="320" y="240" width="50" height="50" rx="2" fill="#FFEAD0" stroke="#4B2810" stroke-width="8"/>
+  
+  <!-- Window Crossbars -->
+  <line x1="140" y1="185" x2="190" y2="185" stroke="#4B2810" stroke-width="4"/>
+  <line x1="165" y1="160" x2="165" y2="210" stroke="#4B2810" stroke-width="4"/>
+  <line x1="230" y1="185" x2="280" y2="185" stroke="#4B2810" stroke-width="4"/>
+  <line x1="255" y1="160" x2="255" y2="210" stroke="#4B2810" stroke-width="4"/>
+  <line x1="320" y1="185" x2="370" y2="185" stroke="#4B2810" stroke-width="4"/>
+  <line x1="345" y1="160" x2="345" y2="210" stroke="#4B2810" stroke-width="4"/>
+  <line x1="140" y1="265" x2="190" y2="265" stroke="#4B2810" stroke-width="4"/>
+  <line x1="165" y1="240" x2="165" y2="290" stroke="#4B2810" stroke-width="4"/>
+  <line x1="320" y1="265" x2="370" y2="265" stroke="#4B2810" stroke-width="4"/>
+  <line x1="345" y1="240" x2="345" y2="290" stroke="#4B2810" stroke-width="4"/>
+  
+  <!-- Sign -->
+  <rect x="200" y="260" width="110" height="40" rx="4" fill="#C9B037" stroke="#4B2810" stroke-width="6"/>
+  <path d="M210 270H300" stroke="#4B2810" stroke-width="3"/>
+  <path d="M210 280H300" stroke="#4B2810" stroke-width="3"/>
+  <path d="M210 290H300" stroke="#4B2810" stroke-width="3"/>
+  
+  <!-- Tavern Sign Support -->
+  <rect x="246" y="240" width="20" height="20" fill="#4B2810"/>
+  
+  <!-- Chimney -->
+  <rect x="370" y="60" width="30" height="60" fill="#592C14" stroke="#4B2810" stroke-width="6"/>
+  <path d="M365 60H405" stroke="#4B2810" stroke-width="6"/>
+  
+  <!-- Smoke -->
+  <path d="M385 40C385 40 375 30 385 20C395 10 405 20 400 30C395 40 385 40 385 40Z" fill="#dddddd" opacity="0.6"/>
+  <path d="M390 30C390 30 400 15 390 5C380 -5 370 10 375 20C380 30 390 30 390 30Z" fill="#dddddd" opacity="0.4"/>
+  
+  <!-- D20 Die in Corner -->
+  <path d="M430 430L450 400L470 430H430Z" fill="#7C2D12" stroke="#4B2810" stroke-width="4"/>
+  <path d="M430 430L450 460L470 430H430Z" fill="#B45309" stroke="#4B2810" stroke-width="4"/>
+  <path d="M450 430L450 400L470 430H450Z" fill="#92400E" stroke="#4B2810" stroke-width="4"/>
+  <text x="450" y="438" font-family="Arial" font-size="18" fill="white" text-anchor="middle">20</text>
+</svg>
