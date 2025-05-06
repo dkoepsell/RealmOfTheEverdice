@@ -399,7 +399,7 @@ export default function CampaignPage() {
       
       {/* Campaign Header Bar */}
       <div className="bg-accent/5 py-3 px-4 border-b">
-        <div className="container mx-auto flex flex-wrap justify-between items-start sm:items-center gap-3">
+        <div className="container mx-auto flex flex-wrap justify-between items-center">
           <div>
             <h1 className="text-2xl font-medieval text-primary">{campaign.name}</h1>
             <div className="flex flex-wrap items-center text-sm text-muted-foreground">
@@ -433,7 +433,163 @@ export default function CampaignPage() {
         </div>
       </div>
       
-      <main className="flex-grow flex flex-col lg:flex-row overflow-hidden">
+      {/* Main Navigation Bar */}
+      <div className="bg-accent/10 border-b border-border">
+        <div className="container mx-auto">
+          <div className="flex overflow-x-auto items-center h-10">
+            <Button 
+              variant={rightPanelTab === "info" ? "default" : "ghost"} 
+              size="sm" 
+              onClick={() => setRightPanelTab("info")} 
+              className="rounded-none h-10 px-3 md:px-4 whitespace-nowrap"
+            >
+              <Users className="h-4 w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Info</span>
+              <span className="sm:hidden">Info</span>
+            </Button>
+            <Button 
+              variant={rightPanelTab === "chat" ? "default" : "ghost"} 
+              size="sm" 
+              onClick={() => setRightPanelTab("chat")} 
+              className="rounded-none h-10 px-3 md:px-4 whitespace-nowrap"
+            >
+              <MessageSquare className="h-4 w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Chat</span>
+              <span className="sm:hidden">Chat</span>
+            </Button>
+            <Button 
+              variant={rightPanelTab === "party" ? "default" : "ghost"} 
+              size="sm" 
+              onClick={() => setRightPanelTab("party")} 
+              className="rounded-none h-10 px-3 md:px-4 whitespace-nowrap"
+            >
+              <Split className="h-4 w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Party</span>
+              <span className="sm:hidden">Party</span>
+            </Button>
+            <Button 
+              variant={rightPanelTab === "voting" ? "default" : "ghost"} 
+              size="sm" 
+              onClick={() => setRightPanelTab("voting")} 
+              className="rounded-none h-10 px-3 md:px-4 whitespace-nowrap"
+            >
+              <Vote className="h-4 w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Vote</span>
+              <span className="sm:hidden">Vote</span>
+            </Button>
+            <Button 
+              variant={rightPanelTab === "planning" ? "default" : "ghost"} 
+              size="sm" 
+              onClick={() => setRightPanelTab("planning")} 
+              className="rounded-none h-10 px-3 md:px-4 whitespace-nowrap"
+            >
+              <ClipboardList className="h-4 w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Plan</span>
+              <span className="sm:hidden">Plan</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Mobile and small screens - show active component only */}
+      <div className="lg:hidden flex-grow overflow-hidden flex flex-col">
+        {/* Mobile Game Area - Hide when info tabs are active */}
+        {!["info", "chat", "party", "voting", "planning"].includes(rightPanelTab) && (
+          <div className="flex-grow overflow-y-auto">
+            <GameArea 
+              campaign={campaign} 
+              currentAdventure={currentAdventure ? {
+                title: currentAdventure.title || "",
+                description: currentAdventure.description || "",
+                location: currentAdventure.location || ""
+              } : undefined} 
+              currentCharacter={currentCharacter}
+              gameLogs={displayLogs}
+              onAddGameLog={handleAddGameLog}
+              isAutoDmMode={isAutoDmMode}
+              onDiceRoll={handleDiceRoll}
+              diceRollResults={campaignRolls}
+            />
+          </div>
+        )}
+        
+        {/* Mobile Info Panel - Only show when info tab is active */}
+        {rightPanelTab === "info" && (
+          <div className="flex-grow overflow-y-auto">
+            <WorldInfoPanel 
+              campaign={campaign}
+              partyMembers={partyMembers}
+              currentAdventure={currentAdventure ? {
+                id: currentAdventure.id,
+                title: currentAdventure.title || "",
+                description: currentAdventure.description || null,
+                location: currentAdventure.location || null,
+                status: currentAdventure.status,
+                campaignId: currentAdventure.campaignId,
+                createdAt: currentAdventure.createdAt,
+              } : undefined}
+              currentLocation={currentAdventure?.location || "Unknown"}
+              quests={[]} 
+              onUpdatePartyName={handlePartyNameUpdate}
+            />
+          </div>
+        )}
+        
+        {/* Mobile Chat - Only show when chat tab is active */}
+        {rightPanelTab === "chat" && (
+          <div className="flex-grow overflow-y-auto">
+            <CampaignChat 
+              campaignId={campaignId}
+              usernames={
+                partyMembers.reduce((acc, member) => {
+                  acc[member.id] = member.name;
+                  return acc;
+                }, {} as Record<number, string>)
+              }
+            />
+          </div>
+        )}
+        
+        {/* Mobile Party Management - Only show when party tab is active */}
+        {rightPanelTab === "party" && (
+          <div className="flex-grow overflow-y-auto">
+            <PartyManagement 
+              campaignId={campaignId} 
+              isCampaignDm={campaign.dmId === user?.id}
+            />
+          </div>
+        )}
+        
+        {/* Mobile Voting - Only show when voting tab is active */}
+        {rightPanelTab === "voting" && (
+          <div className="flex-grow overflow-y-auto">
+            <PartyVoting 
+              campaignId={campaignId}
+              onVoteComplete={(result) => {
+                const voteLog: Partial<GameLog> = {
+                  campaignId,
+                  content: `The party has voted and ${result ? 'approved' : 'rejected'} the proposal.`,
+                  type: "narrative"
+                };
+                createLogMutation.mutate(voteLog);
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Mobile Planning - Only show when planning tab is active */}
+        {rightPanelTab === "planning" && (
+          <div className="flex-grow overflow-y-auto">
+            <PartyPlanning 
+              campaignId={campaignId}
+              characters={campaignCharacters || []}
+            />
+          </div>
+        )}
+      </div>
+      
+      {/* Desktop layout - 3 columns */}
+      <main className="hidden lg:flex flex-grow flex-row overflow-hidden">
         {/* Left sidebar: Character Panel */}
         <div className="w-64 border-r border-border shrink-0 overflow-y-auto h-full">
           <CharacterPanel character={currentCharacter} />
@@ -457,34 +613,10 @@ export default function CampaignPage() {
           />
         </div>
         
-        {/* Right Panel with Tabs for World Info, Chat, Party Management, & Voting */}
+        {/* Right Panel */}
         <div className="w-80 border-l border-border shrink-0 flex flex-col h-full overflow-hidden">
-          <Tabs value={rightPanelTab} className="flex flex-col h-full" onValueChange={(val) => setRightPanelTab(val as any)}>
-            <TabsList className="grid w-full grid-cols-5 m-2">
-              <TabsTrigger value="info" className="flex items-center">
-                <Users className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Info</span>
-              </TabsTrigger>
-              <TabsTrigger value="chat" className="flex items-center">
-                <MessageSquare className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Chat</span>
-              </TabsTrigger>
-              <TabsTrigger value="party" className="flex items-center">
-                <Split className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Party</span>
-              </TabsTrigger>
-              <TabsTrigger value="voting" className="flex items-center">
-                <Vote className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Vote</span>
-              </TabsTrigger>
-              <TabsTrigger value="planning" className="flex items-center">
-                <ClipboardList className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Plan</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            {/* World Info Tab */}
-            <TabsContent value="info" className="flex-grow flex flex-col m-0 overflow-auto">
+          <div className="flex-grow overflow-auto">
+            {rightPanelTab === "info" && (
               <WorldInfoPanel 
                 campaign={campaign}
                 partyMembers={partyMembers}
@@ -498,39 +630,34 @@ export default function CampaignPage() {
                   createdAt: currentAdventure.createdAt,
                 } : undefined}
                 currentLocation={currentAdventure?.location || "Unknown"}
-                quests={[]} // Quests would be fetched in a real implementation
+                quests={[]} 
                 onUpdatePartyName={handlePartyNameUpdate}
               />
-            </TabsContent>
+            )}
             
-            {/* Chat Tab */}
-            <TabsContent value="chat" className="flex-grow flex flex-col m-0 overflow-hidden">
+            {rightPanelTab === "chat" && (
               <CampaignChat 
                 campaignId={campaignId}
                 usernames={
-                  // Create a map of user IDs to usernames from the party members
                   partyMembers.reduce((acc, member) => {
                     acc[member.id] = member.name;
                     return acc;
                   }, {} as Record<number, string>)
                 }
               />
-            </TabsContent>
+            )}
 
-            {/* Party Management Tab */}
-            <TabsContent value="party" className="flex-grow flex flex-col m-0 overflow-auto">
+            {rightPanelTab === "party" && (
               <PartyManagement 
                 campaignId={campaignId} 
                 isCampaignDm={campaign.dmId === user?.id}
               />
-            </TabsContent>
+            )}
 
-            {/* Party Voting Tab */}
-            <TabsContent value="voting" className="flex-grow flex flex-col m-0 overflow-auto">
+            {rightPanelTab === "voting" && (
               <PartyVoting 
                 campaignId={campaignId}
                 onVoteComplete={(result) => {
-                  // Add a game log when vote completes
                   const voteLog: Partial<GameLog> = {
                     campaignId,
                     content: `The party has voted and ${result ? 'approved' : 'rejected'} the proposal.`,
@@ -539,16 +666,15 @@ export default function CampaignPage() {
                   createLogMutation.mutate(voteLog);
                 }}
               />
-            </TabsContent>
+            )}
             
-            {/* Party Planning Tab */}
-            <TabsContent value="planning" className="flex-grow flex flex-col m-0 overflow-auto">
+            {rightPanelTab === "planning" && (
               <PartyPlanning 
                 campaignId={campaignId}
                 characters={campaignCharacters || []}
               />
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         </div>
       </main>
     </div>
