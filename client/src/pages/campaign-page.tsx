@@ -321,9 +321,9 @@ export default function CampaignPage() {
   // If no character is selected or found
   if (!currentCharacter) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex flex-col h-screen bg-background">
         <Navbar />
-        <div className="flex-grow flex items-center justify-center">
+        <div className="flex-grow flex items-center justify-center p-4">
           <div className="text-center max-w-md p-6 bg-accent/10 rounded-lg">
             <h2 className="text-2xl font-medieval text-accent mb-2">No Character Found</h2>
             <p className="mb-4">You don't have any characters in this campaign.</p>
@@ -362,14 +362,14 @@ export default function CampaignPage() {
   // If no adventure exists
   if (!currentAdventure && !generateAdventureMutation.isPending) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex flex-col h-screen bg-background">
         <Navbar />
-        <main className="flex-grow container mx-auto px-4 py-8">
+        <main className="flex-grow container mx-auto px-4 py-8 overflow-y-auto">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl font-medieval text-primary mb-4">{campaign.name}</h1>
             <p className="text-lg mb-8">{campaign.description}</p>
             
-            <div className="bg-parchment p-8 rounded-lg medieval-border">
+            <div className="bg-accent/5 p-8 rounded-lg border border-border">
               <h2 className="text-2xl font-medieval text-secondary mb-4">Begin Your Adventure</h2>
               <p className="mb-6">Your party is assembled and ready. What adventures await?</p>
               <Button 
@@ -542,8 +542,8 @@ export default function CampaignPage() {
                 currentAdventure={currentAdventure ? {
                   id: currentAdventure.id,
                   title: currentAdventure.title || "",
-                  description: currentAdventure.description || "",
-                  location: currentAdventure.location || "",
+                  description: currentAdventure.description || null,
+                  location: currentAdventure.location || null,
                   status: currentAdventure.status,
                   campaignId: currentAdventure.campaignId,
                   createdAt: currentAdventure.createdAt,
