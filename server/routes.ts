@@ -176,12 +176,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Campaign creation attempt:", req.body);
       
-      // Ensure dmId is set to the current user's ID
-      const validatedData = insertCampaignSchema.parse({
+      // Ensure dmId is set to the current user's ID and remove any fields not in DB
+      let campaignData = {
         ...req.body,
         dmId: req.user.id,
         isAiDm: req.body.isAiDm || false // Default to false if not provided
-      });
+      };
+      
+      // Remove partyName if it exists in the request since the column might not exist
+      if ('partyName' in campaignData) {
+        delete campaignData.partyName;
+      }
+      
+      const validatedData = insertCampaignSchema.parse(campaignData);
       
       console.log("Validated campaign data:", validatedData);
       
