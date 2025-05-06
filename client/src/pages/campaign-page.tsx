@@ -16,6 +16,7 @@ import { AddCharacterDialog } from "@/components/add-character-dialog";
 import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
 import { PartyVoting } from "@/components/party-voting";
 import { PartyManagement } from "@/components/party-management";
+import { PartyPlanning } from "@/components/party-planning";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useCampaignDiceHistory } from "@/hooks/use-dice-history";
 import { 
   Loader2, UserPlus, Users, Bot, UserCog, 
-  MessageSquare, DicesIcon, Vote, Split 
+  MessageSquare, DicesIcon, Vote, Split, 
+  ClipboardList
 } from "lucide-react";
 
 export default function CampaignPage() {
@@ -36,7 +38,7 @@ export default function CampaignPage() {
   const [gameLogs, setGameLogs] = useState<GameLog[]>([]);
   const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
-  const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat" | "party" | "voting">("info");
+  const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat" | "party" | "voting" | "planning">("info");
   // Temporarily remove party name until DB schema is updated
   // const [partyName, setPartyName] = useState<string>(""); 
   // const [isEditingPartyName, setIsEditingPartyName] = useState(false);
@@ -456,6 +458,15 @@ export default function CampaignPage() {
                 <Vote className="h-4 w-4 mr-1" />
                 Vote
               </Button>
+              <Button
+                variant={rightPanelTab === "planning" ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setRightPanelTab("planning")}
+                className="h-8"
+              >
+                <ClipboardList className="h-4 w-4 mr-1" />
+                Plan
+              </Button>
             </div>
             
             {/* DM Mode Toggle */}
@@ -506,7 +517,7 @@ export default function CampaignPage() {
         {/* Right Panel with Tabs for World Info, Chat, Party Management, & Voting */}
         <div className="w-80 border-l border-border shrink-0 flex flex-col h-screen max-h-screen overflow-hidden">
           <Tabs value={rightPanelTab} className="flex flex-col h-full" onValueChange={(val) => setRightPanelTab(val as any)}>
-            <TabsList className="grid w-full grid-cols-4 m-2">
+            <TabsList className="grid w-full grid-cols-5 m-2">
               <TabsTrigger value="info" className="flex items-center">
                 <Users className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Info</span>
@@ -522,6 +533,10 @@ export default function CampaignPage() {
               <TabsTrigger value="voting" className="flex items-center">
                 <Vote className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Vote</span>
+              </TabsTrigger>
+              <TabsTrigger value="planning" className="flex items-center">
+                <ClipboardList className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Plan</span>
               </TabsTrigger>
             </TabsList>
             
@@ -572,6 +587,14 @@ export default function CampaignPage() {
                   };
                   createLogMutation.mutate(voteLog);
                 }}
+              />
+            </TabsContent>
+            
+            {/* Party Planning Tab */}
+            <TabsContent value="planning" className="flex-grow flex flex-col m-0 overflow-auto">
+              <PartyPlanning 
+                campaignId={campaignId}
+                characters={campaignCharacters || []}
               />
             </TabsContent>
           </Tabs>
