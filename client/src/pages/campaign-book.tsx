@@ -51,6 +51,7 @@ export default function CampaignPage() {
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
   const [showDiceRoller, setShowDiceRoller] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState<string | null>(null);
   const [playerInput, setPlayerInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -590,7 +591,14 @@ export default function CampaignPage() {
                   variant="outline" 
                   size="sm"
                   className="text-xs justify-start"
-                  onClick={() => window.open(`/campaigns/${campaignId}/chat`, '_blank')}
+                  onClick={() => {
+                    toast({
+                      title: "Party Chat",
+                      description: "The party chat panel has been moved to the sidebar for easier access.",
+                      variant: "default",
+                    });
+                    setRightPanelTab && setRightPanelTab("chat");
+                  }}
                 >
                   <MessageSquare className="mr-1 h-3 w-3" />
                   Party Chat
