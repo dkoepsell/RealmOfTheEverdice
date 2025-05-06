@@ -127,7 +127,8 @@ export const gameLogs = pgTable("game_logs", {
   campaignId: integer("campaign_id").notNull(),
   content: text("content").notNull(),
   type: text("type").notNull().default("narrative"),
-  metadata: json("metadata"),  // For storing dice roll data, JSON objects, etc.
+  // Note: metadata column exists in schema but not in DB yet
+  // metadata: json("metadata"),  // For storing dice roll data, JSON objects, etc.
   timestamp: timestamp("timestamp").defaultNow()
 });
 

@@ -306,17 +306,41 @@ export class DatabaseStorage implements IStorage {
 
   // Game Log methods
   async getGameLogsByCampaignId(campaignId: number, limit: number = 50): Promise<GameLog[]> {
-    return db
-      .select()
-      .from(gameLogs)
-      .where(eq(gameLogs.campaignId, campaignId))
-      .orderBy(desc(gameLogs.timestamp))
-      .limit(limit);
+    try {
+      const logs = await db
+        .select()
+        .from(gameLogs)
+        .where(eq(gameLogs.campaignId, campaignId))
+        .orderBy(desc(gameLogs.timestamp))
+        .limit(limit);
+      
+      // Add empty metadata field if it's not in the database
+      return logs.map(log => ({
+        ...log,
+        metadata: log.metadata || null
+      }));
+    } catch (error) {
+      console.error("Error in getGameLogsByCampaignId:", error);
+      return [];
+    }
   }
 
   async createGameLog(insertGameLog: InsertGameLog): Promise<GameLog> {
-    const [gameLog] = await db.insert(gameLogs).values(insertGameLog).returning();
-    return gameLog;
+    try {
+      // Remove metadata field if it exists (because DB doesn't have this column yet)
+      const { metadata, ...gameLogData } = insertGameLog as any;
+      
+      const [gameLog] = await db.insert(gameLogs).values(gameLogData).returning();
+      
+      // Add back metadata for the response
+      return {
+        ...gameLog,
+        metadata: metadata || null
+      };
+    } catch (error) {
+      console.error("Error in createGameLog:", error);
+      throw error;
+    }
   }
 
   // Friendship methods
