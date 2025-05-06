@@ -9,7 +9,7 @@ import SimplifiedAuthPage from "@/pages/simplified-auth";
 import CharactersPage from "@/pages/characters-page";
 import CharacterCreation from "@/pages/character-creation";
 import CampaignCreation from "@/pages/campaign-creation";
-import CampaignPage from "@/pages/campaign-page";
+import CampaignPage from "@/pages/campaign-page-new";
 import LearnPage from "@/pages/learn-page";
 import SocialPage from "@/pages/social-page";
 import SettingsPage from "@/pages/settings-page";

@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useCampaignDiceHistory } from "@/hooks/use-dice-history";
 import { 
@@ -27,7 +28,6 @@ import {
   MessageSquare, DicesIcon, Vote, Split, 
   ClipboardList, ScrollTextIcon
 } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export default function CampaignPage() {
   // URL parameters
@@ -365,86 +365,78 @@ export default function CampaignPage() {
     return (
       <div className="flex flex-col h-screen bg-background">
         <Navbar />
-        <main className="flex-grow container mx-auto px-4 py-8 overflow-y-auto">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl font-medieval text-primary mb-4">{campaign.name}</h1>
-            <p className="text-lg mb-8">{campaign.description}</p>
-            
-            <div className="bg-accent/5 p-8 rounded-lg border border-border">
-              <h2 className="text-2xl font-medieval text-secondary mb-4">Begin Your Adventure</h2>
-              <p className="mb-6">Your party is assembled and ready. What adventures await?</p>
-              <Button 
-                size="lg" 
-                onClick={startNewAdventure}
-                disabled={generateAdventureMutation.isPending}
-              >
-                {generateAdventureMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Adventure...
-                  </>
-                ) : (
-                  "Start New Adventure"
-                )}
-              </Button>
-            </div>
+        <div className="h-16 border-b border-border px-4 flex items-center">
+          <h1 className="text-xl font-medieval mr-auto">{campaign.name}</h1>
+        </div>
+        <div className="flex-grow flex items-center justify-center p-4">
+          <div className="text-center max-w-md p-6 bg-primary/5 rounded-lg">
+            <h2 className="text-2xl font-medieval text-primary mb-2">Start Your Adventure</h2>
+            <p className="mb-4">This campaign doesn't have any adventures yet. Start one to begin your journey!</p>
+            <Button 
+              variant="default"
+              onClick={startNewAdventure}
+              disabled={generateAdventureMutation.isPending}
+            >
+              {generateAdventureMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Adventure...
+                </>
+              ) : (
+                <>
+                  <ScrollTextIcon className="mr-2 h-4 w-4" />
+                  Generate Adventure
+                </>
+              )}
+            </Button>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
   
+  // Main campaign view
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-screen bg-background">
       <Navbar />
-      
-      {/* Campaign Header Bar */}
-      <div className="bg-accent/5 py-3 px-4 border-b">
-        <div className="container mx-auto flex flex-wrap justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-medieval text-primary">{campaign.name}</h1>
-            <div className="flex flex-wrap items-center text-sm text-muted-foreground">
-              <span>Adventure: {currentAdventure?.title || "None"}</span>
-              <span className="mx-2">•</span>
-              <span>Location: {currentAdventure?.location || "Unknown"}</span>
+      {/* Campaign header with Auto-DM toggle */}
+      <div className="bg-accent/5 border-b border-border">
+        <div className="container mx-auto px-4 py-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+            <h1 className="text-xl sm:text-2xl font-medieval text-accent-foreground">{campaign.name}</h1>
+            <div className="flex items-center ml-auto">
+              <div className="flex items-center space-x-2 mr-4">
+                <Label htmlFor="dm-mode-toggle" className="text-sm whitespace-nowrap flex items-center gap-1">
+                  {isAutoDmMode ? <Bot className="h-4 w-4" /> : <UserCog className="h-4 w-4" />}
+                  Auto-DM
+                </Label>
+                <Switch
+                  id="dm-mode-toggle"
+                  checked={isAutoDmMode}
+                  onCheckedChange={handleDmModeToggle}
+                />
+              </div>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            {/* DM Mode Toggle */}
-            <Label htmlFor="dm-mode" className="text-sm font-medium">
-              {isAutoDmMode ? (
-                <div className="flex items-center">
-                  <Bot className="h-4 w-4 mr-1" />
-                  Auto-DM
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <UserCog className="h-4 w-4 mr-1" />
-                  Human DM
-                </div>
-              )}
-            </Label>
-            <Switch
-              id="dm-mode"
-              checked={isAutoDmMode}
-              onCheckedChange={handleDmModeToggle}
-            />
+          <div className="text-sm text-muted-foreground mt-1">
+            {currentAdventure?.title && (
+              <span>Adventure: {currentAdventure.title}</span>
+            )}
           </div>
         </div>
       </div>
-      
-      {/* Main Navigation Bar */}
-      <div className="bg-accent/10 border-b border-border">
+
+      {/* Tab navigation */}
+      <div className="border-b border-border bg-background">
         <div className="container mx-auto">
-          <div className="flex overflow-x-auto items-center h-10">
+          <div className="flex overflow-x-auto no-scrollbar">
             <Button 
               variant={rightPanelTab === "info" ? "default" : "ghost"} 
               size="sm" 
               onClick={() => setRightPanelTab("info")} 
               className="rounded-none h-10 px-3 md:px-4 whitespace-nowrap"
             >
-              <Users className="h-4 w-4 mr-1 md:mr-2" />
+              <ScrollTextIcon className="h-4 w-4 mr-1 md:mr-2" />
               <span className="hidden sm:inline">Info</span>
               <span className="sm:hidden">Info</span>
             </Button>
@@ -523,8 +515,8 @@ export default function CampaignPage() {
               currentAdventure={currentAdventure ? {
                 id: currentAdventure.id,
                 title: currentAdventure.title || "",
-                description: currentAdventure.description || null,
-                location: currentAdventure.location || null,
+                description: currentAdventure.description || "",
+                location: currentAdventure.location || "",
                 status: currentAdventure.status,
                 campaignId: currentAdventure.campaignId,
                 createdAt: currentAdventure.createdAt,
@@ -624,7 +616,7 @@ export default function CampaignPage() {
           {/* Mini party info */}
           <div className="flex-1 p-2 flex justify-between">
             <div className="flex flex-col">
-              <h3 className="font-medieval text-lg">{campaign.partyName || "No party name set"}</h3>
+              <h3 className="font-medieval text-lg">{campaign.name || "No party name set"}</h3>
               <p className="text-xs text-muted-foreground">{partyMembers.length} party members</p>
               <div className="flex gap-1 mt-1">
                 {partyMembers.slice(0, 5).map(member => (
@@ -670,65 +662,66 @@ export default function CampaignPage() {
           
           {/* Right Panel - narrower than before */}
           <div className="w-64 border-l border-border shrink-0 flex flex-col h-full overflow-hidden">
-          <div className="flex-grow overflow-auto">
-            {rightPanelTab === "info" && (
-              <WorldInfoPanel 
-                campaign={campaign}
-                partyMembers={partyMembers}
-                currentAdventure={currentAdventure ? {
-                  id: currentAdventure.id,
-                  title: currentAdventure.title || "",
-                  description: currentAdventure.description || null,
-                  location: currentAdventure.location || null,
-                  status: currentAdventure.status,
-                  campaignId: currentAdventure.campaignId,
-                  createdAt: currentAdventure.createdAt,
-                } : undefined}
-                currentLocation={currentAdventure?.location || "Unknown"}
-                quests={[]} 
-                onUpdatePartyName={handlePartyNameUpdate}
-              />
-            )}
-            
-            {rightPanelTab === "chat" && (
-              <CampaignChat 
-                campaignId={campaignId}
-                usernames={
-                  partyMembers.reduce((acc, member) => {
-                    acc[member.id] = member.name;
-                    return acc;
-                  }, {} as Record<number, string>)
-                }
-              />
-            )}
+            <div className="flex-grow overflow-auto">
+              {rightPanelTab === "info" && (
+                <WorldInfoPanel 
+                  campaign={campaign}
+                  partyMembers={partyMembers}
+                  currentAdventure={currentAdventure ? {
+                    id: currentAdventure.id,
+                    title: currentAdventure.title || "",
+                    description: currentAdventure.description || "",
+                    location: currentAdventure.location || "",
+                    status: currentAdventure.status,
+                    campaignId: currentAdventure.campaignId,
+                    createdAt: currentAdventure.createdAt,
+                  } : undefined}
+                  currentLocation={currentAdventure?.location || "Unknown"}
+                  quests={[]} 
+                  onUpdatePartyName={handlePartyNameUpdate}
+                />
+              )}
+              
+              {rightPanelTab === "chat" && (
+                <CampaignChat 
+                  campaignId={campaignId}
+                  usernames={
+                    partyMembers.reduce((acc, member) => {
+                      acc[member.id] = member.name;
+                      return acc;
+                    }, {} as Record<number, string>)
+                  }
+                />
+              )}
 
-            {rightPanelTab === "party" && (
-              <PartyManagement 
-                campaignId={campaignId} 
-                isCampaignDm={campaign.dmId === user?.id}
-              />
-            )}
+              {rightPanelTab === "party" && (
+                <PartyManagement 
+                  campaignId={campaignId} 
+                  isCampaignDm={campaign.dmId === user?.id}
+                />
+              )}
 
-            {rightPanelTab === "voting" && (
-              <PartyVoting 
-                campaignId={campaignId}
-                onVoteComplete={(result) => {
-                  const voteLog: Partial<GameLog> = {
-                    campaignId,
-                    content: `The party has voted and ${result ? 'approved' : 'rejected'} the proposal.`,
-                    type: "narrative"
-                  };
-                  createLogMutation.mutate(voteLog);
-                }}
-              />
-            )}
-            
-            {rightPanelTab === "planning" && (
-              <PartyPlanning 
-                campaignId={campaignId}
-                characters={campaignCharacters || []}
-              />
-            )}
+              {rightPanelTab === "voting" && (
+                <PartyVoting 
+                  campaignId={campaignId}
+                  onVoteComplete={(result) => {
+                    const voteLog: Partial<GameLog> = {
+                      campaignId,
+                      content: `The party has voted and ${result ? 'approved' : 'rejected'} the proposal.`,
+                      type: "narrative"
+                    };
+                    createLogMutation.mutate(voteLog);
+                  }}
+                />
+              )}
+              
+              {rightPanelTab === "planning" && (
+                <PartyPlanning 
+                  campaignId={campaignId}
+                  characters={campaignCharacters || []}
+                />
+              )}
+            </div>
           </div>
         </div>
       </main>
