@@ -409,77 +409,26 @@ export default function CampaignPage() {
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Panel toggle buttons */}
-            <div className="hidden sm:flex items-center gap-2">
-              <Button
-                variant={rightPanelTab === "info" ? "default" : "ghost"} 
-                size="sm"
-                onClick={() => setRightPanelTab("info")}
-                className="h-8"
-              >
-                <Users className="h-4 w-4 mr-1" />
-                Info
-              </Button>
-              <Button
-                variant={rightPanelTab === "chat" ? "default" : "ghost"} 
-                size="sm"
-                onClick={() => setRightPanelTab("chat")}
-                className="h-8"
-              >
-                <MessageSquare className="h-4 w-4 mr-1" />
-                Chat
-              </Button>
-              <Button
-                variant={rightPanelTab === "party" ? "default" : "ghost"} 
-                size="sm"
-                onClick={() => setRightPanelTab("party")}
-                className="h-8"
-              >
-                <Split className="h-4 w-4 mr-1" />
-                Party
-              </Button>
-              <Button
-                variant={rightPanelTab === "voting" ? "default" : "ghost"} 
-                size="sm"
-                onClick={() => setRightPanelTab("voting")}
-                className="h-8"
-              >
-                <Vote className="h-4 w-4 mr-1" />
-                Vote
-              </Button>
-              <Button
-                variant={rightPanelTab === "planning" ? "default" : "ghost"} 
-                size="sm"
-                onClick={() => setRightPanelTab("planning")}
-                className="h-8"
-              >
-                <ClipboardList className="h-4 w-4 mr-1" />
-                Plan
-              </Button>
-            </div>
-            
+          <div className="flex items-center space-x-2">
             {/* DM Mode Toggle */}
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="dm-mode" className="text-sm font-medium">
-                {isAutoDmMode ? (
-                  <div className="flex items-center">
-                    <Bot className="h-4 w-4 mr-1" />
-                    Auto-DM
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <UserCog className="h-4 w-4 mr-1" />
-                    Human DM
-                  </div>
-                )}
-              </Label>
-              <Switch
-                id="dm-mode"
-                checked={isAutoDmMode}
-                onCheckedChange={handleDmModeToggle}
-              />
-            </div>
+            <Label htmlFor="dm-mode" className="text-sm font-medium">
+              {isAutoDmMode ? (
+                <div className="flex items-center">
+                  <Bot className="h-4 w-4 mr-1" />
+                  Auto-DM
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <UserCog className="h-4 w-4 mr-1" />
+                  Human DM
+                </div>
+              )}
+            </Label>
+            <Switch
+              id="dm-mode"
+              checked={isAutoDmMode}
+              onCheckedChange={handleDmModeToggle}
+            />
           </div>
         </div>
       </div>
