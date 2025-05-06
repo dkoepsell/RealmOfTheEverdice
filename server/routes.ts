@@ -174,18 +174,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
+      console.log("Campaign creation attempt:", req.body);
+      
+      // Ensure dmId is set to the current user's ID
       const validatedData = insertCampaignSchema.parse({
         ...req.body,
-        dmId: req.user.id
+        dmId: req.user.id,
+        isAiDm: req.body.isAiDm || false // Default to false if not provided
       });
       
+      console.log("Validated campaign data:", validatedData);
+      
       const campaign = await storage.createCampaign(validatedData);
+      console.log("Campaign created successfully:", campaign);
       res.status(201).json(campaign);
     } catch (error) {
+      console.error("Error creating campaign:", error);
+      
       if (error instanceof z.ZodError) {
+        console.log("Validation error:", error.errors);
         return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create campaign" });
+      
+      // Send more detailed error message
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ message: "Failed to create campaign", error: errorMessage });
     }
   });
   

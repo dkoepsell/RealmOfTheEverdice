@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -82,6 +83,7 @@ export default function CampaignCreation() {
       description: "",
       setting: "Forgotten Realms",
       status: "active",
+      isAiDm: true, // Default to AI DM
       confirmCreate: false,
     },
   });
@@ -231,12 +233,34 @@ export default function CampaignCreation() {
                       )}
                     />
 
-                    <div className="bg-parchment border border-accent rounded-md p-4">
-                      <h3 className="font-medieval text-lg">Campaign Settings</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Your campaign will start with level 1 characters by default.
-                      </p>
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="isAiDm"
+                      render={({ field }) => (
+                        <FormItem className="bg-parchment border border-accent rounded-md p-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <FormLabel className="font-medieval text-lg">Dungeon Master Mode</FormLabel>
+                              <FormDescription className="text-sm text-muted-foreground">
+                                Choose between AI Dungeon Master or run it yourself
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <div className="flex items-center space-x-2">
+                                <span className={field.value ? "text-muted-foreground" : "font-semibold"}>Human</span>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  className="data-[state=checked]:bg-primary"
+                                />
+                                <span className={!field.value ? "text-muted-foreground" : "font-semibold"}>AI</span>
+                              </div>
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
                   <FormField
@@ -248,6 +272,7 @@ export default function CampaignCreation() {
                         <FormControl>
                           <Textarea
                             {...field}
+                            value={field.value || ''}
                             className="resize-none h-24 bg-parchment border-accent"
                             placeholder="Describe your campaign's world and storyline..."
                           />
