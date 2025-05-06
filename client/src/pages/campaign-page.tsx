@@ -29,6 +29,8 @@ export default function CampaignPage() {
   const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
   const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat">("info");
+  const [partyName, setPartyName] = useState<string>("");
+  const [isEditingPartyName, setIsEditingPartyName] = useState(false);
   
   // Fetch campaign data
   const { 
@@ -294,6 +296,42 @@ export default function CampaignPage() {
   // Reverse game logs for display (newest at the bottom)
   const displayLogs = [...gameLogs].reverse();
 
+  // Mutation for updating party name
+  const updatePartyNameMutation = useMutation({
+    mutationFn: async (updates: { partyName: string }) => {
+      const res = await apiRequest("PATCH", `/api/campaigns/${campaignId}`, updates);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData([`/api/campaigns/${campaignId}`], data);
+      toast({
+        title: "Party name updated",
+        description: "The party name has been updated successfully.",
+      });
+      setIsEditingPartyName(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to update party name",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Set initial party name from campaign data
+  useEffect(() => {
+    if (campaign?.partyName) {
+      setPartyName(campaign.partyName);
+    }
+  }, [campaign]);
+  
+  const handlePartyNameUpdate = () => {
+    if (partyName.trim()) {
+      updatePartyNameMutation.mutate({ partyName: partyName.trim() });
+    }
+  };
+  
   // Handle DM mode toggle
   const handleDmModeToggle = () => {
     setIsAutoDmMode(prevMode => !prevMode);
