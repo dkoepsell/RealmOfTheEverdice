@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { SendHorizontal, RefreshCw } from "lucide-react";
+import { SendHorizontal, RefreshCw, Wifi, WifiOff } from "lucide-react";
 
 interface ChatMessage {
   id: number;
@@ -27,8 +27,11 @@ export function CampaignChat({ campaignId, usernames }: CampaignChatProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<WebSocket | null>(null);
   
   // Fetch chat messages
   const { data: messages, isLoading, refetch } = useQuery<ChatMessage[]>({
@@ -62,10 +65,90 @@ export function CampaignChat({ campaignId, usernames }: CampaignChatProps) {
     },
   });
   
+  // Setup WebSocket connection
+  useEffect(() => {
+    if (!campaignId || !user) return;
+    
+    // Create WebSocket connection
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const socket = new WebSocket(wsUrl);
+    socketRef.current = socket;
+    
+    // Connection opened
+    socket.addEventListener('open', () => {
+      setIsConnected(true);
+      
+      // Join the campaign chat room
+      socket.send(JSON.stringify({
+        type: 'join',
+        campaignId: campaignId,
+        userId: user.id
+      }));
+      
+      toast({
+        title: "Connected",
+        description: "Real-time chat connected",
+        variant: "default",
+      });
+    });
+    
+    // Connection closed
+    socket.addEventListener('close', () => {
+      setIsConnected(false);
+      
+      toast({
+        title: "Disconnected",
+        description: "Chat connection lost. Refresh to reconnect.",
+        variant: "destructive",
+      });
+    });
+    
+    // Listen for messages
+    socket.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle chat messages
+        if (data.type === 'chat') {
+          setChatMessages(prev => [...prev, {
+            id: data.messageId || Date.now(), // Use messageId if available, otherwise use timestamp
+            campaignId: data.campaignId,
+            userId: data.userId,
+            content: data.message,
+            timestamp: new Date(data.timestamp),
+            username: data.username
+          }]);
+        }
+        
+        // Handle join confirmations
+        if (data.type === 'join_confirm') {
+          console.log('Joined campaign chat:', data.campaignId);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    });
+    
+    // Clean up on unmount
+    return () => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
+    };
+  }, [campaignId, user, toast]);
+  
+  // Set chat messages when messages from API are loaded
+  useEffect(() => {
+    if (messages) {
+      setChatMessages(messages);
+    }
+  }, [messages]);
+  
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [chatMessages]);
   
   // Handle message send
   const handleSendMessage = (e: React.FormEvent) => {
@@ -117,7 +200,14 @@ export function CampaignChat({ campaignId, usernames }: CampaignChatProps) {
   return (
     <div className="flex flex-col h-full border rounded-lg shadow-sm">
       <div className="p-3 border-b flex justify-between items-center bg-muted/30">
-        <h3 className="font-semibold">Campaign Chat</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold">Campaign Chat</h3>
+          {isConnected ? (
+            <Wifi className="h-4 w-4 text-green-500" title="Connected" />
+          ) : (
+            <WifiOff className="h-4 w-4 text-red-500" title="Disconnected" />
+          )}
+        </div>
         <Button 
           variant="ghost" 
           size="icon"
@@ -136,9 +226,9 @@ export function CampaignChat({ campaignId, usernames }: CampaignChatProps) {
             <Skeleton className="h-12 w-2/3 ml-auto" />
             <Skeleton className="h-12 w-3/4" />
           </div>
-        ) : messages && messages.length > 0 ? (
+        ) : chatMessages && chatMessages.length > 0 ? (
           <div>
-            {messages.map(getMessageDisplay)}
+            {chatMessages.map(getMessageDisplay)}
             <div ref={messagesEndRef} />
           </div>
         ) : (

@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { 
@@ -835,6 +836,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const message = await storage.createChatMessage(validatedData);
+      
+      // Broadcast the new message to all connected WebSocket clients for this campaign
+      if (connections[campaignId]) {
+        const user = req.user;
+        connections[campaignId].forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'chat',
+              message: message.content,
+              userId: user.id,
+              username: user.username,
+              messageId: message.id,
+              campaignId: campaignId,
+              timestamp: message.timestamp || new Date()
+            }));
+          }
+        });
+      }
+      
       res.status(201).json(message);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -844,6 +864,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create HTTP server
   const httpServer = createServer(app);
+  
+  // Setup WebSocket server for real-time chat
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store active connections by campaignId
+  const connections: Record<number, WebSocket[]> = {};
+  
+  wss.on('connection', (ws: WebSocket) => {
+    let clientCampaignId: number | null = null;
+    
+    // Handle incoming messages from clients
+    ws.on('message', async (message: string) => {
+      try {
+        const data = JSON.parse(message);
+        
+        // Handle client joining a campaign chat
+        if (data.type === 'join') {
+          clientCampaignId = parseInt(data.campaignId);
+          
+          // Add this connection to the campaign's connections
+          if (!connections[clientCampaignId]) {
+            connections[clientCampaignId] = [];
+          }
+          
+          connections[clientCampaignId].push(ws);
+          
+          // Send confirmation
+          ws.send(JSON.stringify({
+            type: 'join_confirm',
+            campaignId: clientCampaignId,
+            timestamp: new Date()
+          }));
+        }
+        
+        // Handle chat messages
+        if (data.type === 'chat' && clientCampaignId) {
+          // Broadcast the message to all connected clients for this campaign
+          const campaignConnections = connections[clientCampaignId] || [];
+          
+          campaignConnections.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'chat',
+                message: data.message,
+                userId: data.userId,
+                username: data.username,
+                campaignId: clientCampaignId,
+                timestamp: new Date()
+              }));
+            }
+          });
+        }
+      } catch (err) {
+        console.error('WebSocket message error:', err);
+      }
+    });
+    
+    // Handle client disconnection
+    ws.on('close', () => {
+      if (clientCampaignId && connections[clientCampaignId]) {
+        // Remove this connection from the campaign's connections
+        connections[clientCampaignId] = connections[clientCampaignId].filter(conn => conn !== ws);
+        
+        // Clean up empty campaign entries
+        if (connections[clientCampaignId].length === 0) {
+          delete connections[clientCampaignId];
+        }
+      }
+    });
+  });
+  
   return httpServer;
 }
