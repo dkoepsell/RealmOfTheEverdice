@@ -23,6 +23,7 @@ export const Navbar = () => {
 
   const navItems = [
     { name: "Campaigns", href: "/", icon: <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg> },
+    { name: "The Tavern", href: "/tavern", icon: <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6l9 4 9-4-9-4-9 4"></path><path d="M3 18l9 4 9-4"></path><path d="M3 12l9 4 9-4"></path></svg> },
     { name: "Characters", href: "/characters", icon: <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> },
     { name: "Social", href: "/social", icon: <Users className="inline-block mr-1 h-4 w-4" /> },
     { name: "Learn D&D", href: "/learn", icon: <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg> },
