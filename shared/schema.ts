@@ -238,31 +238,11 @@ export type InsertCampaignInvitation = z.infer<typeof insertCampaignInvitationSc
 export const usersRelations = relations(users, ({ many, one }) => ({
   characters: many(characters),
   campaigns: many(campaigns, { relationName: "dmCampaigns" }),
-  sentFriendRequests: many(friendships, { 
-    fields: [users.id],
-    references: [friendships.userId],
-    relationName: "userFriendships" 
-  }),
-  receivedFriendRequests: many(friendships, { 
-    fields: [users.id],
-    references: [friendships.friendId],
-    relationName: "friendUserFriendships" 
-  }),
-  session: one(userSessions, { 
-    fields: [users.id],
-    references: [userSessions.userId],
-    relationName: "userSession" 
-  }),
-  sentCampaignInvitations: many(campaignInvitations, { 
-    fields: [users.id],
-    references: [campaignInvitations.inviterId],
-    relationName: "inviterInvitations" 
-  }),
-  receivedCampaignInvitations: many(campaignInvitations, { 
-    fields: [users.id],
-    references: [campaignInvitations.inviteeId],
-    relationName: "inviteeInvitations" 
-  })
+  sentFriendRequests: many(friendships),
+  receivedFriendRequests: many(friendships),
+  session: one(userSessions),
+  sentCampaignInvitations: many(campaignInvitations),
+  receivedCampaignInvitations: many(campaignInvitations)
 }));
 
 export const charactersRelations = relations(characters, ({ one, many }) => ({
