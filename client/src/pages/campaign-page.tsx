@@ -453,6 +453,7 @@ export default function CampaignPage() {
                 } : undefined}
                 currentLocation={currentAdventure?.location || "Unknown"}
                 quests={[]} // Quests would be fetched in a real implementation
+                onUpdatePartyName={handlePartyNameUpdate}
               />
             </TabsContent>
             

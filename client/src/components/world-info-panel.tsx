@@ -1,9 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Campaign, Character, Quest, Adventure, Npc } from "@shared/schema";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Edit, Check, X } from "lucide-react";
+import { useState } from "react";
 
 interface CharacterSummary {
   id: number;
@@ -21,6 +24,7 @@ interface WorldInfoPanelProps {
   currentAdventure: Adventure;
   currentLocation?: string;
   quests: Quest[];
+  onUpdatePartyName?: (name: string) => void;
 }
 
 export const WorldInfoPanel = ({
@@ -28,8 +32,18 @@ export const WorldInfoPanel = ({
   partyMembers,
   currentAdventure,
   currentLocation = "Unknown",
-  quests
+  quests,
+  onUpdatePartyName
 }: WorldInfoPanelProps) => {
+  const [isEditingPartyName, setIsEditingPartyName] = useState(false);
+  const [partyName, setPartyName] = useState(campaign.partyName || "");
+  
+  const handleSavePartyName = () => {
+    if (onUpdatePartyName && partyName.trim()) {
+      onUpdatePartyName(partyName.trim());
+      setIsEditingPartyName(false);
+    }
+  };
   // Calculate health percentage
   const getHealthPercentage = (current: number, max: number) => {
     return (current / max) * 100;
@@ -106,6 +120,75 @@ export const WorldInfoPanel = ({
   return (
     <div className="w-full lg:w-1/4 bg-parchment border-l border-accent overflow-y-auto">
       <div className="p-4">
+        {/* Party Name */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-medieval text-primary">Party Name</h2>
+            
+            {/* Only show edit button if the user is the DM */}
+            {isUserDM && !isEditingPartyName && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditingPartyName(true)}
+                className="h-8"
+              >
+                <Edit className="h-4 w-4 mr-1" />
+                {campaign.partyName ? "Edit" : "Add"}
+              </Button>
+            )}
+          </div>
+          
+          {isEditingPartyName ? (
+            <div className="mt-2">
+              <div className="flex items-end gap-2">
+                <div className="flex-grow">
+                  <Label htmlFor="party-name" className="text-sm font-medium mb-1">
+                    Party Name
+                  </Label>
+                  <Input 
+                    id="party-name"
+                    value={partyName}
+                    onChange={(e) => setPartyName(e.target.value)}
+                    placeholder="Enter your party's name"
+                    className="h-9"
+                  />
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleSavePartyName}
+                  disabled={!partyName.trim()}
+                  className="h-9"
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Save
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsEditingPartyName(false);
+                    setPartyName(campaign.partyName || "");
+                  }}
+                  className="h-9"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 p-2 bg-accent/10 rounded-md">
+              {campaign.partyName ? (
+                <span className="font-medieval text-lg">{campaign.partyName}</span>
+              ) : (
+                <span className="text-muted-foreground italic">No party name set</span>
+              )}
+            </div>
+          )}
+        </div>
+          
         {/* Party Members */}
         <div className="mb-6">
           <div className="flex justify-between items-center mb-3">
