@@ -3,7 +3,6 @@ import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Campaign, Character, GameLog, Adventure } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
-import { useCampaign } from "@/hooks/use-campaign";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/navbar";
 import { CharacterPanel } from "@/components/character-panel";
