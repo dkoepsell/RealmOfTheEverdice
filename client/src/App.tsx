@@ -14,6 +14,7 @@ import LearnPage from "@/pages/learn-page";
 import SocialPage from "@/pages/social-page";
 import SettingsPage from "@/pages/settings-page";
 import TavernLobby from "@/pages/tavern-lobby";
+import AboutPage from "@/pages/about-page";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
 
@@ -28,6 +29,7 @@ function Router() {
       <ProtectedRoute path="/campaigns/create" component={CampaignCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
       <ProtectedRoute path="/learn" component={LearnPage} />
+      <ProtectedRoute path="/about" component={AboutPage} />
       <ProtectedRoute path="/social" component={SocialPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
