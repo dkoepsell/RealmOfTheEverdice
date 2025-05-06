@@ -77,6 +77,36 @@ export const GameArea = ({
     }
   });
   
+  // Auto-advance the story/turn
+  const autoAdvanceMutation = useMutation({
+    mutationFn: async () => {
+      // Create a context from recent game logs
+      const recentLogs = gameLogs.slice(0, 5).map(log => log.content).join("\n");
+      
+      const res = await apiRequest("POST", "/api/generate/narration", {
+        context: recentLogs,
+        playerAction: "What happens next?",
+        isAutoAdvance: true
+      });
+      
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      // Add the new narration to game logs
+      const newLog: Partial<GameLog> = {
+        campaignId: campaign.id,
+        content: data.narration,
+        type: "narrative"
+      };
+      
+      // Create log in database
+      createLogMutation.mutate(newLog);
+      
+      // Generate new decision options
+      generateDecisionOptions();
+    }
+  });
+  
   // Create game log in database
   const createLogMutation = useMutation({
     mutationFn: async (log: Partial<GameLog>) => {
@@ -97,6 +127,34 @@ export const GameArea = ({
       "Set up camp for the night",
       "Head back to town"
     ]);
+  };
+  
+  // Handle taking a turn/advancing the story
+  const handleTakeTurn = () => {
+    if (isAutoDmMode) {
+      // Add a system message to indicate the turn advancement
+      const systemLog: Partial<GameLog> = {
+        campaignId: campaign.id,
+        content: `${currentCharacter.name} takes their turn...`,
+        type: "system"
+      };
+      
+      // Create log in database
+      createLogMutation.mutate(systemLog);
+      
+      // Generate auto-advance narrative using AI
+      autoAdvanceMutation.mutate();
+    } else {
+      // In Human DM mode, we add a notification that the player wants to advance
+      const systemLog: Partial<GameLog> = {
+        campaignId: campaign.id,
+        content: `${currentCharacter.name} is ready to take their turn.`,
+        type: "system"
+      };
+      
+      // Create log in database
+      createLogMutation.mutate(systemLog);
+    }
   };
   
   const handleSubmitAction = (e: React.FormEvent) => {
@@ -196,16 +254,40 @@ export const GameArea = ({
                     </p>
                   </div>
                 );
+              } else if (log.type === "system") {
+                return (
+                  <div key={index} className="mb-6 text-center">
+                    <p className="italic text-muted-foreground text-sm bg-secondary/5 py-1 px-3 rounded-full inline-block">
+                      {log.content}
+                    </p>
+                  </div>
+                );
+              } else if (log.type === "roll") {
+                return (
+                  <div key={index} className="mb-6 border-l-4 border-purple-500 pl-4 py-1 bg-purple-50/10">
+                    <p className="mb-2 font-mono text-sm">
+                      {log.content}
+                    </p>
+                  </div>
+                );
               } else {
                 return null;
               }
             })}
             
-            {/* Loading indicator for narration generation */}
+            {/* Loading indicators */}
             {narrationMutation.isPending && (
               <div className="animate-pulse p-4 bg-secondary/10 rounded-lg">
                 <div className="h-4 bg-secondary/20 rounded w-3/4 mb-2"></div>
                 <div className="h-4 bg-secondary/20 rounded w-1/2"></div>
+              </div>
+            )}
+            
+            {autoAdvanceMutation.isPending && (
+              <div className="animate-pulse p-4 bg-primary/10 rounded-lg">
+                <div className="h-4 bg-primary/20 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-primary/20 rounded w-2/3 mb-2"></div>
+                <div className="h-4 bg-primary/20 rounded w-1/2"></div>
               </div>
             )}
           </div>
@@ -231,6 +313,28 @@ export const GameArea = ({
                 CHA: Math.floor(((currentCharacter.stats as any)?.charisma || 10) - 10) / 2
               }}
             />
+          </div>
+          
+          {/* Take Turn Button */}
+          <div className="flex justify-end my-4">
+            <Button
+              variant="default"
+              size="lg"
+              className="bg-primary hover:bg-primary/90 text-white font-medieval"
+              onClick={handleTakeTurn}
+              disabled={narrationMutation.isPending || autoAdvanceMutation.isPending}
+            >
+              {autoAdvanceMutation.isPending ? (
+                <>
+                  <div className="animate-spin mr-2 h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full"></div>
+                  Advancing...
+                </>
+              ) : (
+                <>
+                  {isAutoDmMode ? "Auto-Advance Story" : "Take Your Turn"}
+                </>
+              )}
+            </Button>
           </div>
           
           {/* Decision Point */}
