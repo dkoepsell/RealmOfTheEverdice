@@ -61,8 +61,9 @@ export function CampaignsDashboard() {
     navigate(`/campaigns/${campaignId}`);
   };
   
-  const joinableCampaigns = campaigns?.filter(c => c.isPublic) || [];
-  const activeCampaigns = campaigns?.filter(c => !c.isPublic) || [];
+  // For now, consider all campaigns as active since we don't have an isPublic flag
+  const joinableCampaigns: Campaign[] = []; // This would be campaigns from other DMs that are public
+  const activeCampaigns = campaigns || [];
   
   const renderActiveCampaigns = () => {
     if (campaignsLoading) {
@@ -138,7 +139,8 @@ export function CampaignsDashboard() {
               <div className="flex justify-between text-xs text-muted-foreground">
                 <div className="flex items-center">
                   <Users className="h-3 w-3 mr-1" /> 
-                  {campaign.playerCount || "1-5"} players
+                  {/* Would use campaign.playerCount once implemented */}
+                  1-5 players
                 </div>
                 <div className="flex items-center">
                   <CalendarDays className="h-3 w-3 mr-1" /> 
