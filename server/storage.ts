@@ -9,9 +9,10 @@ import {
   GameLog, InsertGameLog,
   Friendship, InsertFriendship,
   UserSession, InsertUserSession,
+  ChatMessage, InsertChatMessage,
   CampaignInvitation, InsertCampaignInvitation,
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
-  friendships, userSessions, campaignInvitations
+  friendships, userSessions, chatMessages, campaignInvitations
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -79,7 +80,14 @@ export interface IStorage {
   // User session methods
   getUserSession(userId: number): Promise<UserSession | undefined>;
   createOrUpdateUserSession(session: InsertUserSession): Promise<UserSession>;
+  updateUserStatus(userId: number, updates: Partial<UserSession>): Promise<UserSession | undefined>;
   getOnlineUsers(): Promise<UserSession[]>;
+  getLookingForPartyUsers(): Promise<UserSession[]>;
+  getLookingForFriendsUsers(): Promise<UserSession[]>;
+  
+  // Chat message methods
+  getChatMessagesByCampaignId(campaignId: number, limit?: number): Promise<ChatMessage[]>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   
   // Campaign invitation methods
   getCampaignInvitation(id: number): Promise<CampaignInvitation | undefined>;
@@ -379,6 +387,15 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async updateUserStatus(userId: number, updates: Partial<UserSession>): Promise<UserSession | undefined> {
+    const [updatedSession] = await db
+      .update(userSessions)
+      .set(updates)
+      .where(eq(userSessions.userId, userId))
+      .returning();
+    return updatedSession;
+  }
+
   async getOnlineUsers(): Promise<UserSession[]> {
     // Consider users who were active in the last 5 minutes as online
     const fiveMinutesAgo = new Date();
@@ -390,6 +407,56 @@ export class DatabaseStorage implements IStorage {
       .where(
         sql`${userSessions.lastActive} > ${fiveMinutesAgo}` 
       );
+  }
+
+  async getLookingForPartyUsers(): Promise<UserSession[]> {
+    // Get users who are looking for a party and are online
+    const fiveMinutesAgo = new Date();
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+    
+    return db
+      .select()
+      .from(userSessions)
+      .where(
+        and(
+          sql`${userSessions.lastActive} > ${fiveMinutesAgo}`,
+          eq(userSessions.lookingForParty, true)
+        )
+      );
+  }
+
+  async getLookingForFriendsUsers(): Promise<UserSession[]> {
+    // Get users who are looking for friends and are online
+    const fiveMinutesAgo = new Date();
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+    
+    return db
+      .select()
+      .from(userSessions)
+      .where(
+        and(
+          sql`${userSessions.lastActive} > ${fiveMinutesAgo}`,
+          eq(userSessions.lookingForFriends, true)
+        )
+      );
+  }
+
+  // Chat message methods
+  async getChatMessagesByCampaignId(campaignId: number, limit: number = 50): Promise<ChatMessage[]> {
+    return db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.campaignId, campaignId))
+      .orderBy(desc(chatMessages.timestamp))
+      .limit(limit);
+  }
+
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const [newMessage] = await db
+      .insert(chatMessages)
+      .values(message)
+      .returning();
+    return newMessage;
   }
 
   // Campaign invitation methods

@@ -17,6 +17,7 @@ import {
   insertAdventureSchema,
   insertFriendshipSchema,
   insertUserSessionSchema,
+  insertChatMessageSchema,
   insertCampaignInvitationSchema
 } from "@shared/schema";
 
