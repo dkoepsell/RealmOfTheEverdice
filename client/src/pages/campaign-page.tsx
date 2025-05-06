@@ -14,13 +14,18 @@ import { DiceRoller, DiceType } from "@/components/dice-roll";
 import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results";
 import { AddCharacterDialog } from "@/components/add-character-dialog";
 import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
+import { PartyVoting } from "@/components/party-voting";
+import { PartyManagement } from "@/components/party-management";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useCampaignDiceHistory } from "@/hooks/use-dice-history";
-import { Loader2, UserPlus, Users, Bot, UserCog, MessageSquare, DicesIcon } from "lucide-react";
+import { 
+  Loader2, UserPlus, Users, Bot, UserCog, 
+  MessageSquare, DicesIcon, Vote, Split 
+} from "lucide-react";
 
 export default function CampaignPage() {
   const { id } = useParams();
@@ -31,9 +36,10 @@ export default function CampaignPage() {
   const [gameLogs, setGameLogs] = useState<GameLog[]>([]);
   const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
-  const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat">("info");
-  const [partyName, setPartyName] = useState<string>("");
-  const [isEditingPartyName, setIsEditingPartyName] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat" | "party" | "voting">("info");
+  // Temporarily remove party name until DB schema is updated
+  // const [partyName, setPartyName] = useState<string>(""); 
+  // const [isEditingPartyName, setIsEditingPartyName] = useState(false);
   
   // Dice roll history
   const { campaignRolls, addCampaignRoll, clearCampaignRolls } = useCampaignDiceHistory();
@@ -302,19 +308,18 @@ export default function CampaignPage() {
   // Reverse game logs for display (newest at the bottom)
   const displayLogs = [...gameLogs].reverse();
 
-  // Mutation for updating party name
+  // Party name update functionality will be added later when database schema is updated
+  // For now, we have a placeholder mutation that will be used later
   const updatePartyNameMutation = useMutation({
-    mutationFn: async (updates: { partyName: string }) => {
-      const res = await apiRequest("PATCH", `/api/campaigns/${campaignId}`, updates);
-      return res.json();
+    mutationFn: async (_updates: any) => {
+      // This will be implemented when we update the database schema
+      return null;
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData([`/api/campaigns/${campaignId}`], data);
+    onSuccess: () => {
       toast({
-        title: "Party name updated",
-        description: "The party name has been updated successfully.",
+        title: "Party name feature coming soon",
+        description: "The party naming feature will be available in a future update.",
       });
-      setIsEditingPartyName(false);
     },
     onError: (error) => {
       toast({
@@ -325,6 +330,16 @@ export default function CampaignPage() {
     },
   });
   
+  // Placeholder for party name update function
+  const handlePartyNameUpdate = () => {
+    toast({
+      title: "Party name feature coming soon",
+      description: "The party naming feature will be available in a future update.",
+    });
+  };
+  
+  // Temporarily disabled until schema is updated
+  /*
   // Set initial party name from campaign data
   useEffect(() => {
     if (campaign?.partyName) {
@@ -337,6 +352,7 @@ export default function CampaignPage() {
       updatePartyNameMutation.mutate({ partyName: partyName.trim() });
     }
   };
+  */
   
   // Handle DM mode toggle
   const handleDmModeToggle = () => {
@@ -411,7 +427,7 @@ export default function CampaignPage() {
                 className="h-8"
               >
                 <Users className="h-4 w-4 mr-1" />
-                Party Info
+                Info
               </Button>
               <Button
                 variant={rightPanelTab === "chat" ? "default" : "ghost"} 
@@ -421,6 +437,24 @@ export default function CampaignPage() {
               >
                 <MessageSquare className="h-4 w-4 mr-1" />
                 Chat
+              </Button>
+              <Button
+                variant={rightPanelTab === "party" ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setRightPanelTab("party")}
+                className="h-8"
+              >
+                <Split className="h-4 w-4 mr-1" />
+                Party
+              </Button>
+              <Button
+                variant={rightPanelTab === "voting" ? "default" : "ghost"} 
+                size="sm"
+                onClick={() => setRightPanelTab("voting")}
+                className="h-8"
+              >
+                <Vote className="h-4 w-4 mr-1" />
+                Vote
               </Button>
             </div>
             
@@ -469,17 +503,25 @@ export default function CampaignPage() {
           diceRollResults={campaignRolls}
         />
         
-        {/* Right Panel with Tabs for World Info & Chat */}
+        {/* Right Panel with Tabs for World Info, Chat, Party Management, & Voting */}
         <div className="w-80 border-l border-border shrink-0 flex flex-col h-screen max-h-screen overflow-hidden">
-          <Tabs value={rightPanelTab} className="flex flex-col h-full" onValueChange={(val) => setRightPanelTab(val as "info" | "chat")}>
-            <TabsList className="grid w-full grid-cols-2 m-2">
+          <Tabs value={rightPanelTab} className="flex flex-col h-full" onValueChange={(val) => setRightPanelTab(val as any)}>
+            <TabsList className="grid w-full grid-cols-4 m-2">
               <TabsTrigger value="info" className="flex items-center">
                 <Users className="h-4 w-4 mr-1" />
-                Info
+                <span className="hidden sm:inline">Info</span>
               </TabsTrigger>
               <TabsTrigger value="chat" className="flex items-center">
                 <MessageSquare className="h-4 w-4 mr-1" />
-                Chat
+                <span className="hidden sm:inline">Chat</span>
+              </TabsTrigger>
+              <TabsTrigger value="party" className="flex items-center">
+                <Split className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Party</span>
+              </TabsTrigger>
+              <TabsTrigger value="voting" className="flex items-center">
+                <Vote className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Vote</span>
               </TabsTrigger>
             </TabsList>
             
@@ -488,15 +530,7 @@ export default function CampaignPage() {
               <WorldInfoPanel 
                 campaign={campaign}
                 partyMembers={partyMembers}
-                currentAdventure={currentAdventure ? {
-                  id: currentAdventure.id,
-                  title: currentAdventure.title,
-                  description: currentAdventure.description || "",
-                  location: currentAdventure.location || "",
-                  createdAt: currentAdventure.createdAt,
-                  status: currentAdventure.status,
-                  campaignId: currentAdventure.campaignId
-                } : undefined}
+                currentAdventure={currentAdventure || undefined}
                 currentLocation={currentAdventure?.location || "Unknown"}
                 quests={[]} // Quests would be fetched in a real implementation
                 onUpdatePartyName={handlePartyNameUpdate}
@@ -514,6 +548,30 @@ export default function CampaignPage() {
                     return acc;
                   }, {} as Record<number, string>)
                 }
+              />
+            </TabsContent>
+
+            {/* Party Management Tab */}
+            <TabsContent value="party" className="flex-grow flex flex-col m-0 overflow-auto">
+              <PartyManagement 
+                campaignId={campaignId} 
+                isCampaignDm={campaign.dmId === user?.id}
+              />
+            </TabsContent>
+
+            {/* Party Voting Tab */}
+            <TabsContent value="voting" className="flex-grow flex flex-col m-0 overflow-auto">
+              <PartyVoting 
+                campaignId={campaignId}
+                onVoteComplete={(result) => {
+                  // Add a game log when vote completes
+                  const voteLog: Partial<GameLog> = {
+                    campaignId,
+                    content: `The party has voted and ${result ? 'approved' : 'rejected'} the proposal.`,
+                    type: "narrative"
+                  };
+                  createLogMutation.mutate(voteLog);
+                }}
               />
             </TabsContent>
           </Tabs>
