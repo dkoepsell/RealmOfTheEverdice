@@ -213,7 +213,7 @@ export default function CampaignCreation() {
                           <FormLabel>Setting</FormLabel>
                           <Select
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            defaultValue={field.value || "Forgotten Realms"}
                           >
                             <FormControl>
                               <SelectTrigger className="bg-parchment border-accent">
