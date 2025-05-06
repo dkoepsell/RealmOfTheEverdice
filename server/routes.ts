@@ -950,6 +950,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
         }
+        
+        // Handle party planning actions
+        if (data.type === 'planning' && clientCampaignId) {
+          const planningAction = data.action;
+          const campaignConnections = connections[clientCampaignId] || [];
+          
+          // Broadcast planning action to all connected clients for this campaign
+          campaignConnections.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'planning',
+                action: planningAction,
+                userId: data.userId,
+                username: data.username,
+                planId: data.planId,
+                planData: data.planData,
+                timestamp: new Date()
+              }));
+            }
+          });
+          
+          // In a full implementation, we would store these planning items in the database
+          // For now, we'll just broadcast them in real-time
+        }
       } catch (err) {
         console.error('WebSocket message error:', err);
       }
