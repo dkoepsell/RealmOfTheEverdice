@@ -154,7 +154,20 @@ export function CampaignChat({ campaignId, usernames }: CampaignChatProps) {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !sendMessageMutation.isPending) {
+      // Send via HTTP API for persistence
       sendMessageMutation.mutate(message);
+      
+      // Also send via WebSocket for immediate display
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && user) {
+        socketRef.current.send(JSON.stringify({
+          type: 'chat',
+          message: message,
+          userId: user.id,
+          username: user.username,
+          campaignId: campaignId,
+          timestamp: new Date()
+        }));
+      }
     }
   };
   
@@ -203,9 +216,13 @@ export function CampaignChat({ campaignId, usernames }: CampaignChatProps) {
         <div className="flex items-center gap-2">
           <h3 className="font-semibold">Campaign Chat</h3>
           {isConnected ? (
-            <Wifi className="h-4 w-4 text-green-500" title="Connected" />
+            <span title="Connected">
+              <Wifi className="h-4 w-4 text-green-500" />
+            </span>
           ) : (
-            <WifiOff className="h-4 w-4 text-red-500" title="Disconnected" />
+            <span title="Disconnected">
+              <WifiOff className="h-4 w-4 text-red-500" />
+            </span>
           )}
         </div>
         <Button 
