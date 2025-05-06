@@ -1,26 +1,17 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
-import Navbar from "@/components/navbar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Campaign, Character } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Users, ScrollText, Dice5, Sword } from "lucide-react";
+import Navbar from "@/components/navbar";
+import CampaignsDashboard from "@/components/campaigns-dashboard";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { Character } from "@shared/schema";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Users, Sword } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  
-  // Fetch user's campaigns
-  const { 
-    data: campaigns, 
-    isLoading: campaignsLoading 
-  } = useQuery<Campaign[]>({
-    queryKey: ["/api/campaigns"],
-    enabled: !!user
-  });
   
   // Fetch user's characters
   const { 
@@ -31,98 +22,8 @@ export default function HomePage() {
     enabled: !!user
   });
   
-  const handleCampaignClick = (campaignId: number) => {
-    navigate(`/campaigns/${campaignId}`);
-  };
-  
   const handleCharacterClick = (characterId: number) => {
     navigate(`/characters/${characterId}`);
-  };
-  
-  const renderCampaigns = () => {
-    if (campaignsLoading) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((_, index) => (
-            <Card key={index} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-5 bg-accent/20 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-accent/20 rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-20 bg-accent/10 rounded"></div>
-              </CardContent>
-              <CardFooter>
-                <div className="h-9 bg-accent/20 rounded w-full"></div>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      );
-    }
-    
-    if (!campaigns || campaigns.length === 0) {
-      return (
-        <div className="text-center py-10">
-          <Dice5 className="mx-auto h-12 w-12 text-accent/50 mb-4" />
-          <h3 className="text-xl font-medieval mb-2">No Campaigns Yet</h3>
-          <p className="text-muted-foreground mb-6">You haven't created any campaigns yet.</p>
-          <Button onClick={() => navigate("/campaigns/create")}>
-            <Plus className="mr-2 h-4 w-4" /> Create Your First Campaign
-          </Button>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {campaigns.map((campaign) => (
-          <Card key={campaign.id} className="cursor-pointer hover:border-primary transition-colors">
-            <CardHeader className="pb-2">
-              <CardTitle>{campaign.name}</CardTitle>
-              <CardDescription>{campaign.setting || "No setting specified"}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="line-clamp-3">
-                {campaign.description || "No description available."}
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                variant="default" 
-                className="w-full"
-                onClick={() => handleCampaignClick(campaign.id)}
-              >
-                <ScrollText className="mr-2 h-4 w-4" /> Continue Adventure
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-        
-        {/* Create New Campaign Card */}
-        <Card className="cursor-pointer border-dashed border-accent/50 hover:border-accent transition-colors">
-          <CardHeader className="pb-2">
-            <CardTitle>Create New Campaign</CardTitle>
-            <CardDescription>Start a new adventure</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <Plus className="h-12 w-12 text-accent/50 mb-2" />
-            <p className="text-center text-muted-foreground">
-              Create a new campaign for your party
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => navigate("/campaigns/create")}
-            >
-              <Plus className="mr-2 h-4 w-4" /> New Campaign
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
   };
   
   const renderCharacters = () => {
@@ -240,14 +141,7 @@ export default function HomePage() {
             </TabsList>
             
             <TabsContent value="campaigns" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-medieval text-secondary">Your Campaigns</h2>
-                <Button onClick={() => navigate("/campaigns/create")}>
-                  <Plus className="mr-2 h-4 w-4" /> New Campaign
-                </Button>
-              </div>
-              
-              {renderCampaigns()}
+              <CampaignsDashboard />
             </TabsContent>
             
             <TabsContent value="characters" className="space-y-4">

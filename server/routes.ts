@@ -26,6 +26,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);
   
+  // Campaigns Routes
+  app.get("/api/campaigns", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      // Get campaigns where user is DM
+      const dmCampaigns = await storage.getCampaignsByDmId(req.user.id);
+      
+      // TODO: Get campaigns where user is a player (would need to fetch from campaign_characters)
+      // For now, we'll just return campaigns where user is DM
+      
+      res.json(dmCampaigns);
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+      res.status(500).json({ message: "Failed to get campaigns" });
+    }
+  });
+  
   // Characters Routes
   app.get("/api/characters", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
@@ -132,17 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Campaigns Routes
-  app.get("/api/campaigns", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    
-    try {
-      const campaigns = await storage.getCampaignsByDmId(req.user.id);
-      res.json(campaigns);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to get campaigns" });
-    }
-  });
+//This route is duplicated above, removing this instance
   
   app.get("/api/campaigns/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
