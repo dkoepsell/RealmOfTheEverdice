@@ -395,14 +395,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const context = req.body.context;
       const playerAction = req.body.playerAction;
+      const isAutoAdvance = req.body.isAutoAdvance;
       
       if (!context || !playerAction) {
         return res.status(400).json({ message: "Context and playerAction are required" });
       }
       
-      const narration = await generateGameNarration(context, playerAction);
+      // Different handling for auto-advancement vs regular player actions
+      let narration;
+      if (isAutoAdvance) {
+        // Call the narration generator with special flag for auto-advancement
+        narration = await generateGameNarration(context, playerAction, true);
+      } else {
+        // Regular narration based on player action
+        narration = await generateGameNarration(context, playerAction);
+      }
+      
       res.json({ narration });
     } catch (error) {
+      console.error("Narration generation error:", error);
       res.status(500).json({ message: "Failed to generate narration" });
     }
   });

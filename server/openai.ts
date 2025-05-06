@@ -78,18 +78,28 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
   }
 }
 
-export async function generateGameNarration(context: string, playerAction: string) {
+export async function generateGameNarration(context: string, playerAction: string, isAutoAdvance: boolean = false) {
   try {
+    let systemPrompt = "You are an expert Dungeon Master narrating a D&D game. Provide vivid, engaging descriptions and narrative responses to player actions. Keep responses concise but immersive, focusing on the consequences of actions and maintaining the fantasy atmosphere.";
+    let userPrompt = "";
+    
+    if (isAutoAdvance) {
+      systemPrompt += " For this specific request, you are advancing the story automatically. Create a natural progression that introduces new elements, encounters, or developments to move the adventure forward.";
+      userPrompt = `Context: ${context}\n\nThe player wants to advance the story. Create a compelling narrative that progresses the adventure by introducing a new element, encounter, or development. Describe what happens next in vivid detail as if you were the Dungeon Master moving the story forward.`;
+    } else {
+      userPrompt = `Context: ${context}\n\nPlayer Action: ${playerAction}\n\nProvide a narrative response as the DM, describing what happens next. Include any checks or rolls that might be required.`;
+    }
+    
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
-          content: "You are an expert Dungeon Master narrating a D&D game. Provide vivid, engaging descriptions and narrative responses to player actions. Keep responses concise but immersive, focusing on the consequences of actions and maintaining the fantasy atmosphere."
+          content: systemPrompt
         },
         {
           role: "user",
-          content: `Context: ${context}\n\nPlayer Action: ${playerAction}\n\nProvide a narrative response as the DM, describing what happens next. Include any checks or rolls that might be required.`
+          content: userPrompt
         }
       ]
     });
