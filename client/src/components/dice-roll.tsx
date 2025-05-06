@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useDice } from '@/hooks/use-dice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dice5, Dice2, Info, Target } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Dice5, Dice2, Info, Target, PlusCircle, MinusCircle, AlertCircle, HelpCircle } from 'lucide-react';
 
 export type DiceType = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
 
@@ -46,9 +51,22 @@ interface DiceRollerProps {
   characterName: string;
   onRollResult?: (type: DiceType, result: number, modifier?: number, purpose?: string, threshold?: number) => void;
   characterModifiers?: Record<string, number>;
+  // New prop for indicating that a roll is being requested
+  requestedRoll?: {
+    type: DiceType;
+    purpose: string;
+    dc?: number;
+    count?: number;
+    description?: string;
+  };
 }
 
-export const DiceRoller = ({ characterName, onRollResult, characterModifiers }: DiceRollerProps) => {
+export const DiceRoller = ({ 
+  characterName, 
+  onRollResult, 
+  characterModifiers,
+  requestedRoll 
+}: DiceRollerProps) => {
   const [lastRoll, setLastRoll] = useState<{
     type: DiceType;
     result: number;
@@ -59,8 +77,35 @@ export const DiceRoller = ({ characterName, onRollResult, characterModifiers }: 
   
   const [rollPurpose, setRollPurpose] = useState<string>("general");
   const [rollDC, setRollDC] = useState<number | undefined>(undefined);
+  const [diceCount, setDiceCount] = useState<number>(1);
+  const [autoRollEnabled, setAutoRollEnabled] = useState<boolean>(false);
+  const [rollPrompt, setRollPrompt] = useState<string | null>(null);
   
   const diceTypes: DiceType[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+  
+  const { rollDice } = useDice();
+  
+  // Handle requested roll data
+  useEffect(() => {
+    if (requestedRoll) {
+      setRollPurpose(requestedRoll.purpose);
+      setRollDC(requestedRoll.dc);
+      setDiceCount(requestedRoll.count || 1);
+      setRollPrompt(requestedRoll.description || `Roll ${requestedRoll.count || 1}${requestedRoll.type} for ${getPurposeLabel(requestedRoll.purpose)}`);
+      
+      // Auto-roll if enabled
+      if (autoRollEnabled) {
+        const count = requestedRoll.count || 1;
+        const results = [];
+        
+        for (let i = 0; i < count; i++) {
+          const result = rollDice(requestedRoll.type);
+          results.push(result);
+          handleRoll(requestedRoll.type, result);
+        }
+      }
+    }
+  }, [requestedRoll, autoRollEnabled]);
   
   const getPurposeLabel = (purpose: string): string => {
     switch (purpose) {
@@ -119,12 +164,81 @@ export const DiceRoller = ({ characterName, onRollResult, characterModifiers }: 
     }
   };
   
+  // Handle dice count change
+  const handleDiceCountChange = (change: number) => {
+    const newCount = Math.max(1, Math.min(10, diceCount + change));
+    setDiceCount(newCount);
+  };
+  
+  // Handle multiple dice rolls
+  const handleMultipleRolls = (type: DiceType) => {
+    let totalResult = 0;
+    const results: number[] = [];
+    
+    for (let i = 0; i < diceCount; i++) {
+      const result = rollDice(type);
+      results.push(result);
+      totalResult += result;
+    }
+    
+    // Use the last result as the "main" result, but track the total
+    const lastResult = results[results.length - 1];
+    
+    let modifier = 0;
+    let context = '';
+    let purpose = getPurposeLabel(rollPurpose);
+    
+    // Create context specific to multiple dice
+    if (rollPurpose === "damage") {
+      context = `Damage Roll: ${results.join(' + ')} = ${totalResult}`;
+    } else {
+      context = `${purpose} with ${diceCount} dice: ${results.join(', ')} (Total: ${totalResult})`;
+    }
+    
+    const newRoll = {
+      type,
+      result: lastResult,
+      total: totalResult,
+      modifier,
+      context
+    };
+    
+    setLastRoll(newRoll);
+    
+    if (onRollResult) {
+      onRollResult(type, lastResult, modifier, `${purpose} (${diceCount} dice)`, rollDC);
+    }
+  };
+  
   return (
     <Card className="medieval-border bg-parchment">
       <CardHeader className="pb-2">
         <CardTitle className="text-xl font-medieval text-secondary">Dice Roller</CardTitle>
+        {rollPrompt && (
+          <CardDescription className="mt-1 p-2 bg-amber-100 border border-amber-300 rounded-md text-amber-800 font-medieval animate-pulse">
+            <AlertCircle className="inline-block h-4 w-4 mr-1 mb-1" />
+            {rollPrompt}
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent>
+        {/* Auto-roll toggle */}
+        <div className="mb-3 flex items-center justify-between space-x-2 p-2 bg-secondary/5 rounded-md">
+          <div className="flex flex-col">
+            <Label htmlFor="auto-roll" className="text-sm font-semibold">
+              Auto-Roll
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              Automatically roll dice when prompted
+            </span>
+          </div>
+          <Switch 
+            id="auto-roll" 
+            checked={autoRollEnabled} 
+            onCheckedChange={setAutoRollEnabled}
+          />
+        </div>
+        
         <div className="mb-3 space-y-2">
           <div className="flex gap-2">
             <Select value={rollPurpose} onValueChange={setRollPurpose}>
@@ -162,9 +276,56 @@ export const DiceRoller = ({ characterName, onRollResult, characterModifiers }: 
             )}
           </div>
           
-          <div className="text-xs text-muted-foreground flex items-center">
-            <Info className="h-3 w-3 mr-1" />
-            <span>Rolling as {characterName}</span>
+          {/* Dice count selector */}
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground flex items-center">
+              <Info className="h-3 w-3 mr-1" />
+              <span>Rolling as {characterName}</span>
+            </div>
+            
+            <div className="flex items-center space-x-1">
+              <Label htmlFor="dice-count" className="text-xs mr-1">Dice:</Label>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                className="h-6 w-6"
+                onClick={() => handleDiceCountChange(-1)}
+                disabled={diceCount <= 1}
+              >
+                <MinusCircle className="h-3 w-3" />
+              </Button>
+              <Badge variant="outline" className="px-2 h-6">
+                {diceCount}
+              </Badge>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                className="h-6 w-6"
+                onClick={() => handleDiceCountChange(1)}
+                disabled={diceCount >= 10}
+              >
+                <PlusCircle className="h-3 w-3" />
+              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-muted-foreground"
+                    >
+                      <HelpCircle className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Select how many dice to roll at once (1-10)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
         </div>
         
@@ -173,7 +334,10 @@ export const DiceRoller = ({ characterName, onRollResult, characterModifiers }: 
             <Die 
               key={type} 
               diceType={type} 
-              onRoll={(result) => handleRoll(type, result)} 
+              onRoll={diceCount === 1 
+                ? (result) => handleRoll(type, result) 
+                : () => handleMultipleRolls(type)
+              } 
             />
           ))}
         </div>
@@ -183,7 +347,12 @@ export const DiceRoller = ({ characterName, onRollResult, characterModifiers }: 
             <div className="flex justify-between mb-2">
               <span className="font-medieval">Last Roll</span>
               <span className="font-bold">
-                {lastRoll.type}: {lastRoll.result}
+                {diceCount > 1 ? `${diceCount}` : ""}{lastRoll.type}: {lastRoll.result}
+                {lastRoll.total !== lastRoll.result && (
+                  <span className="ml-1 text-muted-foreground">
+                    (Total: {lastRoll.total})
+                  </span>
+                )}
               </span>
             </div>
             {lastRoll.context && (
