@@ -30,8 +30,12 @@ import {
   MessageSquare, DicesIcon, Vote, Split, 
   ClipboardList, ScrollTextIcon, Menu, X,
   Send, BookOpen, BookMarked, Map, Sword,
-  ShieldAlert, Backpack
+  ShieldAlert, Backpack, HelpCircle, Info,
+  Medal, Brain, AlertTriangle, BookmarkIcon
 } from "lucide-react";
+import InteractiveDiceSuggestions from "@/components/interactive-dice-suggestions";
+import DiceRollBreakdown from "@/components/dice-roll-breakdown";
+import GameMechanicsTip from "@/components/game-mechanics-tip";
 
 export default function CampaignPage() {
   // URL parameters
@@ -386,19 +390,121 @@ export default function CampaignPage() {
     );
   }
   
+  // State for active mechanics tips
+  const [activeMechanicTip, setActiveMechanicTip] = useState<string | null>(null);
+  
+  // State for dice roll results
+  const [lastRollBreakdown, setLastRollBreakdown] = useState<{
+    diceType: DiceType;
+    result: number;
+    modifier: number;
+    purpose?: string;
+    threshold?: number;
+    effects?: {
+      stats?: Partial<Record<string, number>>;
+      alignment?: string;
+      description: string;
+    }
+  } | null>(null);
+  
+  // Handle interactive roll completion
+  const handleInteractiveRollComplete = (
+    type: DiceType,
+    result: number,
+    modifier: number,
+    purpose: string,
+    threshold?: number,
+    effects?: {
+      stats?: Partial<Record<string, number>>;
+      alignment?: string;
+      description: string;
+    }
+  ) => {
+    // Create roll result
+    const diceRoll: DiceRollResult = {
+      id: Math.random().toString(36).substring(2, 15),
+      characterName: currentCharacter!.name,
+      diceType: type,
+      result,
+      modifier,
+      total: result + modifier,
+      timestamp: new Date(),
+      purpose,
+      threshold,
+      isSuccess: threshold ? (result + modifier >= threshold) : undefined
+    };
+    
+    // Add roll to campaign history
+    addCampaignRoll(diceRoll);
+    
+    // Format roll description
+    const isSuccess = threshold ? (result + modifier >= threshold) : true;
+    const rollDescription = `${currentCharacter!.name} rolled ${result} on a ${type}${modifier ? ` with a modifier of ${modifier > 0 ? '+' : ''}${modifier}` : ''}${purpose ? ` for ${purpose}` : ''}. Total: ${result + modifier}${threshold ? ` vs DC ${threshold} (${isSuccess ? "Success" : "Failure"})` : ""}`;
+    
+    // Save roll breakdown for display
+    setLastRollBreakdown({
+      diceType: type,
+      result,
+      modifier,
+      purpose,
+      threshold,
+      effects
+    });
+    
+    // Add roll to the game logs
+    const rollLog: Partial<GameLog> = {
+      campaignId,
+      content: rollDescription,
+      type: "roll"
+    };
+    
+    createLogMutation.mutate(rollLog);
+    
+    // Show appropriate mechanic tip based on roll type
+    if (purpose === "attack" || purpose === "attack-roll") {
+      setActiveMechanicTip("attack-roll");
+    } else if (purpose === "saving" || purpose === "save") {
+      setActiveMechanicTip("saving-throw");
+    } else if (purpose === "skill" || purpose === "ability") {
+      setActiveMechanicTip("ability-check");
+    } else if (purpose === "damage") {
+      setActiveMechanicTip("damage-roll");
+    } else if (purpose === "initiative") {
+      setActiveMechanicTip("initiative");
+    }
+  };
+  
   // For formatting logs as a continuous narrative
   const renderGameLogs = () => {
     return gameLogs.map((log, index) => {
       switch (log.type) {
         case 'narrative':
           return (
-            <div key={log.id} className="mb-6 text-lg leading-relaxed">
-              {log.content}
+            <div key={log.id} className="narrative-log mb-6">
+              <div className="text-lg leading-relaxed">
+                {log.content}
+              </div>
+              
+              {/* Interactive dice suggestions for this narrative entry */}
+              {currentCharacter && (
+                <InteractiveDiceSuggestions
+                  content={log.content}
+                  character={currentCharacter}
+                  onRollComplete={handleInteractiveRollComplete}
+                />
+              )}
+              
+              {/* Show mechanic tip if activated during last dice roll */}
+              {activeMechanicTip && lastRollBreakdown && index === gameLogs.length - 1 && (
+                <div className="mt-4 mb-2">
+                  <GameMechanicsTip mechanicType={activeMechanicTip as any} />
+                </div>
+              )}
             </div>
           );
         case 'player':
           return (
-            <div key={log.id} className="mb-6">
+            <div key={log.id} className="player-log mb-6">
               <p className="mb-1 text-sm font-medium text-primary">
                 <span className="font-bold">{currentCharacter.name}:</span>
               </p>
@@ -406,15 +512,56 @@ export default function CampaignPage() {
             </div>
           );
         case 'roll':
+          // Extract roll data if available
+          const isLastRoll = index === gameLogs.length - 1;
+          
           return (
-            <div key={log.id} className="mb-4 py-2 px-3 bg-muted/30 rounded-md text-sm">
-              <DicesIcon className="inline-block mr-2 h-4 w-4 text-muted-foreground" />
-              {log.content}
+            <div key={log.id} className="roll-log mb-4">
+              {/* If this is the latest roll and we have detailed breakdown data */}
+              {isLastRoll && lastRollBreakdown ? (
+                <DiceRollBreakdown
+                  diceType={lastRollBreakdown.diceType}
+                  result={lastRollBreakdown.result}
+                  modifier={lastRollBreakdown.modifier}
+                  purpose={lastRollBreakdown.purpose}
+                  threshold={lastRollBreakdown.threshold}
+                  context={lastRollBreakdown.effects?.description}
+                  expanded={true}
+                  onClose={() => setLastRollBreakdown(null)}
+                />
+              ) : (
+                <div className="py-2 px-3 bg-muted/30 rounded-md text-sm">
+                  <DicesIcon className="inline-block mr-2 h-4 w-4 text-muted-foreground" />
+                  {log.content}
+                  
+                  {/* Educational button */}
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-6 w-6 p-0 rounded-full ml-2"
+                    onClick={() => {
+                      // Determine roll type from content
+                      const content = log.content.toLowerCase();
+                      let mechanicType = null;
+                      
+                      if (content.includes("attack")) mechanicType = "attack-roll";
+                      else if (content.includes("save")) mechanicType = "saving-throw";
+                      else if (content.includes("ability") || content.includes("check")) mechanicType = "ability-check";
+                      else if (content.includes("damage")) mechanicType = "damage-roll";
+                      else if (content.includes("initiative")) mechanicType = "initiative";
+                      
+                      setActiveMechanicTip(mechanicType);
+                    }}
+                  >
+                    <HelpCircle className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </div>
           );
         default:
           return (
-            <div key={log.id} className="mb-4">
+            <div key={log.id} className="generic-log mb-4">
               {log.content}
             </div>
           );
@@ -464,6 +611,44 @@ export default function CampaignPage() {
                 onCheckedChange={handleDmModeToggle}
               />
             </div>
+            
+            {/* D&D Mechanics Help Button - Always available */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={() => {
+                // Create a dialog with all mechanic tips
+                toast({
+                  title: "D&D Mechanics",
+                  description: (
+                    <div className="space-y-2 mt-2">
+                      <p className="text-sm mb-3">
+                        Click on any topic below to learn about D&D game mechanics:
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto">
+                        <GameMechanicsTip mechanicType="ability-check" />
+                        <GameMechanicsTip mechanicType="saving-throw" />
+                        <GameMechanicsTip mechanicType="attack-roll" />
+                        <GameMechanicsTip mechanicType="damage-roll" />
+                        <GameMechanicsTip mechanicType="advantage-disadvantage" />
+                        <GameMechanicsTip mechanicType="initiative" />
+                        <GameMechanicsTip mechanicType="combat-turn" />
+                        <GameMechanicsTip mechanicType="skills" />
+                        <GameMechanicsTip mechanicType="spellcasting" />
+                        <GameMechanicsTip mechanicType="roleplaying" />
+                      </div>
+                    </div>
+                  ),
+                  variant: "default",
+                  duration: 100000, // Long duration
+                });
+              }}
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden md:inline-block">D&D Rules</span>
+            </Button>
+            
             <div className="hidden md:flex -space-x-2">
               {partyMembers.slice(0, 3).map(member => (
                 <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
