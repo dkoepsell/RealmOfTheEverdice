@@ -591,6 +591,72 @@ export default function CampaignPage() {
               </div>
             </div>
             
+            {/* Character Actions Buttons */}
+            <div className="mb-6">
+              <h3 className="font-medieval text-lg mb-2 pb-1 border-b border-border flex items-center">
+                <Sword className="mr-2 h-4 w-4" />
+                Character Actions
+              </h3>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs justify-start"
+                  onClick={() => setRightPanelTab("inventory")}
+                >
+                  <Backpack className="mr-1 h-3.5 w-3.5" />
+                  Inventory
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs justify-start"
+                  onClick={() => setRightPanelTab("equipment")}
+                >
+                  <ShieldAlert className="mr-1 h-3.5 w-3.5" />
+                  Equipment
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs justify-start"
+                  onClick={() => setRightPanelTab("spells")}
+                >
+                  <HelpCircle className="mr-1 h-3.5 w-3.5" />
+                  Spells
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs justify-start"
+                  onClick={() => setRightPanelTab("map")}
+                >
+                  <Map className="mr-1 h-3.5 w-3.5" />
+                  Map
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs justify-start col-span-2"
+                  onClick={() => setRightPanelTab("progression")}
+                >
+                  <Info className="mr-1 h-3.5 w-3.5" />
+                  Character Progression
+                </Button>
+              </div>
+              
+              {/* Battle Tracker Button - Only shown during combat */}
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="w-full text-xs justify-center mb-2"
+                onClick={() => setRightPanelTab("battle")}
+              >
+                <Sword className="mr-1 h-3.5 w-3.5" />
+                Battle Tracker
+              </Button>
+            </div>
+            
             {/* Adventure Location */}
             <div className="mb-6">
               <h3 className="font-medieval text-lg mb-2 pb-1 border-b border-border flex items-center">
@@ -600,6 +666,14 @@ export default function CampaignPage() {
               <p className="text-sm">
                 {currentAdventure?.location || "Unknown"}
               </p>
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="text-xs p-0 h-auto mt-1"
+                onClick={() => setRightPanelTab("map")}
+              >
+                View on map
+              </Button>
             </div>
             
             {/* Party Members */}
@@ -682,6 +756,586 @@ export default function CampaignPage() {
         
         {/* Main Book-Like Content Area */}
         <div className="flex-grow flex flex-col overflow-hidden bg-[#fffbf0]">
+          {/* Right Side Panel */}
+          {rightPanelTab && (
+            <div className="absolute top-0 right-0 z-30 h-full w-80 bg-white border-l border-border overflow-y-auto">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medieval text-lg">
+                    {rightPanelTab === "inventory" && "Inventory"}
+                    {rightPanelTab === "equipment" && "Equipment & Attire"}
+                    {rightPanelTab === "spells" && "Spells & Abilities"}
+                    {rightPanelTab === "map" && "Adventure Map"}
+                    {rightPanelTab === "battle" && "Battle Tracker"}
+                    {rightPanelTab === "progression" && "Character Progression"}
+                  </h3>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setRightPanelTab(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {/* Inventory Panel */}
+                {rightPanelTab === "inventory" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Items</span>
+                      <span className="text-xs text-muted-foreground">
+                        {((currentCharacter.equipment as any)?.inventory?.length || 0)} items
+                      </span>
+                    </div>
+                    
+                    {(currentCharacter.equipment as any)?.inventory?.length > 0 ? (
+                      <div className="space-y-2">
+                        {(currentCharacter.equipment as any)?.inventory?.map((item: any, index: number) => (
+                          <div key={index} className="p-2 border border-border rounded-md">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <span className="text-sm font-medium">{item.name}</span>
+                                {item.isEquipped && (
+                                  <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                                    Equipped
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {item.quantity > 1 ? `x${item.quantity}` : ''}
+                              </span>
+                            </div>
+                            
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {item.description}
+                            </p>
+                            
+                            <div className="flex items-center mt-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-xs h-7"
+                                onClick={() => {
+                                  toast({
+                                    title: item.isEquipped ? "Item Unequipped" : "Item Equipped",
+                                    description: item.isEquipped 
+                                      ? `${item.name} has been removed.` 
+                                      : `${item.name} has been equipped.`,
+                                  });
+                                }}
+                              >
+                                {item.isEquipped ? 'Unequip' : 'Equip'}
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-xs h-7 ml-1"
+                                onClick={() => {
+                                  toast({
+                                    title: "Item Details",
+                                    description: item.description,
+                                  });
+                                }}
+                              >
+                                Details
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-4 border border-dashed border-border rounded-md">
+                        <p className="text-sm text-muted-foreground">No items in inventory</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Equipment Panel */}
+                {rightPanelTab === "equipment" && (
+                  <div>
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2">Equipped Attire</h4>
+                      <div className="space-y-2">
+                        <div className="p-2 border border-border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Armor</span>
+                            <span className="text-xs text-muted-foreground">
+                              {(currentCharacter.equipment as any)?.armor || "None"}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="p-2 border border-border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Main Weapon</span>
+                            <span className="text-xs text-muted-foreground">
+                              {(currentCharacter.equipment as any)?.weapons?.[0] || "None"}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="p-2 border border-border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Secondary Weapon</span>
+                            <span className="text-xs text-muted-foreground">
+                              {(currentCharacter.equipment as any)?.weapons?.[1] || "None"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Available Attire</h4>
+                      <div className="space-y-2">
+                        {(currentCharacter.equipment as any)?.inventory
+                          ?.filter((item: any) => item.type === "armor" || item.type === "weapon")
+                          .map((item: any, index: number) => (
+                          <div key={index} className="p-2 border border-border rounded-md">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{item.name}</span>
+                              <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                                {item.type}
+                              </span>
+                            </div>
+                            
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {item.description}
+                            </p>
+                            
+                            <div className="flex items-center mt-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-xs h-7"
+                                onClick={() => {
+                                  toast({
+                                    title: item.isEquipped ? "Item Unequipped" : "Item Equipped",
+                                    description: item.isEquipped 
+                                      ? `${item.name} has been removed.` 
+                                      : `${item.name} has been equipped.`,
+                                  });
+                                }}
+                              >
+                                {item.isEquipped ? 'Unequip' : 'Equip'}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {!(currentCharacter.equipment as any)?.inventory?.some((item: any) => 
+                          item.type === "armor" || item.type === "weapon"
+                        ) && (
+                          <div className="text-center p-4 border border-dashed border-border rounded-md">
+                            <p className="text-sm text-muted-foreground">No equippable items</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Spells Panel */}
+                {rightPanelTab === "spells" && (
+                  <div>
+                    <Tabs defaultValue="spells">
+                      <TabsList className="w-full mb-4">
+                        <TabsTrigger value="spells" className="flex-1">Spells</TabsTrigger>
+                        <TabsTrigger value="abilities" className="flex-1">Abilities</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="spells">
+                        {(currentCharacter.spells as any)?.length > 0 ? (
+                          <div className="space-y-2">
+                            {(currentCharacter.spells as any)?.map((spell: any, index: number) => (
+                              <div key={index} className="p-2 border border-border rounded-md">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">{spell.name}</span>
+                                  <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                                    Level {spell.level}
+                                  </span>
+                                </div>
+                                
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {spell.description}
+                                </p>
+                                
+                                <div className="flex items-center mt-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-xs h-7"
+                                    onClick={() => {
+                                      // Example action for casting a spell
+                                      const spellAction = `${currentCharacter.name} casts ${spell.name}`;
+                                      setPlayerInput(spellAction);
+                                    }}
+                                  >
+                                    Cast Spell
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center p-4 border border-dashed border-border rounded-md">
+                            <p className="text-sm text-muted-foreground">No spells available</p>
+                          </div>
+                        )}
+                      </TabsContent>
+                      
+                      <TabsContent value="abilities">
+                        {(currentCharacter.abilities as any)?.length > 0 ? (
+                          <div className="space-y-2">
+                            {(currentCharacter.abilities as any)?.map((ability: any, index: number) => (
+                              <div key={index} className="p-2 border border-border rounded-md">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">{ability.name}</span>
+                                </div>
+                                
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {ability.description}
+                                </p>
+                                
+                                <div className="flex items-center mt-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-xs h-7"
+                                    onClick={() => {
+                                      // Example action for using ability
+                                      const abilityAction = `${currentCharacter.name} uses ${ability.name}`;
+                                      setPlayerInput(abilityAction);
+                                    }}
+                                  >
+                                    Use Ability
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center p-4 border border-dashed border-border rounded-md">
+                            <p className="text-sm text-muted-foreground">No abilities available</p>
+                          </div>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
+                
+                {/* Map Panel */}
+                {rightPanelTab === "map" && (
+                  <div>
+                    <div className="mb-4 h-[300px] border border-border rounded-md overflow-hidden relative bg-muted">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {/* Map placeholder - in a real implementation this would be the actual map component */}
+                        <p className="text-sm text-muted-foreground">Adventure map would be displayed here</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium">Known Locations</h4>
+                      <div className="p-2 border border-border rounded-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Current Location</span>
+                          <span className="text-xs text-muted-foreground">
+                            {currentAdventure?.location || "Unknown"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="p-2 border border-border rounded-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Town</span>
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="text-xs p-0 h-auto"
+                            onClick={() => {
+                              toast({
+                                title: "View Location",
+                                description: "Viewing this location on the map",
+                              });
+                            }}
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="p-2 border border-border rounded-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Dungeon</span>
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="text-xs p-0 h-auto"
+                            onClick={() => {
+                              toast({
+                                title: "View Location",
+                                description: "Viewing this location on the map",
+                              });
+                            }}
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Battle Tracker Panel */}
+                {rightPanelTab === "battle" && (
+                  <div>
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2">Combat Status</h4>
+                      <div className="p-2 border border-border rounded-md bg-destructive/10">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Battle in Progress</span>
+                          <span className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full">
+                            Round 2
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2">Initiative Order</h4>
+                      <div className="space-y-1">
+                        <div className="p-2 border border-border rounded-md bg-primary/5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <span className="text-xs bg-primary text-white px-1.5 py-0.5 rounded-full mr-2">
+                                20
+                              </span>
+                              <span className="text-sm font-medium">{currentCharacter.name}</span>
+                            </div>
+                            <span className="text-xs text-primary font-medium">
+                              Current Turn
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="p-2 border border-border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full mr-2">
+                                15
+                              </span>
+                              <span className="text-sm font-medium">Goblin Archer</span>
+                            </div>
+                            <span className="text-xs text-destructive">
+                              Enemy
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="p-2 border border-border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full mr-2">
+                                12
+                              </span>
+                              <span className="text-sm font-medium">Goblin Warrior</span>
+                            </div>
+                            <span className="text-xs text-destructive">
+                              Enemy
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2">Available Actions</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-8 justify-start"
+                          onClick={() => {
+                            setPlayerInput("I attack the goblin archer with my sword");
+                          }}
+                        >
+                          <Sword className="mr-1 h-3 w-3" />
+                          Attack
+                        </Button>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-8 justify-start"
+                          onClick={() => {
+                            setPlayerInput("I cast a spell at the goblin warrior");
+                          }}
+                        >
+                          <HelpCircle className="mr-1 h-3 w-3" />
+                          Cast Spell
+                        </Button>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-8 justify-start"
+                          onClick={() => {
+                            setPlayerInput("I use a potion to heal myself");
+                          }}
+                        >
+                          <ShieldAlert className="mr-1 h-3 w-3" />
+                          Use Item
+                        </Button>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-8 justify-start"
+                          onClick={() => {
+                            setPlayerInput("I try to hide behind the rock");
+                          }}
+                        >
+                          <Backpack className="mr-1 h-3 w-3" />
+                          Other
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Battle Log</h4>
+                      <div className="h-48 overflow-y-auto border border-border rounded-md p-2 text-xs">
+                        <p className="text-muted-foreground mb-1">You rolled 18 (15 + 3) for initiative</p>
+                        <p className="text-muted-foreground mb-1">Battle begins!</p>
+                        <p className="text-muted-foreground mb-1">Goblin Archer attacks you and misses</p>
+                        <p className="text-muted-foreground mb-1">Goblin Warrior hits you for 3 damage</p>
+                        <p className="text-muted-foreground mb-1">It's now your turn</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Character Progression Panel */}
+                {rightPanelTab === "progression" && (
+                  <div>
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2">Level Progression</h4>
+                      <div className="p-2 border border-border rounded-md">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium">Current Level</span>
+                          <span className="text-xs text-primary font-medium">
+                            {currentCharacter.level}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-muted-foreground">Experience Points</span>
+                          <span className="text-xs text-muted-foreground">
+                            {(currentCharacter as any).experience || 0}/
+                            {currentCharacter.level * 300} XP
+                          </span>
+                        </div>
+                        
+                        <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                          <div 
+                            className="bg-primary h-full" 
+                            style={{ width: `${Math.min(100, ((currentCharacter as any).experience || 0) / (currentCharacter.level * 300) * 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2">Level-Up Hints</h4>
+                      <div className="p-3 border border-border rounded-md space-y-2">
+                        <p className="text-sm">
+                          <span className="font-medium">Gain Experience:</span> Complete quests, defeat enemies, 
+                          and solve puzzles to earn XP.
+                        </p>
+                        
+                        <p className="text-sm">
+                          <span className="font-medium">Skill Improvements:</span> At level {currentCharacter.level + 1}, 
+                          you'll be able to increase two ability scores by 1 point each.
+                        </p>
+                        
+                        <p className="text-sm">
+                          <span className="font-medium">New Abilities:</span> As a {currentCharacter.class}, 
+                          you'll gain access to new class features at level {currentCharacter.level + 1}.
+                        </p>
+                        
+                        <p className="text-sm">
+                          <span className="font-medium">Hit Points:</span> You'll gain additional hit points 
+                          based on your class and Constitution modifier.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Skill Development</h4>
+                      <div className="space-y-2">
+                        <div className="p-2 border border-border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Combat Skills</span>
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              className="text-xs p-0 h-auto"
+                              onClick={() => {
+                                toast({
+                                  title: "Skill Development",
+                                  description: "Practice combat techniques to improve your attack rolls and damage output.",
+                                });
+                              }}
+                            >
+                              Tips
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="p-2 border border-border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Magic & Spells</span>
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              className="text-xs p-0 h-auto"
+                              onClick={() => {
+                                toast({
+                                  title: "Skill Development",
+                                  description: "Study arcane knowledge and practice spellcasting to learn new spells and improve spell effectiveness.",
+                                });
+                              }}
+                            >
+                              Tips
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="p-2 border border-border rounded-md">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Social Interaction</span>
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              className="text-xs p-0 h-auto"
+                              onClick={() => {
+                                toast({
+                                  title: "Skill Development",
+                                  description: "Engage in conversations, negotiations, and diplomacy to improve your Charisma-based skills.",
+                                });
+                              }}
+                            >
+                              Tips
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           {/* Narrative Content - Scrollable Area */}
           <div 
             ref={narrativeRef}
