@@ -108,6 +108,26 @@ export interface IStorage {
   createCampaignInvitation(invitation: InsertCampaignInvitation): Promise<CampaignInvitation>;
   updateCampaignInvitation(id: number, status: string): Promise<CampaignInvitation | undefined>;
   deleteCampaignInvitation(id: number): Promise<boolean>;
+  
+  // Map location methods
+  getMapLocationsByCampaignId(campaignId: number): Promise<MapLocation[]>;
+  getMapLocation(id: string): Promise<MapLocation | undefined>;
+  createMapLocation(location: InsertMapLocation): Promise<MapLocation>;
+  updateMapLocation(id: string, location: Partial<MapLocation>): Promise<MapLocation | undefined>;
+  deleteMapLocation(id: string): Promise<boolean>;
+  
+  // Journey path methods
+  getJourneyPathsByCampaignId(campaignId: number): Promise<JourneyPath[]>;
+  getJourneyPath(id: string): Promise<JourneyPath | undefined>;
+  createJourneyPath(path: InsertJourneyPath): Promise<JourneyPath>;
+  updateJourneyPath(id: string, path: Partial<JourneyPath>): Promise<JourneyPath | undefined>;
+  deleteJourneyPath(id: string): Promise<boolean>;
+  
+  // Item management methods
+  addItemToCharacter(characterId: number, item: any): Promise<Character | undefined>;
+  removeItemFromCharacter(characterId: number, itemIndex: number): Promise<Character | undefined>;
+  transferItemBetweenCharacters(fromCharId: number, toCharId: number, itemIndex: number, quantity?: number): Promise<{from: Character, to: Character} | undefined>;
+  equipItemForCharacter(characterId: number, itemIndex: number, equip: boolean): Promise<Character | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
