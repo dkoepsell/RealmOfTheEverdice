@@ -32,6 +32,8 @@ import {
   Send, BookOpen, BookMarked, Map, Sword,
   ShieldAlert, Backpack, HelpCircle, Info
 } from "lucide-react";
+import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
+import { DndQuickReference } from "@/components/dnd-quick-reference";
 
 export default function CampaignPage() {
   // URL parameters
@@ -393,7 +395,8 @@ export default function CampaignPage() {
         case 'narrative':
           return (
             <div key={log.id} className="mb-6 text-lg leading-relaxed">
-              {log.content}
+              {/* Analyze narrative text for D&D terms and add tooltips */}
+              <DndTextAnalyzer text={log.content} showAsPopover={true} />
             </div>
           );
         case 'player':
@@ -465,22 +468,17 @@ export default function CampaignPage() {
               />
             </div>
             
-            {/* D&D Rules Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={() => {
-                toast({
-                  title: "D&D Mechanics",
-                  description: "Learn about D&D game mechanics here",
-                  variant: "default",
-                });
-              }}
-            >
-              <BookOpen className="h-4 w-4" />
-              <span className="hidden md:inline-block">D&D Rules</span>
-            </Button>
+            {/* D&D Rules Button with Quick Reference Panel */}
+            <DndQuickReference side="right" buttonText="D&D Rules">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <BookOpen className="h-4 w-4" />
+                <span className="hidden md:inline-block">D&D Rules</span>
+              </Button>
+            </DndQuickReference>
             
             <div className="hidden md:flex -space-x-2">
               {partyMembers.slice(0, 3).map(member => (
@@ -663,10 +661,10 @@ export default function CampaignPage() {
             <div className="max-w-prose mx-auto">
               {renderGameLogs()}
               
-              {/* If there are no logs yet, show some placeholder text */}
+              {/* If there are no logs yet, show some placeholder text with D&D tooltips */}
               {gameLogs.length === 0 && currentAdventure && (
                 <div className="text-lg leading-relaxed mb-6">
-                  {currentAdventure.description}
+                  <DndTextAnalyzer text={currentAdventure.description} showAsPopover={true} />
                 </div>
               )}
               
