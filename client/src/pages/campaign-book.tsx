@@ -757,6 +757,58 @@ export default function CampaignPage() {
             )}
           </div>
         </ResizablePanels>
+        
+        {/* Dice Roller Dialog */}
+        {showDiceRoller && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-medieval">Dice Roller</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0" 
+                  onClick={() => setShowDiceRoller(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <DiceRoller 
+                characterName={currentCharacter?.name || "Character"} 
+                characterModifiers={{
+                  STR: 2,
+                  DEX: 3,
+                  CON: 1,
+                  INT: 0,
+                  WIS: 2,
+                  CHA: 1
+                }}
+                onRollResult={(type, result, modifier, purpose, threshold) => {
+                  // Handle roll result
+                  addCampaignRoll({
+                    characterName: currentCharacter?.name || "Character",
+                    diceType: type,
+                    result: result,
+                    modifier: modifier || 0,
+                    total: result + (modifier || 0),
+                    purpose: purpose,
+                    threshold: threshold,
+                    success: threshold ? (result + (modifier || 0)) >= threshold : undefined,
+                    timestamp: new Date()
+                  });
+                  
+                  // Log the roll to the campaign
+                  createLogMutation.mutate({
+                    campaignId,
+                    content: `${currentCharacter?.name || "Character"} rolled ${result}${modifier ? ` + ${modifier} = ${result + modifier}` : ''} on a ${type}${purpose ? ` for ${purpose}` : ''}${threshold ? ` against DC ${threshold}` : ''}.`,
+                    type: "roll"
+                  });
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
