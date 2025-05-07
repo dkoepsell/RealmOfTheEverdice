@@ -35,6 +35,7 @@ export const characters = pgTable("characters", {
   equipment: json("equipment"),
   spells: json("spells"),
   abilities: json("abilities"),
+  isBot: boolean("is_bot").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow()
 });
 

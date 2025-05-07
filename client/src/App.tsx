@@ -13,6 +13,7 @@ import CampaignPage from "@/pages/campaign-book";
 import LearnPage from "@/pages/learn-page";
 import SocialPage from "@/pages/social-page";
 import SettingsPage from "@/pages/settings-page";
+import ProfilePage from "@/pages/profile-page";
 import TavernLobby from "@/pages/tavern-lobby";
 import AboutPage from "@/pages/about-page";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -32,6 +33,7 @@ function Router() {
       <ProtectedRoute path="/about" component={AboutPage} />
       <ProtectedRoute path="/social" component={SocialPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
+      <ProtectedRoute path="/profile" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>
   );
