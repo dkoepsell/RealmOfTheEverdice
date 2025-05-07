@@ -553,96 +553,99 @@ export default function CampaignPage() {
           
           {/* Main Book-Like Content Area */}
           <div className="h-full flex flex-col overflow-hidden bg-[#fffbf0] relative">
-            {/* Main content */}
-            <div className="flex-1 h-full overflow-auto p-4" ref={narrativeRef}>
-              {/* Game logs */}
-              <div className="max-w-3xl mx-auto">
-                {/* Game narration */}
-                {gameLogs.slice().reverse().map((log, index) => (
-                  <div key={log.id || index} className="mb-4">
-                    {log.type === "player" && (
-                      <div className="mb-2 text-right">
-                        <div className="inline-block bg-primary/10 text-primary rounded-lg py-2 px-3">
-                          <p>{log.content}</p>
+            {/* Main content with scrollable area */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {/* Scrollable narrative content */}
+              <div className="flex-1 overflow-auto p-4 pb-8" ref={narrativeRef}>
+                {/* Game logs */}
+                <div className="max-w-3xl mx-auto">
+                  {/* Game narration */}
+                  {gameLogs.slice().reverse().map((log, index) => (
+                    <div key={log.id || index} className="mb-4">
+                      {log.type === "player" && (
+                        <div className="mb-2 text-right">
+                          <div className="inline-block bg-primary/10 text-primary rounded-lg py-2 px-3">
+                            <p>{log.content}</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    
-                    {log.type === "narrative" && (
-                      <div className="prose prose-amber max-w-none">
-                        <p className="mb-4">{log.content}</p>
-                      </div>
-                    )}
-                    
-                    {log.type === "roll" && (
-                      <div className="mb-2">
-                        <div className="inline-block bg-muted rounded-lg py-2 px-3 text-sm">
-                          <p className="flex items-center">
-                            <DicesIcon className="h-4 w-4 mr-1 text-primary" />
-                            {log.content}
-                          </p>
+                      )}
+                      
+                      {log.type === "narrative" && (
+                        <div className="prose prose-amber max-w-none">
+                          <p className="mb-4">{log.content}</p>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Player input */}
-            <div className="p-4 border-t border-amber-200/50 bg-amber-50/30">
-              <div className="max-w-3xl mx-auto">
-                {/* Common Action Shortcuts */}
-                <div className="mb-3">
-                  <h3 className="text-sm font-medium mb-2">Quick Actions</h3>
-                  <div className="grid grid-cols-3 gap-1">
-                    {actionShortcuts.map(shortcut => (
-                      <Button
-                        key={shortcut.id}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-8 px-2"
-                        onClick={() => setPlayerInput(shortcut.action)}
-                      >
-                        {shortcut.icon === "sword" && <Sword className="mr-1 h-3 w-3" />}
-                        {shortcut.icon === "shield" && <ShieldCheck className="mr-1 h-3 w-3" />}
-                        {shortcut.icon === "wand" && <Wand2 className="mr-1 h-3 w-3" />}
-                        {shortcut.icon === "heart" && <Heart className="mr-1 h-3 w-3" />}
-                        {shortcut.icon === "eye" && <Eye className="mr-1 h-3 w-3" />}
-                        {shortcut.icon === "message-circle" && <MessageCircle className="mr-1 h-3 w-3" />}
-                        {shortcut.name}
-                      </Button>
-                    ))}
-                  </div>
+                      )}
+                      
+                      {log.type === "roll" && (
+                        <div className="mb-2">
+                          <div className="inline-block bg-muted rounded-lg py-2 px-3 text-sm">
+                            <p className="flex items-center">
+                              <DicesIcon className="h-4 w-4 mr-1 text-primary" />
+                              {log.content}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSubmitAction();
-                  }}
-                  className="flex gap-2"
-                >
-                  <Textarea 
-                    placeholder={`What will ${currentCharacter?.name || 'your character'} do next?`}
-                    value={playerInput}
-                    onChange={(e) => setPlayerInput(e.target.value)}
-                    className="flex-grow min-h-12 resize-none"
-                    disabled={isProcessing}
-                  />
-                  <Button 
-                    type="submit" 
-                    size="icon" 
-                    className="h-12 w-12"
-                    disabled={!playerInput.trim() || isProcessing}
+              </div>
+              
+              {/* Player input */}
+              <div className="p-4 border-t border-amber-200/50 bg-amber-50/30">
+                <div className="max-w-3xl mx-auto">
+                  {/* Common Action Shortcuts */}
+                  <div className="mb-3">
+                    <h3 className="text-sm font-medium mb-2">Quick Actions</h3>
+                    <div className="grid grid-cols-3 gap-1">
+                      {actionShortcuts.map(shortcut => (
+                        <Button
+                          key={shortcut.id}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-8 px-2"
+                          onClick={() => setPlayerInput(shortcut.action)}
+                        >
+                          {shortcut.icon === "sword" && <Sword className="mr-1 h-3 w-3" />}
+                          {shortcut.icon === "shield" && <ShieldCheck className="mr-1 h-3 w-3" />}
+                          {shortcut.icon === "wand" && <Wand2 className="mr-1 h-3 w-3" />}
+                          {shortcut.icon === "heart" && <Heart className="mr-1 h-3 w-3" />}
+                          {shortcut.icon === "eye" && <Eye className="mr-1 h-3 w-3" />}
+                          {shortcut.icon === "message-circle" && <MessageCircle className="mr-1 h-3 w-3" />}
+                          {shortcut.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSubmitAction();
+                    }}
+                    className="flex gap-2"
                   >
-                    {isProcessing ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <Send className="h-5 w-5" />
-                    )}
-                  </Button>
-                </form>
+                    <Textarea 
+                      placeholder={`What will ${currentCharacter?.name || 'your character'} do next?`}
+                      value={playerInput}
+                      onChange={(e) => setPlayerInput(e.target.value)}
+                      className="flex-grow min-h-12 resize-none"
+                      disabled={isProcessing}
+                    />
+                    <Button 
+                      type="submit" 
+                      size="icon" 
+                      className="h-12 w-12"
+                      disabled={!playerInput.trim() || isProcessing}
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Send className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </form>
+                </div>
               </div>
             </div>
             
