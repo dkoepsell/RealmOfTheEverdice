@@ -2290,13 +2290,13 @@ export default function CampaignPage() {
               {/* Common Action Shortcuts */}
               <div className="mb-3">
                 <h3 className="text-sm font-medium mb-2">Quick Actions</h3>
-                <div className="flex flex-wrap gap-1">
+                <div className="grid grid-cols-3 gap-1">
                   {actionShortcuts.map(shortcut => (
                     <Button
                       key={shortcut.id}
                       variant="outline"
                       size="sm"
-                      className="text-xs"
+                      className="text-xs h-8 px-2"
                       onClick={() => setPlayerInput(shortcut.action)}
                     >
                       {shortcut.icon === "sword" && <Sword className="mr-1 h-3 w-3" />}
