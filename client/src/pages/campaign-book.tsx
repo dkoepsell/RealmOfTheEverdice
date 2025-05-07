@@ -551,15 +551,20 @@ export default function CampaignPage() {
             </div>
           </div>
           
-          {/* Main Book-Like Content Area */}
-          <div className="h-full flex flex-col bg-[#fffbf0] relative">
+          {/* Main Book-Like Content Area - Set explicit height constraints at parent level */}
+          <div className="h-full flex flex-col bg-[#fffbf0] relative overflow-hidden">
             {/* Split the content into two sections: scrollable narrative at top, fixed controls at bottom */}
             
-            {/* Top scrollable narrative - fixed height with overflow scrolling */}
-            <div className="h-[calc(100%-180px)] overflow-hidden">
+            {/* Top scrollable narrative - Fixed percentage height - content will scale with viewport */}
+            <div className="h-[calc(100vh-350px)] min-h-[300px] overflow-hidden">
+              {/* Narrative content with explicit scrollbar */}
               <div 
-                className="h-full overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-amber-200 scrollbar-track-transparent" 
+                className="h-full overflow-y-scroll p-4 scrollbar scrollbar-thumb-amber-300 scrollbar-track-amber-50" 
                 ref={narrativeRef}
+                style={{
+                  scrollbarWidth: 'thin', // Firefox
+                  WebkitOverflowScrolling: 'touch', // iOS momentum scrolling
+                }}
               >
                 {/* Game logs */}
                 <div className="max-w-3xl mx-auto">
@@ -596,10 +601,10 @@ export default function CampaignPage() {
               </div>
             </div>
             
-            {/* Bottom fixed action bar - never scrolls */}
-            <div className="h-[180px] border-t border-amber-200/50 bg-amber-50/30">
-              <div className="h-full p-4">
-                <div className="max-w-3xl mx-auto h-full flex flex-col">
+            {/* Bottom fixed action bar - Never scrolls, auto-height based on content */}
+            <div className="border-t border-amber-200/50 bg-amber-50/30 flex-none">
+              <div className="p-4">
+                <div className="max-w-3xl mx-auto">
                   {/* Common Action Shortcuts */}
                   <div className="mb-3">
                     <h3 className="text-sm font-medium mb-2">Quick Actions</h3>
@@ -629,7 +634,7 @@ export default function CampaignPage() {
                       e.preventDefault();
                       handleSubmitAction();
                     }}
-                    className="flex gap-2 mt-auto"
+                    className="flex gap-2"
                   >
                     <Textarea 
                       placeholder={`What will ${currentCharacter?.name || 'your character'} do next?`}
