@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
 import { DndQuickReference } from "@/components/dnd-quick-reference";
+import InteractiveDiceSuggestions from "@/components/interactive-dice-suggestions";
 
 export default function CampaignPage() {
   // URL parameters

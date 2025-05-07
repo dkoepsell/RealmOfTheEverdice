@@ -3,6 +3,17 @@ import OpenAI from "openai";
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "missing_key" });
 
+// Helper function to safely parse JSON from OpenAI response
+function safeJsonParse(content: string | null | undefined) {
+  if (!content) return {};
+  try {
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("Error parsing JSON from OpenAI response:", error);
+    return {};
+  }
+}
+
 export interface AdventureGenerationOptions {
   theme?: string;
   setting?: string;
