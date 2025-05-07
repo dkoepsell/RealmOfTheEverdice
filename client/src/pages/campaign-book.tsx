@@ -37,6 +37,7 @@ import {
 import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
 import { DndQuickReference } from "@/components/dnd-quick-reference";
 import InteractiveDiceSuggestions from "@/components/interactive-dice-suggestions";
+import { LootPanel } from "@/components/loot-panel";
 
 export default function CampaignPage() {
   // URL parameters
