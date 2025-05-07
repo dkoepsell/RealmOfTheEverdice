@@ -709,6 +709,15 @@ export default function CampaignPage() {
                 </div>
               )}
               
+              {/* Interactive Dice Suggestions */}
+              {currentCharacter && gameLogs.length > 0 && gameLogs[0].type === 'narrative' && (
+                <InteractiveDiceSuggestions
+                  content={gameLogs[0].content}
+                  character={currentCharacter}
+                  onRollComplete={handleDiceRoll}
+                />
+              )}
+              
               {/* Show dice roller if enabled */}
               {showDiceRoller && (
                 <div className="my-6 p-4 border border-border rounded-lg bg-white">

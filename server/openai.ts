@@ -82,7 +82,7 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
       response_format: { type: "json_object" }
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    return safeJsonParse(response.choices[0].message.content);
   } catch (error) {
     console.error("Error generating adventure:", error);
     throw new Error("Failed to generate adventure");
@@ -211,7 +211,7 @@ export async function generateNPC(options: NPCGenerationOptions = {}) {
       response_format: { type: "json_object" }
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    return safeJsonParse(response.choices[0].message.content);
   } catch (error) {
     console.error("Error generating NPC:", error);
     throw new Error("Failed to generate NPC");
@@ -276,7 +276,7 @@ These alignments should be presented as nuanced positions, not just simple label
       temperature: 0.8 // Add more creative variation
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    return safeJsonParse(response.choices[0].message.content);
   } catch (error) {
     console.error("Error generating character:", error);
     throw new Error("Failed to generate character");
@@ -358,7 +358,7 @@ Create a detailed and unique D&D campaign setting that supports this open-world 
       temperature: 0.8,
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    return safeJsonParse(response.choices[0].message.content);
   } catch (error) {
     console.error("Error generating campaign:", error);
     throw new Error("Failed to generate campaign");
