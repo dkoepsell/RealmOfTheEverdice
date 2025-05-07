@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useCampaignDiceHistory } from "@/hooks/use-dice-history";
 import { 
@@ -40,6 +41,8 @@ import {
 import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
 import { DndQuickReference } from "@/components/dnd-quick-reference";
 import InteractiveDiceSuggestions from "@/components/interactive-dice-suggestions";
+import { InventoryManagement } from "@/components/inventory-management";
+import { AdventureMapPanel } from "@/components/adventure-map-panel";
 
 export default function CampaignPage() {
   // URL parameters
@@ -628,6 +631,41 @@ export default function CampaignPage() {
                         </Button>
                       ))}
                     </div>
+                    
+                    {/* Tabletop Tools */}
+                    <div className="flex justify-center items-center gap-2 mt-2">
+                      {/* Inventory Management */}
+                      {currentCharacter && (
+                        <InventoryManagement 
+                          characterId={currentCharacter.id}
+                          campaignId={campaignId}
+                          character={currentCharacter}
+                          campaignCharacters={campaignCharacters || []}
+                          onItemUpdate={() => {
+                            queryClient.invalidateQueries({ queryKey: [`/api/characters/${currentCharacter.id}`] });
+                          }}
+                        />
+                      )}
+                      
+                      {/* Adventure Map */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => setRightPanelTab(rightPanelTab === "map" ? null : "map")}
+                              className="h-8 w-8"
+                            >
+                              <Map className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Adventure Map</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                   
                   <form 
@@ -743,6 +781,20 @@ export default function CampaignPage() {
                         )}
                       </div>
                     </div>
+                  )}
+                  
+                  {rightPanelTab === "map" && (
+                    <AdventureMapPanel 
+                      campaignId={campaignId}
+                      isDm={campaign?.dmId === user?.id}
+                      onLocationClick={(location) => {
+                        // Handle location click - could generate description or reveal info
+                        toast({
+                          title: location.name,
+                          description: location.description || "A mysterious location on your adventure map.",
+                        });
+                      }}
+                    />
                   )}
                   
                   {rightPanelTab === "companion" && (
