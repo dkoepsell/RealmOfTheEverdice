@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Card } from "@/components/ui/card";
 import { DicesIcon, Info, Award, Shield, Brain, Heart } from "lucide-react";
 import { Character, GameLog } from "@shared/schema";
@@ -355,24 +355,26 @@ export default function InteractiveDiceSuggestions({
             </span>
           </Button>
           
-          <Tooltip>
-            <TooltipTrigger>
-              <Info className="h-4 w-4 ml-2 text-muted-foreground" />
-            </TooltipTrigger>
-            <TooltipContent className="max-w-sm">
-              <p>
-                Roll a {suggestion.diceType} for {suggestion.type}
-                {suggestion.ability
-                  ? ` (${suggestion.ability}) with modifier: ${getModifier(suggestion.ability)}`
-                  : ""
-                }
-                {suggestion.dc
-                  ? `. You need to meet or exceed ${suggestion.dc} to succeed.`
-                  : ""
-                }
-              </p>
-            </TooltipContent>
-          </Tooltip>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                <p>
+                  Roll a {suggestion.diceType} for {suggestion.type}
+                  {suggestion.ability
+                    ? ` (${suggestion.ability}) with modifier: ${getModifier(suggestion.ability)}`
+                    : ""
+                  }
+                  {suggestion.dc
+                    ? `. You need to meet or exceed ${suggestion.dc} to succeed.`
+                    : ""
+                  }
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       ))}
     </div>

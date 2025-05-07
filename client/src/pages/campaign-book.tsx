@@ -845,8 +845,9 @@ export default function CampaignPage() {
                     Dice Roller
                   </h3>
                   <DiceRoller
-                    onRoll={handleDiceRoll}
-                    character={currentCharacter}
+                    characterName={currentCharacter.name}
+                    onRollResult={handleDiceRoll}
+                    characterModifiers={currentCharacter.stats as any}
                   />
                 </div>
               )}
