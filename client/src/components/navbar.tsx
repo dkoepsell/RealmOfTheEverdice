@@ -13,7 +13,11 @@ import {
 import { Menu, X, Bell, ChevronDown, User, LogOut, Users } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export const Navbar = () => {
+interface NavbarProps {
+  showBackButton?: boolean;
+}
+
+export const Navbar = ({ showBackButton = false }: NavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();

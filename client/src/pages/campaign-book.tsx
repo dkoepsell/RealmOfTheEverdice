@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Adventure, Campaign, GameLog, Character } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/navbar";
@@ -183,6 +184,20 @@ export default function CampaignPage() {
       setSelectedCharacterId(campaignCharacters[0].id);
     }
   }, [campaignCharacters, selectedCharacterId]);
+  
+  // Handle DM mode toggle
+  const handleDmModeToggle = () => {
+    setIsAutoDmMode(prevMode => !prevMode);
+    
+    // Notify the user about the DM mode change
+    toast({
+      title: isAutoDmMode ? "Human DM Mode Activated" : "Auto-DM Mode Activated",
+      description: isAutoDmMode 
+        ? "A human Dungeon Master will now control the narrative." 
+        : "The AI Dungeon Master will now guide your adventure.",
+      variant: "default",
+    });
+  };
 
   // Scroll to the bottom when new logs are added
   useEffect(() => {

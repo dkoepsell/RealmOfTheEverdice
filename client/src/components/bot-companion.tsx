@@ -25,7 +25,9 @@ import { useToast } from "@/hooks/use-toast";
 
 interface BotCompanionProps {
   campaignId: number;
+  characterName?: string;
   className?: string;
+  compendiumMode?: boolean;
 }
 
 interface BotMessage {
@@ -64,7 +66,7 @@ const BOT_COMPANIONS = [
   }
 ];
 
-export function BotCompanion({ campaignId, className = "" }: BotCompanionProps) {
+export function BotCompanion({ campaignId, characterName, compendiumMode = false, className = "" }: BotCompanionProps) {
   const [selectedBot, setSelectedBot] = useState(BOT_COMPANIONS[0]);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
