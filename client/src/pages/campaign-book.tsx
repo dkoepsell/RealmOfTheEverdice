@@ -10,6 +10,7 @@ import { GameArea } from "@/components/game-area";
 import { WorldInfoPanel } from "@/components/world-info-panel";
 import { CampaignChat } from "@/components/campaign-chat";
 import { DiceRoller, DiceType } from "@/components/dice-roll";
+import { BotCompanion } from "@/components/bot-companion";
 import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results";
 import { AddCharacterDialog } from "@/components/add-character-dialog";
 import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
