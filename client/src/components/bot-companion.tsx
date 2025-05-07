@@ -91,8 +91,13 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
 
   // Create bot companion mutation
   const createBotMutation = useMutation({
-    mutationFn: async (botInfo: { name: string, role: string, campaignId: number }) => {
-      const res = await apiRequest("POST", "/api/bot-companions", botInfo);
+    mutationFn: async (botInfo: { name: string, role: string }) => {
+      const res = await apiRequest("POST", "/api/bot-companion/create", {
+        name: botInfo.name,
+        campaignId: campaignId,
+        race: "Human", // Default race
+        class: botInfo.role
+      });
       return await res.json();
     },
     onSuccess: () => {
@@ -361,15 +366,41 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
                 <CardContent className="p-3">
                   <div className="space-y-2">
                     <Input 
+                      id="companion-name"
                       placeholder="Companion Name" 
                       className="bg-white/80 border-amber-200"
                     />
                     <Input 
+                      id="companion-role"
                       placeholder="Role (e.g., Loremaster, Rule Expert)" 
                       className="bg-white/80 border-amber-200"
                     />
                     <div className="flex justify-end">
-                      <Button size="sm" disabled={createBotMutation.isPending}>
+                      <Button 
+                        size="sm" 
+                        disabled={createBotMutation.isPending}
+                        onClick={() => {
+                          const nameInput = document.getElementById('companion-name') as HTMLInputElement;
+                          const roleInput = document.getElementById('companion-role') as HTMLInputElement;
+                          
+                          if (nameInput && roleInput && nameInput.value && roleInput.value) {
+                            createBotMutation.mutate({
+                              name: nameInput.value,
+                              role: roleInput.value
+                            });
+                            
+                            // Clear inputs after submission
+                            nameInput.value = '';
+                            roleInput.value = '';
+                          } else {
+                            toast({
+                              title: "Missing information",
+                              description: "Please provide both a name and role for your companion",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                      >
                         <Sparkles className="h-4 w-4 mr-1" />
                         Create
                       </Button>
