@@ -64,14 +64,14 @@ export const Navbar = () => {
               </Link>
             </div>
             <div className="hidden sm:block sm:ml-6">
-              <div className="flex space-x-4">
+              <div className="flex">
                 {navItems.map((item) => (
                   <Link key={item.name} href={item.href}>
                     <a
-                      className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      className={`px-4 py-2 text-sm font-medium border-b-2 ${
                         location === item.href
-                          ? "bg-primary text-parchment"
-                          : "text-parchment hover:bg-secondary hover:text-white"
+                          ? "border-accent text-accent-foreground font-bold"
+                          : "border-transparent text-parchment/90 hover:text-white hover:border-parchment/30"
                       }`}
                     >
                       {item.icon}{item.name}
