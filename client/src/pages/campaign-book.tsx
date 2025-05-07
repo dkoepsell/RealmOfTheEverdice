@@ -664,7 +664,10 @@ export default function CampaignPage() {
               {/* If there are no logs yet, show some placeholder text with D&D tooltips */}
               {gameLogs.length === 0 && currentAdventure && (
                 <div className="text-lg leading-relaxed mb-6">
-                  <DndTextAnalyzer text={currentAdventure.description} showAsPopover={true} />
+                  <DndTextAnalyzer 
+                    text={currentAdventure.description || "Your adventure begins..."} 
+                    showAsPopover={true} 
+                  />
                 </div>
               )}
               

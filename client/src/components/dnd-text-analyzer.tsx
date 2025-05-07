@@ -177,7 +177,7 @@ export function DndTextAnalyzer({ text, showAsPopover = false }: DndTextAnalyzer
       );
     }
 
-    return <>{result}</>;
+    return result;
   };
 
   return <div className="dnd-analyzed-text">{renderTextWithTooltips()}</div>;
