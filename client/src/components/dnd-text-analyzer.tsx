@@ -148,9 +148,9 @@ export function DndTextAnalyzer({ text, showAsPopover = false }: DndTextAnalyzer
       // Add text before the match
       if (match.index > lastEnd) {
         result.push(
-          <React.Fragment key={`text-${index}`}>
+          <span key={`text-${index}`}>
             {text.substring(lastEnd, match.index)}
-          </React.Fragment>
+          </span>
         );
       }
 
@@ -171,9 +171,9 @@ export function DndTextAnalyzer({ text, showAsPopover = false }: DndTextAnalyzer
     // Add any remaining text after the last match
     if (lastEnd < text.length) {
       result.push(
-        <React.Fragment key="text-end">
+        <span key="text-end">
           {text.substring(lastEnd)}
-        </React.Fragment>
+        </span>
       );
     }
 
