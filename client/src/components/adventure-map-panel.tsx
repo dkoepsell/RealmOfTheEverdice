@@ -330,11 +330,11 @@ export function AdventureMapPanel({
                     <div>
                       <h4 className="font-semibold text-sm uppercase text-muted-foreground mb-1">Quests</h4>
                       <ul className="space-y-2">
-                        {selectedLocation.quests.map(quest => (
+                        {selectedLocation.quests.map((quest: {id: number, name: string, completed: boolean}) => (
                           <li key={quest.id} className="text-sm border rounded-md p-2 flex items-center">
                             <ScrollText className="h-4 w-4 mr-2 flex-shrink-0 text-amber-500" />
                             <span>{quest.name}</span>
-                            <Badge variant={quest.completed ? "success" : "outline"} className="ml-auto">
+                            <Badge variant={quest.completed ? "outline" : "secondary"} className="ml-auto">
                               {quest.completed ? "Completed" : "Active"}
                             </Badge>
                           </li>

@@ -376,6 +376,18 @@ export type CharacterEquipment = {
   weapons: string[];
   armor: string;
   items: string[];
+  inventory: Array<{
+    slot: number;
+    name: string;
+    description: string;
+    quantity: number;
+    weight?: number; 
+    value?: number;
+    isEquipped: boolean;
+    type: "weapon" | "armor" | "potion" | "scroll" | "tool" | "trinket" | "quest" | "miscellaneous";
+    properties?: string[];
+    rarity?: "common" | "uncommon" | "rare" | "very rare" | "legendary" | "artifact";
+  }>;
 };
 
 export type CharacterSpell = {
