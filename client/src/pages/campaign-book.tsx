@@ -37,7 +37,6 @@ import {
 import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
 import { DndQuickReference } from "@/components/dnd-quick-reference";
 import InteractiveDiceSuggestions from "@/components/interactive-dice-suggestions";
-import { LootPanel } from "@/components/loot-panel";
 
 export default function CampaignPage() {
   // URL parameters
@@ -1433,16 +1432,53 @@ export default function CampaignPage() {
                       </TabsList>
                       
                       <TabsContent value="inventory">
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <span className="text-sm font-medium">Items</span>
-                            <span className="text-xs text-muted-foreground ml-2">
-                              ({((currentCharacter.equipment as any)?.inventory?.length || 0)} / 20 slots)
-                            </span>
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <span className="text-sm font-medium">Items</span>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                ({((currentCharacter.equipment as any)?.inventory?.length || 0)} / 20 slots)
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
-                            Weight: {calculateInventoryWeight()} / {calculateCarryingCapacity()} lbs
-                          </span>
+                          
+                          {/* Carrying capacity indicator */}
+                          <div className="p-2 border border-border rounded-md bg-muted/10 mb-3">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-medium">Carrying Weight:</span>
+                              <span className={`text-xs ${
+                                Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) * 0.8
+                                  ? 'text-destructive font-medium'
+                                  : Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) * 0.5
+                                    ? 'text-amber-600'
+                                    : ''
+                              }`}>
+                                {calculateInventoryWeight()} / {calculateCarryingCapacity()} lbs
+                              </span>
+                            </div>
+                            <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full ${
+                                  Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) * 0.8
+                                    ? 'bg-destructive' 
+                                    : Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) * 0.5
+                                      ? 'bg-amber-500'
+                                      : 'bg-primary'
+                                }`}
+                                style={{ 
+                                  width: `${Math.min(100, (Number(calculateInventoryWeight()) / Number(calculateCarryingCapacity())) * 100)}%` 
+                                }}
+                              ></div>
+                            </div>
+                            <div className="mt-1">
+                              <span className="text-xs text-muted-foreground">Based on {getStatModifier('strength') > 0 ? '+' : ''}{getStatModifier('strength')} STR modifier</span>
+                              {Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) && (
+                                <p className="text-xs text-destructive mt-1">
+                                  Encumbered: Your movement speed is reduced and you have disadvantage on ability checks, attack rolls, and saving throws that use Strength, Dexterity, or Constitution.
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                         
                         {(currentCharacter.equipment as any)?.inventory?.length > 0 ? (
@@ -1521,64 +1557,106 @@ export default function CampaignPage() {
                       </TabsContent>
                       
                       <TabsContent value="loot">
-                        <div className="mb-3 flex items-center justify-between">
-                          <h4 className="text-sm font-medium">Available Loot</h4>
-                          {availableLoot.length > 0 && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-xs h-7"
-                              onClick={handleTakeAllLoot}
-                            >
-                              Take All
-                            </Button>
-                          )}
-                        </div>
-                        
-                        {availableLoot.length > 0 ? (
-                          <div className="space-y-2">
-                            {availableLoot.map((item, index) => (
-                              <div key={index} className="p-2 border border-border rounded-md">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium">{item.name}</span>
-                                  <div className="flex items-center">
-                                    <span className="text-xs text-muted-foreground mr-2">
-                                      {item.weight ? `${item.weight} lbs` : ''}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {item.quantity > 1 ? `x${item.quantity}` : ''}
+                        <div>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h4 className="text-sm font-medium">Available Loot</h4>
+                            {availableLoot.length > 0 && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-xs h-7"
+                                onClick={handleTakeAllLoot}
+                              >
+                                <Backpack className="mr-1 h-3 w-3" />
+                                Take All
+                              </Button>
+                            )}
+                          </div>
+                          
+                          {availableLoot.length > 0 ? (
+                            <div>
+                              {/* Weight calculation warning */}
+                              <div className="mb-3 p-2 border border-border rounded-md bg-muted/20">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <span className="text-xs font-medium">Current Weight:</span>
+                                    <span className="text-xs ml-1">{calculateInventoryWeight()} lbs</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-xs font-medium">Weight After Taking All:</span>
+                                    <span className={`text-xs ml-1 ${
+                                      Number(calculateInventoryWeight()) + availableLoot.reduce((total, item) => 
+                                        total + ((item.weight || 0) * (item.quantity || 1)), 0) > 
+                                        Number(calculateCarryingCapacity()) ? 'text-destructive font-medium' : ''
+                                    }`}>
+                                      {(Number(calculateInventoryWeight()) + availableLoot.reduce((total, item) => 
+                                        total + ((item.weight || 0) * (item.quantity || 1)), 0)).toFixed(1)} / {calculateCarryingCapacity()} lbs
                                     </span>
                                   </div>
                                 </div>
                                 
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {item.description || 'No description available'}
-                                </p>
-                                
-                                <div className="flex justify-between mt-2">
-                                  <span className="text-xs text-muted-foreground">
-                                    Source: {item.source}
-                                  </span>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="text-xs h-7"
-                                    onClick={() => handleTakeLootItem(item)}
-                                  >
-                                    Take
-                                  </Button>
-                                </div>
+                                {/* Warning if taking all would exceed capacity */}
+                                {Number(calculateInventoryWeight()) + availableLoot.reduce((total, item) => 
+                                  total + ((item.weight || 0) * (item.quantity || 1)), 0) > 
+                                  Number(calculateCarryingCapacity()) && (
+                                  <p className="text-xs text-destructive mt-1">
+                                    Warning: Taking all items will exceed your carrying capacity. You'll be encumbered and move slower.
+                                  </p>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center p-4 border border-dashed border-border rounded-md">
-                            <p className="text-sm text-muted-foreground">No loot available</p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Loot will appear here when you defeat enemies or find treasure
-                            </p>
-                          </div>
-                        )}
+                          
+                              <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {availableLoot.map((item, i) => (
+                                  <div key={i} className="p-2 border border-border rounded-md">
+                                    <div className="flex justify-between">
+                                      <div>
+                                        <div className="text-sm font-medium">
+                                          {item.name}
+                                          {item.quantity > 1 && (
+                                            <span className="ml-1 text-xs text-muted-foreground">
+                                              x{item.quantity}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          {item.description || "No description available"}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          Source: {item.source}
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-col items-end text-xs">
+                                        {item.type && <span className="text-muted-foreground capitalize">{item.type}</span>}
+                                        {item.weight && <span className="text-muted-foreground">{item.weight} lbs</span>}
+                                        {item.value && <span className="text-amber-600">{item.value} gold</span>}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="mt-2 flex justify-end">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="text-xs h-7"
+                                        onClick={() => handleTakeLootItem(item)}
+                                      >
+                                        Take Item
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="border border-border rounded-md p-4">
+                              <div className="text-center">
+                                <p className="text-sm text-muted-foreground">No loot available</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Defeat enemies or find treasures to collect loot
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </TabsContent>
                     </Tabs>
                   </div>
