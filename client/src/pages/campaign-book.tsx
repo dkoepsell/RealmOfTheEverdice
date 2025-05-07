@@ -1162,6 +1162,17 @@ export default function CampaignPage() {
               </Button>
             </DndQuickReference>
             
+            {/* Bot Companion Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={() => setRightPanelTab(rightPanelTab === "companion" ? null : "companion")}
+            >
+              <Bot className="h-4 w-4" />
+              <span className="hidden md:inline-block">Companion</span>
+            </Button>
+            
             <div className="hidden md:flex -space-x-2">
               {partyMembers.slice(0, 3).map(member => (
                 <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
@@ -1412,6 +1423,7 @@ export default function CampaignPage() {
                     {rightPanelTab === "map" && "Adventure Map"}
                     {rightPanelTab === "battle" && "Battle Tracker"}
                     {rightPanelTab === "progression" && "Character Progression"}
+                    {rightPanelTab === "companion" && "Bot Companion"}
                   </h3>
                   <Button 
                     variant="ghost" 
