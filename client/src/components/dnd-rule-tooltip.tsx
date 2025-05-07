@@ -317,7 +317,7 @@ export function DndRuleTooltip({
   const rule = ruleContents[ruleType];
   const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false);
   
-  if (!rule) return <>{children}</>;
+  if (!rule) return <span>{children}</span>;
   
   // Simple tooltip for shorter explanations
   if (!showAsPopover) {
@@ -394,13 +394,13 @@ export function DndRuleTooltip({
               <CollapsibleTrigger asChild>
                 <Button variant="link" size="sm" className="p-0 text-xs flex items-center">
                   {isCollapsibleOpen ? (
-                    <>
+                    <span>
                       <ChevronDown className="h-3 w-3 mr-1" /> Less
-                    </>
+                    </span>
                   ) : (
-                    <>
+                    <span>
                       <ChevronRight className="h-3 w-3 mr-1" /> Details
-                    </>
+                    </span>
                   )}
                 </Button>
               </CollapsibleTrigger>
