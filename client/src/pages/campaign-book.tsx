@@ -282,19 +282,25 @@ export default function CampaignPage() {
 
   // Calculate inventory weight
   const calculateInventoryWeight = () => {
-    if (!currentCharacter?.equipment?.inventory) return 0;
+    if (!currentCharacter?.equipment || !(currentCharacter.equipment as any)?.inventory) return 0;
     
-    return (currentCharacter.equipment.inventory as any[]).reduce((total, item) => {
+    // Safely cast to the expected type or use empty array as fallback
+    const inventory = ((currentCharacter.equipment as any).inventory as any[] || []);
+    
+    return inventory.reduce((total, item) => {
       return total + (item.weight || 0) * item.quantity;
     }, 0).toFixed(1);
   };
   
   // Calculate carrying capacity based on strength
   const calculateCarryingCapacity = () => {
-    if (!currentCharacter?.stats?.strength) return 0;
+    if (!currentCharacter?.stats) return 0;
+    
+    // Safely access strength or default to 10 if not found
+    const strength = (currentCharacter.stats as any)?.strength || 10;
     
     // D&D 5e carrying capacity is strength score × 15 in pounds
-    return (currentCharacter.stats.strength * 15).toFixed(0);
+    return (strength * 15).toFixed(0);
   };
 
   // Loading state
@@ -412,7 +418,7 @@ export default function CampaignPage() {
                   >
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={character.avatarUrl || ""} alt={character.name} />
+                        <AvatarImage src={(character as any).avatarUrl || ""} alt={character.name} />
                         <AvatarFallback className="text-xs">
                           {character.name?.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
@@ -698,7 +704,7 @@ export default function CampaignPage() {
                       
                       {/* Inventory items list */}
                       <div className="space-y-2">
-                        {currentCharacter?.equipment?.inventory?.map((item: any, index: number) => (
+                        {((currentCharacter?.equipment as any)?.inventory || [])?.map((item: any, index: number) => (
                           <div key={index} className="p-2 border border-border rounded-md bg-background">
                             <div className="flex justify-between">
                               <div className="font-medium">{item.name}</div>
@@ -712,8 +718,9 @@ export default function CampaignPage() {
                           </div>
                         ))}
                         
-                        {(!currentCharacter?.equipment?.inventory || 
-                          currentCharacter.equipment.inventory.length === 0) && (
+                        {(!currentCharacter?.equipment || 
+                          !(currentCharacter.equipment as any)?.inventory || 
+                          ((currentCharacter.equipment as any)?.inventory || []).length === 0) && (
                           <div className="text-center p-4 text-muted-foreground">
                             <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                             <p>Your inventory is empty</p>
