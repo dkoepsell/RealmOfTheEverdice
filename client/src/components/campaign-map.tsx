@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   MapContainer, 
   TileLayer, 
@@ -7,10 +7,10 @@ import {
   useMapEvents, 
   LayerGroup,
   CircleMarker,
-  Tooltip,
+  Tooltip as LeafletTooltip,
   Polyline
 } from 'react-leaflet';
-import { Icon, LatLngExpression, DivIcon } from 'leaflet';
+import { Icon, LatLngExpression, DivIcon, Map as LeafletMap } from 'leaflet';
 import { Button } from '@/components/ui/button';
 import { 
   Map, 
@@ -18,8 +18,7 @@ import {
   Castle, 
   Sword, 
   Skull, 
-  Treasure,
-  Tree,
+  Coins,
   Mountain,
   Home,
   Ship,
@@ -48,7 +47,7 @@ export type MapMarkerType =
   | 'landmark'
   | 'player';
 
-interface MapMarker {
+export interface MapMarker {
   id: string;
   type: MapMarkerType;
   name: string;
@@ -57,9 +56,15 @@ interface MapMarker {
   discovered: boolean;
   completed?: boolean;
   iconUrl?: string;
+  notes?: string;
+  quests?: Array<{
+    id: number;
+    name: string;
+    completed: boolean;
+  }>;
 }
 
-interface JourneyPath {
+export interface JourneyPath {
   id: string;
   name: string;
   points: [number, number][];
@@ -130,7 +135,7 @@ export function CampaignMap({
       city: <Castle className={`${discovered ? 'text-purple-700' : 'text-gray-400'} ${completed ? 'opacity-60' : 'opacity-100'}`} />,
       dungeon: <Skull className={`${discovered ? 'text-red-600' : 'text-gray-400'} ${completed ? 'opacity-60' : 'opacity-100'}`} />,
       battle: <Sword className={`${discovered ? 'text-orange-600' : 'text-gray-400'} ${completed ? 'opacity-60' : 'opacity-100'}`} />,
-      quest: <Treasure className={`${discovered ? 'text-amber-500' : 'text-gray-400'} ${completed ? 'opacity-60' : 'opacity-100'}`} />,
+      quest: <Coins className={`${discovered ? 'text-amber-500' : 'text-gray-400'} ${completed ? 'opacity-60' : 'opacity-100'}`} />,
       landmark: <Mountain className={`${discovered ? 'text-green-700' : 'text-gray-400'} ${completed ? 'opacity-60' : 'opacity-100'}`} />,
       player: <MapPin className="text-primary animate-pulse" />
     };
@@ -230,7 +235,7 @@ export function CampaignMap({
             opacity={0.7}
             dashArray="6, 8"
           >
-            <Tooltip sticky>{path.name}</Tooltip>
+            <LeafletTooltip sticky>{path.name}</LeafletTooltip>
           </Polyline>
         ))}
         
@@ -275,7 +280,7 @@ export function CampaignMap({
                 })
               }
             >
-              <Tooltip>{marker.name}</Tooltip>
+              <LeafletTooltip>{marker.name}</LeafletTooltip>
             </Marker>
           ))}
           
@@ -291,7 +296,7 @@ export function CampaignMap({
                 weight: 2 
               }}
             >
-              <Tooltip permanent>You are here</Tooltip>
+              <LeafletTooltip permanent>You are here</LeafletTooltip>
             </CircleMarker>
           )}
         </LayerGroup>
