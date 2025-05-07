@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Menu, X, Bell, ChevronDown, User, LogOut, Users } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -82,8 +83,11 @@ export const Navbar = () => {
             </div>
           </div>
 
-          {/* Right side icons - notifications and profile */}
+          {/* Right side icons - theme toggle, notifications, and profile */}
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+            <div className="mr-2">
+              <ThemeToggle />
+            </div>
             <Button
               variant="ghost"
               size="icon"
