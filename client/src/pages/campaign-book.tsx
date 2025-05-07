@@ -30,7 +30,9 @@ import {
   MessageSquare, DicesIcon, Vote, Split, 
   ClipboardList, ScrollTextIcon, Menu, X,
   Send, BookOpen, BookMarked, Map, Sword,
-  ShieldAlert, Backpack, HelpCircle, Info
+  ShieldAlert, Backpack, HelpCircle, Info,
+  Shield, ShieldCheck, Wand2, Heart, Eye, EyeOff,
+  MoveRight, Package, MessageCircle
 } from "lucide-react";
 import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
 import { DndQuickReference } from "@/components/dnd-quick-reference";
@@ -805,10 +807,21 @@ export default function CampaignPage() {
   
   // Calculate maximum carrying capacity based on strength
   const calculateCarryingCapacity = () => {
-    if (!currentCharacter?.stats) return 10;
+    if (!currentCharacter?.stats) return 150; // Default to strength 10 capacity
     
-    const strength = (currentCharacter.stats as any)?.strength || 10;
+    // Safely access strength with fallbacks
+    const stats = currentCharacter.stats as Record<string, any>;
+    const strength = typeof stats.strength === 'number' ? stats.strength : 10;
     return (strength * 15).toFixed(0); // D&D 5e carrying capacity formula
+  };
+  
+  // Get stat modifier safely
+  const getStatModifier = (statName: string): number => {
+    if (!currentCharacter?.stats) return 0;
+    
+    const stats = currentCharacter.stats as Record<string, any>;
+    const statValue = typeof stats[statName] === 'number' ? stats[statName] : 10;
+    return Math.floor((statValue - 10) / 2);
   };
   
   // Handle dropping an item
