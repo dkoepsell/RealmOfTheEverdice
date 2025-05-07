@@ -904,7 +904,7 @@ export default function CampaignPage() {
                     total: result + (modifier || 0),
                     purpose: purpose,
                     threshold: threshold,
-                    success: threshold ? (result + (modifier || 0)) >= threshold : undefined,
+                    isSuccess: threshold ? (result + (modifier || 0)) >= threshold : undefined,
                     timestamp: new Date()
                   });
                   
