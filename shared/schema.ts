@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, json, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, json, timestamp, primaryKey, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -267,7 +267,10 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
   npcs: many(npcs),
   gameLogs: many(gameLogs),
   chatMessages: many(chatMessages),
-  invitations: many(campaignInvitations)
+  invitations: many(campaignInvitations),
+  mapLocations: many(mapLocations),
+  journeyPaths: many(journeyPaths),
+  currentLocation: one(campaignCurrentLocations)
 }));
 
 export const campaignCharactersRelations = relations(campaignCharacters, ({ one }) => ({
@@ -385,3 +388,86 @@ export type CharacterAbility = {
   name: string;
   description: string;
 };
+
+// Map Locations model
+export const mapLocations = pgTable("map_locations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: integer("campaign_id").notNull(),
+  type: text("type").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  notes: text("notes"),
+  position: json("position").$type<[number, number]>().notNull(),
+  discovered: boolean("discovered").notNull().default(false),
+  completed: boolean("completed").notNull().default(false),
+  iconUrl: text("icon_url"),
+  quests: json("quests").$type<Array<{
+    id: number;
+    name: string;
+    completed: boolean;
+  }>>(),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const mapLocationsRelations = relations(mapLocations, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [mapLocations.campaignId],
+    references: [campaigns.id]
+  })
+}));
+
+export type MapLocation = typeof mapLocations.$inferSelect;
+export type InsertMapLocation = z.infer<typeof insertMapLocationSchema>;
+export const insertMapLocationSchema = createInsertSchema(mapLocations).omit({
+  id: true,
+  createdAt: true
+});
+
+// Journey Paths model
+export const journeyPaths = pgTable("journey_paths", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: integer("campaign_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  points: json("points").$type<[number, number][]>().notNull(),
+  color: text("color").notNull().default("#3b82f6"),
+  completed: boolean("completed").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const journeyPathsRelations = relations(journeyPaths, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [journeyPaths.campaignId],
+    references: [campaigns.id]
+  })
+}));
+
+export type JourneyPath = typeof journeyPaths.$inferSelect;
+export type InsertJourneyPath = z.infer<typeof insertJourneyPathSchema>;
+export const insertJourneyPathSchema = createInsertSchema(journeyPaths).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+// Campaign Current Location model
+export const campaignCurrentLocations = pgTable("campaign_current_locations", {
+  campaignId: integer("campaign_id").references(() => campaigns.id).primaryKey(),
+  position: json("position").$type<[number, number]>().notNull(),
+  locationName: text("location_name"),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const campaignCurrentLocationsRelations = relations(campaignCurrentLocations, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [campaignCurrentLocations.campaignId],
+    references: [campaigns.id]
+  })
+}));
+
+export type CampaignCurrentLocation = typeof campaignCurrentLocations.$inferSelect;
+export type InsertCampaignCurrentLocation = z.infer<typeof insertCampaignCurrentLocationSchema>;
+export const insertCampaignCurrentLocationSchema = createInsertSchema(campaignCurrentLocations).omit({
+  updatedAt: true
+});
