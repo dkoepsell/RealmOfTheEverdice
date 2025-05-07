@@ -89,9 +89,15 @@ As the Auto-DM, your role is to:
 4. Introduce surprising but coherent plot developments based on player decisions
 5. Remember details from earlier in the adventure and weave them into ongoing narrative
 6. Allow player freedom while maintaining narrative cohesion
+7. When you see dice roll results in the context or player action, use these results to drive the narrative consequences
 
-Your narration should be vivid and concise, focusing on immersion and meaningful player agency. When appropriate, suggest checks or rolls that would be required, but don't force specific choices on the player.`;
+IMPORTANT: When you identify a dice roll in the context (look for phrases like "rolled X for Y" or "rolls X against DC Y"), narrate the exact consequences of that roll - success or failure should meaningfully impact the story! If a roll was critical (natural 20 or natural 1), make the outcome especially dramatic. Be specific and vivid about what exactly happens as a result of the roll.
 
+Your narration should be vivid and concise, focusing on immersion and meaningful player agency. When appropriate, suggest new checks or rolls that would be required for further actions, but don't force specific choices on the player.`;
+
+    // Check if playerAction contains a dice roll
+    const containsDiceRoll = playerAction.match(/roll(ed|s)\s+\d+|result\s+\d+|DC\s+\d+|success|failure|critical/i);
+    
     let userPrompt = "";
     
     if (isAutoAdvance) {
@@ -106,6 +112,21 @@ The player wants to advance the story. Create a compelling narrative that progre
 - A surprising twist that builds on previous story elements
 
 Describe what happens next in vivid detail as the Dungeon Master, moving the story forward in an open-ended way that gives the player genuine agency in how to respond.`;
+    } else if (containsDiceRoll) {
+      // Special handling for dice roll actions
+      userPrompt = `Context: ${context}
+
+Dice Roll: ${playerAction}
+
+This is a dice roll result. Narrate the SPECIFIC CONSEQUENCES of this roll result in vivid detail. Don't just acknowledge the roll - show exactly what happens because of this roll result. 
+
+If it was a:
+- Critical success (natural 20): Describe an exceptionally positive outcome with additional benefits
+- Success: Describe how the character accomplishes their goal
+- Failure: Describe complications, partial success with a cost, or interesting failure
+- Critical failure (natural 1): Describe a dramatic setback, complication, or twist
+
+Your narrative should directly respond to the roll, making it clear that the character's success or failure has meaningful impact on the story.`;
     } else {
       userPrompt = `Context: ${context}
 
@@ -128,7 +149,7 @@ Your response should open up new possibilities rather than constrain them, adapt
           content: userPrompt
         }
       ],
-      temperature: 0.8 // Slightly increased creativity while maintaining coherence
+      temperature: containsDiceRoll ? 0.7 : 0.8 // Slightly lower temperature for dice outcomes
     });
 
     return response.choices[0].message.content;

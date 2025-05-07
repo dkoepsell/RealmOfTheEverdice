@@ -113,8 +113,16 @@ export default function CampaignPage() {
   // Generate adventure narration mutation
   const generateNarrationMutation = useMutation({
     mutationFn: async (input: string) => {
+      // Create a context from recent game logs to include dice roll results
+      const recentLogs = gameLogs.slice(0, 10)
+        .map(log => {
+          // Include the type of log to help AI understand what's happening
+          return `[${log.type}] ${log.content}`;
+        })
+        .join("\n");
+      
       const res = await apiRequest("POST", "/api/generate/narration", {
-        context: currentAdventure?.description || "",
+        context: `${currentAdventure?.description || ""}\n\nRecent game events:\n${recentLogs}`,
         playerAction: input,
         isAutoAdvance: false
       });
@@ -203,7 +211,12 @@ export default function CampaignPage() {
     result: number, 
     modifier: number = 0, 
     purpose?: string,
-    threshold?: number
+    threshold?: number,
+    effects?: {
+      stats?: Partial<Record<string, number>>;
+      alignment?: string;
+      description: string;
+    }
   ) => {
     if (!currentCharacter) return;
     
@@ -223,8 +236,19 @@ export default function CampaignPage() {
     // Add roll to campaign history
     addCampaignRoll(diceRoll);
     
-    // Optionally log the roll to game logs with dice roll data embedded in content
-    const rollDescription = `${currentCharacter.name} rolled ${result} on a ${type}${modifier ? ` with a modifier of ${modifier > 0 ? '+' : ''}${modifier}` : ''}${purpose ? ` for ${purpose}` : ''}. Total: ${result + modifier}`;
+    // Build a detailed roll description including results and effects
+    let rollDescription = `${currentCharacter.name} rolled ${result} on a ${type}${modifier ? ` with a modifier of ${modifier > 0 ? '+' : ''}${modifier}` : ''}${purpose ? ` for ${purpose}` : ''}. Total: ${result + modifier}`;
+    
+    // Add success/failure info if threshold was provided
+    if (threshold !== undefined) {
+      const success = (result + modifier) >= threshold;
+      rollDescription += ` (${success ? 'Success' : 'Failure'} against DC ${threshold})`;
+    }
+    
+    // Add effects description if provided
+    if (effects?.description) {
+      rollDescription += `\nEffect: ${effects.description}`;
+    }
     
     // Store dice roll data as a JSON string in the content field
     const rollData = JSON.stringify(diceRoll);
@@ -239,6 +263,19 @@ export default function CampaignPage() {
     
     // Hide the dice roller after rolling
     setShowDiceRoller(false);
+    
+    // If this is a significant roll (has a threshold or effect), generate narrative advancement
+    if ((threshold !== undefined || effects) && isAutoDmMode) {
+      // Wait a brief moment for the roll log to be added
+      setTimeout(() => {
+        // Auto-generate narrative response to the dice roll result
+        const actionDescription = `${currentCharacter.name} attempts ${purpose || 'an action'} and rolls ${result + modifier} (${result} + ${modifier})${
+          threshold !== undefined ? ` against DC ${threshold}${(result + modifier) >= threshold ? ' (SUCCESS)' : ' (FAILURE)'}` : ''
+        }`;
+        
+        generateNarrationMutation.mutate(actionDescription);
+      }, 500);
+    }
   };
   
   // Submit player action
