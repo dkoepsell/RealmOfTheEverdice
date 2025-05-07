@@ -47,7 +47,6 @@ import {
   Shield, 
   Sword, 
   Scroll, 
-  Flask, 
   Sparkles,
   Truck,
   TrendingUp,
@@ -55,7 +54,8 @@ import {
   ShoppingCart,
   Search,
   Filter,
-  Trash2
+  Trash2,
+  Beaker
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -65,7 +65,7 @@ const getItemIcon = (type: string) => {
   switch (type.toLowerCase()) {
     case 'weapon': return <Sword className="h-4 w-4" />;
     case 'armor': return <Shield className="h-4 w-4" />;
-    case 'potion': return <Flask className="h-4 w-4" />;
+    case 'potion': return <Beaker className="h-4 w-4" />;
     case 'scroll': return <Scroll className="h-4 w-4" />;
     case 'quest': return <Sparkles className="h-4 w-4" />;
     default: return <Package className="h-4 w-4" />;
@@ -100,6 +100,14 @@ interface Character {
   level: number;
   equipment: any;
   userId: number;
+  stats?: {
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+  };
 }
 
 interface InventoryManagementProps {
@@ -372,13 +380,17 @@ export function InventoryManagement({
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Input
-                    placeholder="Search items..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-[200px]"
-                    prefix={<Search className="h-4 w-4 text-muted-foreground mr-2" />}
-                  />
+                  <div className="relative w-[200px]">
+                    <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
+                      <Search className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Input
+                      placeholder="Search items..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
                   
                   <Select value={filterType} onValueChange={setFilterType}>
                     <SelectTrigger className="w-[120px]">

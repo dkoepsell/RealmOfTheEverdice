@@ -752,6 +752,64 @@ export default function CampaignPage() {
                       compendiumMode={false}
                     />
                   )}
+                  
+                  {rightPanelTab === "party" && (
+                    <div className="space-y-4">
+                      {/* Party members list */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold mb-2">Party Members</h4>
+                        
+                        {campaignCharacters && campaignCharacters.length > 0 ? (
+                          campaignCharacters.map(character => (
+                            <div key={character.id} className="p-2 border border-border rounded-md bg-background">
+                              <div className="flex items-center">
+                                <Avatar className="h-10 w-10 mr-3">
+                                  <AvatarFallback className="bg-primary/10 text-primary">
+                                    {character.name?.substring(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">{character.name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {character.race} {character.class}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center p-4 text-muted-foreground">
+                            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>No characters in party</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Party management options */}
+                      <div className="space-y-2 pt-3 border-t border-border">
+                        <h4 className="text-sm font-semibold mb-2">Party Options</h4>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => setShowAddCharacterDialog(true)}
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Add Character
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                        >
+                          <UserCog className="h-4 w-4 mr-2" />
+                          Manage Party Roles
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
