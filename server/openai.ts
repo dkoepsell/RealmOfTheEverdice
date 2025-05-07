@@ -312,6 +312,67 @@ export interface CampaignGenerationOptions {
   tone?: string;
 }
 
+export interface ItemGenerationOptions {
+  itemType?: string;
+  rarity?: string;
+  category?: string;
+  characterLevel?: number;
+}
+
+export async function generateRandomItem(options: ItemGenerationOptions = {}) {
+  const {
+    itemType = "random",
+    rarity = "common",
+    category = "any",
+    characterLevel = 1
+  } = options;
+  
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: `You are a magical artificer who crafts unique Dungeons & Dragons items. 
+          Generate a ${rarity} ${itemType === "random" ? "random" : itemType} item suitable for level ${characterLevel} characters.
+          ${category !== "any" ? `The item should be from the ${category} category.` : ''}
+          
+          Follow D&D 5e rules and balance considerations.`
+        },
+        {
+          role: "user",
+          content: `Create a detailed D&D 5e item with these parameters:
+          - Item Type: ${itemType === "random" ? "any type" : itemType}
+          - Rarity: ${rarity}
+          - Category: ${category}
+          - Character Level: ${characterLevel}
+          
+          Format your response as a JSON object with these fields:
+          - name: A distinctive name for the item
+          - description: A detailed description of the item's appearance and effects
+          - type: One of "weapon", "armor", "potion", "scroll", "tool", "trinket", "quest", or "miscellaneous"
+          - rarity: One of "common", "uncommon", "rare", "very rare", "legendary", "artifact"
+          - weight: The weight in pounds (can be decimal)
+          - value: The value in gold pieces
+          - properties: Array of special properties like "magical", "cursed", etc.
+          - attunement: Boolean, whether it requires attunement
+          - quantity: How many of this item (usually 1)
+          - isEquipped: false (default unequipped state)
+          - slot: 0 (will be assigned when added to inventory)`
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 800,
+      temperature: 0.7,
+    });
+
+    return safeJsonParse(response.choices[0].message.content);
+  } catch (error) {
+    console.error("Error generating random item:", error);
+    throw new Error("Failed to generate random item");
+  }
+}
+
 export async function generateCampaign(options: CampaignGenerationOptions = {}) {
   const {
     genre = "fantasy",

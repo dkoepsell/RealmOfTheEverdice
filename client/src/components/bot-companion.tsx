@@ -114,14 +114,18 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
   // Ask bot question mutation
   const askBotMutation = useMutation({
     mutationFn: async (data: { message: string, botId: number, context: string }) => {
-      const res = await apiRequest("POST", "/api/bot-companions/ask", data);
+      const res = await apiRequest("POST", "/api/bot-companion/query", {
+        query: data.message,
+        companionId: data.botId,
+        campaignId: campaignId
+      });
       return await res.json();
     },
     onSuccess: (response) => {
       const newMessage: BotMessage = {
         id: Date.now().toString(),
         sender: "bot",
-        content: response.message,
+        content: response.message || response.response || "I'm not sure how to answer that.",
         timestamp: new Date(),
         type: response.type || "message"
       };
