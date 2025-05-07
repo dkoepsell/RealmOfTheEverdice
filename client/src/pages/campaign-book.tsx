@@ -58,6 +58,54 @@ export default function CampaignPage() {
   const [playerInput, setPlayerInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Battle tracking state
+  const [inCombat, setInCombat] = useState(false);
+  const [combatRound, setCombatRound] = useState(1);
+  const [combatTurn, setCombatTurn] = useState(0);
+  const [combatParticipants, setCombatParticipants] = useState<Array<{
+    id: string;
+    name: string;
+    initiative: number;
+    isEnemy: boolean;
+    isActive: boolean;
+    hp: number;
+    maxHp: number;
+    actions: string[];
+    lastRoll?: {
+      type: string;
+      result: number;
+      total: number;
+      success?: boolean;
+    };
+  }>>([]);
+  
+  // Loot system state
+  const [availableLoot, setAvailableLoot] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    type: string;
+    quantity: number;
+    weight?: number;
+    value?: number;
+    source: string; // e.g., "Goblin Warrior", "Treasure Chest"
+  }>>([]);
+  
+  // Action shortcuts state
+  const [actionShortcuts, setActionShortcuts] = useState<Array<{
+    id: string;
+    name: string;
+    icon: string;
+    action: string;
+  }>>([
+    { id: "attack", name: "Attack", icon: "sword", action: "I attack the nearest enemy" },
+    { id: "defend", name: "Defend", icon: "shield", action: "I take the Dodge action to avoid attacks" },
+    { id: "cast", name: "Cast Spell", icon: "wand", action: "I cast a spell at the enemy" },
+    { id: "heal", name: "Heal", icon: "heart", action: "I use a healing potion" },
+    { id: "look", name: "Look Around", icon: "eye", action: "I look around for clues or hidden items" },
+    { id: "talk", name: "Talk", icon: "message-circle", action: "I try to talk to the character in front of me" }
+  ]);
+  
   // Fetch campaign data
   const { 
     data: campaign,
@@ -147,6 +195,25 @@ export default function CampaignPage() {
       };
       
       createLogMutation.mutate(playerLog);
+      
+      // Check if the narrative text indicates combat
+      const combatKeywords = [
+        "attack", "combat", "battle", "fight", "initiative", 
+        "sword", "bow", "spell", "opponent", "enemy", "roll for initiative",
+        "ambush", "assault", "strike", "hit"
+      ];
+      
+      // Detect combat in the narrative
+      const narrativeText = data.narration.toLowerCase();
+      const isCombatContext = combatKeywords.some(keyword => narrativeText.includes(keyword));
+      
+      // Auto-open battle tracker when combat is detected
+      if (isCombatContext && !inCombat) {
+        startCombat(narrativeText);
+      } else if (inCombat) {
+        // Update combat info if already in combat
+        updateCombatState(narrativeText);
+      }
       
       // Reset the player input
       setPlayerInput("");
@@ -279,11 +346,418 @@ export default function CampaignPage() {
     }
   };
   
+  // Roll dice for a character or enemy
+  const rollInitiative = (name: string, modifier: number = 0) => {
+    // d20 roll
+    const result = Math.floor(Math.random() * 20) + 1;
+    const total = result + modifier;
+    return { 
+      result,
+      modifier,
+      total
+    };
+  };
+  
+  // End combat
+  const endCombat = (outcome: "victory" | "defeat" | "fled") => {
+    setInCombat(false);
+    
+    let message = "";
+    if (outcome === "victory") {
+      message = "Victory! All enemies have been defeated.";
+    } else if (outcome === "defeat") {
+      message = "Defeat! Your party has been defeated.";
+    } else {
+      message = "You have fled from combat.";
+    }
+    
+    const combatEndLog: Partial<GameLog> = {
+      campaignId,
+      content: message,
+      type: "system"
+    };
+    createLogMutation.mutate(combatEndLog);
+    
+    toast({
+      title: "Combat Ended",
+      description: message,
+      variant: outcome === "victory" ? "default" : "destructive",
+    });
+  };
+  
+  // Simulate enemy action
+  const simulateEnemyAction = (enemy: typeof combatParticipants[0]) => {
+    // Find a random player to attack
+    const players = combatParticipants.filter(p => !p.isEnemy && p.hp > 0);
+    if (players.length === 0) return; // No valid targets
+    
+    const targetIndex = Math.floor(Math.random() * players.length);
+    const target = players[targetIndex];
+    
+    // Roll for attack
+    const attackRoll = Math.floor(Math.random() * 20) + 1;
+    const attackBonus = Math.floor(Math.random() * 3) + 1; // Random bonus between 1-3
+    const attackTotal = attackRoll + attackBonus;
+    
+    // Target AC (simple calculation based on level)
+    const targetAC = 10 + Math.floor((target.hp / target.maxHp) * 3);
+    const hit = attackTotal >= targetAC;
+    
+    // Update enemy's last roll
+    const updatedParticipants = combatParticipants.map(p => {
+      if (p.id === enemy.id) {
+        return {
+          ...p,
+          lastRoll: {
+            type: "attack",
+            result: attackRoll,
+            total: attackTotal,
+            success: hit
+          }
+        };
+      }
+      return p;
+    });
+    
+    setCombatParticipants(updatedParticipants);
+    
+    // Create action description for the AI
+    let actionDescription = "";
+    if (hit) {
+      // Calculate damage (simple formula)
+      const damageRoll = Math.floor(Math.random() * 6) + 1;
+      actionDescription = `${enemy.name} attacks ${target.name} and hits with a roll of ${attackTotal} (${attackRoll} + ${attackBonus}), dealing ${damageRoll} damage.`;
+    } else {
+      actionDescription = `${enemy.name} attacks ${target.name} but misses with a roll of ${attackTotal} (${attackRoll} + ${attackBonus}).`;
+    }
+    
+    // Generate narration for enemy action
+    generateNarrationMutation.mutate(actionDescription);
+  };
+  
+  // Advance to next turn in combat
+  const advanceTurn = (specificCharacter?: string) => {
+    if (!inCombat || combatParticipants.length === 0) return;
+    
+    // Find current active participant index
+    const currentActiveIndex = combatParticipants.findIndex(p => p.isActive);
+    let nextIndex = 0;
+    
+    if (specificCharacter) {
+      // Find the specific character if named
+      const characterIndex = combatParticipants.findIndex(
+        p => p.name.toLowerCase() === specificCharacter.toLowerCase()
+      );
+      if (characterIndex >= 0) {
+        nextIndex = characterIndex;
+      } else {
+        // If character not found, just advance normally
+        nextIndex = (currentActiveIndex + 1) % combatParticipants.length;
+      }
+    } else {
+      // Normal turn progression
+      nextIndex = (currentActiveIndex + 1) % combatParticipants.length;
+    }
+    
+    // Check if we completed a round
+    if (nextIndex <= currentActiveIndex) {
+      setCombatRound(prev => prev + 1);
+    }
+    
+    // Update active participant
+    const updatedParticipants = combatParticipants.map((p, idx) => ({
+      ...p,
+      isActive: idx === nextIndex
+    }));
+    
+    setCombatParticipants(updatedParticipants);
+    setCombatTurn(nextIndex);
+    
+    // Add turn change to game log
+    const activeParticipant = updatedParticipants[nextIndex];
+    const turnChangeLog: Partial<GameLog> = {
+      campaignId,
+      content: `It's now ${activeParticipant.name}'s turn.`,
+      type: "system"
+    };
+    createLogMutation.mutate(turnChangeLog);
+    
+    // If AI-controlled enemy's turn, simulate their action
+    if (activeParticipant.isEnemy && isAutoDmMode) {
+      // Wait a moment before enemy acts
+      setTimeout(() => {
+        simulateEnemyAction(activeParticipant);
+      }, 1500);
+    }
+  };
+  
+  // Update combat state based on narrative
+  const updateCombatState = (narrativeText: string) => {
+    // Look for attack patterns like "X hits Y for Z damage"
+    const attackPattern = /(\w+)\s+(?:hits|attacks|strikes|damages)\s+(\w+)(?:.*?for\s+(\d+)\s+damage)?/i;
+    const match = narrativeText.match(attackPattern);
+    
+    if (match) {
+      const [_, attacker, target, damageStr] = match;
+      const damage = damageStr ? parseInt(damageStr) : Math.floor(Math.random() * 6) + 1;
+      
+      // Update HP for the target if it's in our participants
+      const updatedParticipants = combatParticipants.map(p => {
+        if (p.name.toLowerCase() === target.toLowerCase()) {
+          const newHp = Math.max(0, p.hp - damage);
+          return {
+            ...p,
+            hp: newHp,
+            lastRoll: {
+              type: "damage",
+              result: damage,
+              total: damage,
+              success: false
+            }
+          };
+        }
+        return p;
+      });
+      
+      setCombatParticipants(updatedParticipants);
+      
+      // Check if target is defeated
+      const targetParticipant = updatedParticipants.find(
+        p => p.name.toLowerCase() === target.toLowerCase()
+      );
+      
+      if (targetParticipant && targetParticipant.hp <= 0) {
+        // Add defeat message
+        const defeatLog: Partial<GameLog> = {
+          campaignId,
+          content: `${targetParticipant.name} has been defeated!`,
+          type: "system"
+        };
+        createLogMutation.mutate(defeatLog);
+        
+        // Check if combat is over (all enemies or all players defeated)
+        const remainingEnemies = updatedParticipants.filter(p => p.isEnemy && p.hp > 0);
+        const remainingPlayers = updatedParticipants.filter(p => !p.isEnemy && p.hp > 0);
+        
+        if (remainingEnemies.length === 0) {
+          endCombat("victory");
+        } else if (remainingPlayers.length === 0) {
+          endCombat("defeat");
+        }
+      }
+    }
+    
+    // Advance turn if narrative contains phrases like "it's now X's turn"
+    const turnPattern = /(?:it['']s|it is) (?:now) (\w+)['']s turn/i;
+    const turnMatch = narrativeText.match(turnPattern);
+    
+    if (turnMatch) {
+      const nextCharacter = turnMatch[1];
+      advanceTurn(nextCharacter);
+    }
+  };
+  
+  // Parse narrative text to extract enemies
+  const extractEnemiesFromText = (text: string) => {
+    // Common fantasy enemy types
+    const enemyTypes = [
+      "goblin", "orc", "troll", "ogre", "wolf", "skeleton", "zombie", 
+      "bandit", "thief", "cultist", "kobold", "dragon", "demon", "undead",
+      "giant", "witch", "warlock", "guard"
+    ];
+    
+    // Look for enemy patterns in text with simple NLP
+    const words = text.toLowerCase().split(/\s+/);
+    const enemies = new Set<string>();
+    
+    for (let i = 0; i < words.length; i++) {
+      // Check if word is an enemy type
+      const word = words[i].replace(/[.,!?;:'"()]/g, '');
+      if (enemyTypes.includes(word)) {
+        // Look for descriptors before the enemy (e.g. "giant troll")
+        let enemyName = word;
+        if (i > 0) {
+          const prevWord = words[i-1].replace(/[.,!?;:'"()]/g, '');
+          if (!enemyTypes.includes(prevWord) && prevWord.length > 2) {
+            enemyName = `${prevWord} ${word}`;
+          }
+        }
+        enemies.add(enemyName);
+      }
+    }
+    
+    return Array.from(enemies).map(name => {
+      // Capitalize each word
+      return name.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    });
+  };
+  
+  // Start combat tracking
+  const startCombat = (narrativeText: string) => {
+    // Extract potential enemies from the narrative
+    const extractedEnemies = extractEnemiesFromText(narrativeText);
+    
+    // Create initiative order including party members and enemies
+    const participants = [
+      // Add party characters
+      ...partyMembers.map(character => {
+        const initiative = rollInitiative(character.name, Math.floor((currentCharacter.stats?.dexterity || 10) - 10) / 2);
+        return {
+          id: character.id.toString(),
+          name: character.name,
+          initiative: initiative.total,
+          isEnemy: false,
+          isActive: character.id === currentCharacter.id,
+          hp: character.hp || 10,
+          maxHp: character.maxHp || 10,
+          actions: ["Attack", "Cast Spell", "Use Item", "Dash", "Dodge", "Hide"],
+          lastRoll: {
+            type: "initiative",
+            result: initiative.result,
+            total: initiative.total
+          }
+        };
+      }),
+      
+      // Add enemies
+      ...extractedEnemies.map((enemy, index) => {
+        const initiative = rollInitiative(enemy);
+        return {
+          id: `enemy-${index}`,
+          name: enemy,
+          initiative: initiative.total,
+          isEnemy: true,
+          isActive: false,
+          hp: 10, // Default HP
+          maxHp: 10,
+          actions: ["Attack", "Special Attack"],
+          lastRoll: {
+            type: "initiative",
+            result: initiative.result,
+            total: initiative.total
+          }
+        };
+      })
+    ];
+    
+    // Sort by initiative
+    const sortedParticipants = [...participants].sort((a, b) => b.initiative - a.initiative);
+    
+    // Set combat state
+    setInCombat(true);
+    setCombatRound(1);
+    setCombatTurn(0);
+    setCombatParticipants(sortedParticipants);
+    
+    // Set first participant as active
+    if (sortedParticipants.length > 0) {
+      const updatedParticipants = sortedParticipants.map((p, idx) => ({
+        ...p,
+        isActive: idx === 0
+      }));
+      setCombatParticipants(updatedParticipants);
+    }
+    
+    // Open battle tracker panel
+    setRightPanelTab("battle");
+    
+    // Notify about combat start
+    toast({
+      title: "Combat Started!",
+      description: "Roll for initiative! The battle tracker has been opened.",
+      variant: "default",
+    });
+    
+    // Add combat start to game log
+    const combatStartLog: Partial<GameLog> = {
+      campaignId,
+      content: `Combat has begun! ${sortedParticipants.map(p => `${p.name} rolled ${p.lastRoll?.result} for initiative (${p.initiative} total)`).join('. ')}`,
+      type: "system"
+    };
+    createLogMutation.mutate(combatStartLog);
+  };
+
   // Submit player action
   const handleSubmitAction = () => {
     if (!playerInput.trim()) return;
     setIsProcessing(true);
     
+    // If in combat and it's player character's turn, interpret as combat action
+    if (inCombat) {
+      const currentTurnParticipant = combatParticipants.find(p => p.isActive);
+      const isPlayersTurn = currentTurnParticipant && !currentTurnParticipant.isEnemy;
+      
+      if (isPlayersTurn) {
+        // Check for attack keywords
+        const attackKeywords = ["attack", "hit", "strike", "stab", "shoot", "cast"];
+        const isAttackAction = attackKeywords.some(keyword => 
+          playerInput.toLowerCase().includes(keyword)
+        );
+        
+        if (isAttackAction) {
+          // Look for target in input
+          const targets = combatParticipants
+            .filter(p => p.isEnemy)
+            .map(p => p.name.toLowerCase());
+          
+          let targetName = "";
+          for (const target of targets) {
+            if (playerInput.toLowerCase().includes(target)) {
+              targetName = target;
+              break;
+            }
+          }
+          
+          if (targetName) {
+            // Auto-roll attack for the player
+            const attackRoll = Math.floor(Math.random() * 20) + 1;
+            // Use character's strength or dexterity as bonus
+            const strMod = Math.floor((currentCharacter.stats?.strength || 10) - 10) / 2;
+            const dexMod = Math.floor((currentCharacter.stats?.dexterity || 10) - 10) / 2;
+            const attackBonus = Math.max(strMod, dexMod);
+            const attackTotal = attackRoll + attackBonus;
+            
+            // Update player's last roll
+            const updatedParticipants = combatParticipants.map(p => {
+              if (p.id === currentCharacter.id.toString()) {
+                return {
+                  ...p,
+                  lastRoll: {
+                    type: "attack",
+                    result: attackRoll,
+                    total: attackTotal
+                  }
+                };
+              }
+              return p;
+            });
+            
+            setCombatParticipants(updatedParticipants);
+            
+            // Add roll information to player input
+            const enhancedInput = `${playerInput} [Rolling attack: ${attackRoll} + ${attackBonus} = ${attackTotal}]`;
+            
+            if (isAutoDmMode) {
+              generateNarrationMutation.mutate(enhancedInput);
+            } else {
+              const playerLog: Partial<GameLog> = {
+                campaignId,
+                content: enhancedInput,
+                type: "player"
+              };
+              createLogMutation.mutate(playerLog);
+              setPlayerInput("");
+              setIsProcessing(false);
+            }
+            return;
+          }
+        }
+      }
+    }
+    
+    // Default action processing
     if (isAutoDmMode) {
       // Use AI DM to generate a response
       generateNarrationMutation.mutate(playerInput);
@@ -317,6 +791,163 @@ export default function CampaignPage() {
     hp: character.hp,
     maxHp: character.maxHp
   })) || [];
+  
+  // Calculate inventory weight
+  const calculateInventoryWeight = () => {
+    if (!currentCharacter?.equipment) return 0;
+    
+    const inventory = (currentCharacter.equipment as any)?.inventory || [];
+    return inventory.reduce((total: number, item: any) => {
+      const itemWeight = item.weight || 0;
+      return total + (itemWeight * (item.quantity || 1));
+    }, 0).toFixed(1);
+  };
+  
+  // Calculate maximum carrying capacity based on strength
+  const calculateCarryingCapacity = () => {
+    if (!currentCharacter?.stats) return 10;
+    
+    const strength = (currentCharacter.stats as any)?.strength || 10;
+    return (strength * 15).toFixed(0); // D&D 5e carrying capacity formula
+  };
+  
+  // Handle dropping an item
+  const handleDropItem = (item: any) => {
+    if (!currentCharacter?.equipment) return;
+    
+    // Add to dropped items/loot pile
+    const droppedItem = {
+      id: `dropped-${Math.random().toString(36).slice(2, 11)}`,
+      name: item.name,
+      description: item.description,
+      type: item.type,
+      quantity: item.quantity,
+      weight: item.weight,
+      value: item.value,
+      source: `Dropped by ${currentCharacter.name}`
+    };
+    
+    // Update available loot
+    setAvailableLoot(prev => [...prev, droppedItem]);
+    
+    // Remove from inventory (this is a simplified version)
+    // In a real implementation, you'd want to update the character's inventory in the database
+    toast({
+      title: "Item Dropped",
+      description: `${item.name} has been dropped.`,
+    });
+  };
+  
+  // Handle taking a loot item
+  const handleTakeLootItem = (item: any) => {
+    if (!currentCharacter?.equipment) return;
+    
+    // Add to character inventory (simplified)
+    // In a real implementation, you'd update the character's inventory in the database
+    
+    // Remove from available loot
+    setAvailableLoot(prev => prev.filter(i => i.id !== item.id));
+    
+    toast({
+      title: "Item Acquired",
+      description: `${item.name} has been added to your inventory.`,
+    });
+  };
+  
+  // Handle taking all loot
+  const handleTakeAllLoot = () => {
+    if (availableLoot.length === 0 || !currentCharacter?.equipment) return;
+    
+    // Take all items
+    setAvailableLoot([]);
+    
+    toast({
+      title: "Loot Collected",
+      description: `${availableLoot.length} items have been added to your inventory.`,
+    });
+  };
+  
+  // Handle looting a defeated enemy
+  const handleLootEnemy = (enemy: typeof combatParticipants[0]) => {
+    // Generate random loot based on enemy type
+    const lootItems = generateRandomLoot(enemy.name);
+    
+    // Add items to available loot
+    setAvailableLoot(prev => [...prev, ...lootItems]);
+    
+    // Show loot notification
+    if (lootItems.length > 0) {
+      toast({
+        title: "Loot Available",
+        description: `You found ${lootItems.length} items on ${enemy.name}.`,
+      });
+      
+      // Open inventory panel with loot tab active
+      setRightPanelTab("inventory");
+    }
+  };
+  
+  // Generate random loot based on enemy type
+  const generateRandomLoot = (enemyName: string) => {
+    // This is a simplified loot generation system
+    // In a real implementation, you'd have a more sophisticated system based on enemy type, level, etc.
+    
+    const lootTable: Record<string, Array<{ 
+      name: string; 
+      type: string; 
+      weight?: number; 
+      value?: number;
+      description?: string;
+      dropChance: number; // 0-1 probability of dropping
+    }>> = {
+      "goblin": [
+        { name: "Rusty Dagger", type: "weapon", weight: 1, value: 2, description: "A crude, rusty dagger.", dropChance: 0.7 },
+        { name: "Small Pouch of Coins", type: "treasure", weight: 0.5, value: 5, description: "A small leather pouch containing a few coins.", dropChance: 0.4 },
+        { name: "Goblin Ear", type: "miscellaneous", weight: 0.1, value: 1, description: "A severed goblin ear. Some bounty collectors might pay for this.", dropChance: 0.3 }
+      ],
+      "orc": [
+        { name: "Jagged Sword", type: "weapon", weight: 3, value: 8, description: "A crude but effective sword with jagged edges.", dropChance: 0.6 },
+        { name: "Orc Tusk", type: "miscellaneous", weight: 0.2, value: 3, description: "A large tusk from an orc. Might be valuable to certain collectors.", dropChance: 0.5 },
+        { name: "Leather Scraps", type: "crafting", weight: 1, value: 2, description: "Scraps of leather that could be used for crafting.", dropChance: 0.8 }
+      ],
+      "wolf": [
+        { name: "Wolf Pelt", type: "crafting", weight: 2, value: 5, description: "A wolf's pelt. Could be used for crafting or sold to a tanner.", dropChance: 0.9 },
+        { name: "Wolf Fang", type: "miscellaneous", weight: 0.1, value: 2, description: "A sharp wolf fang that could be used as a trinket or crafting component.", dropChance: 0.6 }
+      ],
+      "skeleton": [
+        { name: "Bone Fragments", type: "crafting", weight: 0.5, value: 1, description: "Small fragments of bone that might be useful for certain rituals.", dropChance: 0.8 },
+        { name: "Rusty Armor Piece", type: "armor", weight: 2, value: 3, description: "A piece of ancient rusty armor.", dropChance: 0.5 }
+      ],
+      "bandit": [
+        { name: "Stolen Coins", type: "treasure", weight: 0.5, value: 10, description: "A pouch of stolen coins.", dropChance: 0.7 },
+        { name: "Dagger", type: "weapon", weight: 1, value: 5, description: "A well-used dagger.", dropChance: 0.6 },
+        { name: "Lockpicks", type: "tool", weight: 0.2, value: 8, description: "A set of basic lockpicks.", dropChance: 0.3 }
+      ]
+    };
+    
+    // Get enemy type (strip any descriptors)
+    const enemyType = enemyName.toLowerCase().split(" ").pop() || "goblin";
+    
+    // Get loot table for enemy type, defaulting to goblin if not found
+    const possibleLoot = lootTable[enemyType] || lootTable["goblin"];
+    
+    // Roll for each possible item
+    const lootDrops = possibleLoot
+      .filter(() => Math.random() < 0.7) // Overall chance of any loot
+      .filter(item => Math.random() < item.dropChance)
+      .map(item => ({
+        id: `loot-${Math.random().toString(36).slice(2, 11)}`,
+        name: item.name,
+        type: item.type,
+        weight: item.weight,
+        value: item.value,
+        description: item.description,
+        quantity: 1,
+        source: enemyName
+      }));
+    
+    return lootDrops;
+  };
   
   // Loading state
   const isLoading = campaignLoading || charactersLoading || adventuresLoading || logsLoading;
@@ -781,73 +1412,161 @@ export default function CampaignPage() {
                 {/* Inventory Panel */}
                 {rightPanelTab === "inventory" && (
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Items</span>
-                      <span className="text-xs text-muted-foreground">
-                        {((currentCharacter.equipment as any)?.inventory?.length || 0)} items
-                      </span>
-                    </div>
-                    
-                    {(currentCharacter.equipment as any)?.inventory?.length > 0 ? (
-                      <div className="space-y-2">
-                        {(currentCharacter.equipment as any)?.inventory?.map((item: any, index: number) => (
-                          <div key={index} className="p-2 border border-border rounded-md">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <span className="text-sm font-medium">{item.name}</span>
-                                {item.isEquipped && (
-                                  <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                                    Equipped
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {item.quantity > 1 ? `x${item.quantity}` : ''}
-                              </span>
-                            </div>
-                            
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {item.description}
-                            </p>
-                            
-                            <div className="flex items-center mt-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="text-xs h-7"
-                                onClick={() => {
-                                  toast({
-                                    title: item.isEquipped ? "Item Unequipped" : "Item Equipped",
-                                    description: item.isEquipped 
-                                      ? `${item.name} has been removed.` 
-                                      : `${item.name} has been equipped.`,
-                                  });
-                                }}
-                              >
-                                {item.isEquipped ? 'Unequip' : 'Equip'}
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-xs h-7 ml-1"
-                                onClick={() => {
-                                  toast({
-                                    title: "Item Details",
-                                    description: item.description,
-                                  });
-                                }}
-                              >
-                                Details
-                              </Button>
-                            </div>
+                    <Tabs defaultValue="inventory">
+                      <TabsList className="w-full mb-4">
+                        <TabsTrigger value="inventory" className="flex-1">My Items</TabsTrigger>
+                        <TabsTrigger value="loot" className="flex-1">Loot</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="inventory">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <span className="text-sm font-medium">Items</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              ({((currentCharacter.equipment as any)?.inventory?.length || 0)} / 20 slots)
+                            </span>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center p-4 border border-dashed border-border rounded-md">
-                        <p className="text-sm text-muted-foreground">No items in inventory</p>
-                      </div>
-                    )}
+                          <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                            Weight: {calculateInventoryWeight()} / {calculateCarryingCapacity()} lbs
+                          </span>
+                        </div>
+                        
+                        {(currentCharacter.equipment as any)?.inventory?.length > 0 ? (
+                          <div className="space-y-2">
+                            {(currentCharacter.equipment as any)?.inventory?.map((item: any, index: number) => (
+                              <div key={index} className="p-2 border border-border rounded-md">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <span className="text-sm font-medium">{item.name}</span>
+                                    {item.isEquipped && (
+                                      <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                                        Equipped
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center">
+                                    <span className="text-xs text-muted-foreground mr-2">
+                                      {item.weight ? `${item.weight} lbs` : ''}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {item.quantity > 1 ? `x${item.quantity}` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {item.description}
+                                </p>
+                                
+                                <div className="flex items-center mt-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-xs h-7"
+                                    onClick={() => {
+                                      toast({
+                                        title: item.isEquipped ? "Item Unequipped" : "Item Equipped",
+                                        description: item.isEquipped 
+                                          ? `${item.name} has been removed.` 
+                                          : `${item.name} has been equipped.`,
+                                      });
+                                    }}
+                                  >
+                                    {item.isEquipped ? 'Unequip' : 'Equip'}
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="text-xs h-7 ml-1"
+                                    onClick={() => {
+                                      toast({
+                                        title: "Item Details",
+                                        description: item.description,
+                                      });
+                                    }}
+                                  >
+                                    Details
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="text-xs h-7 ml-auto text-destructive"
+                                    onClick={() => handleDropItem(item)}
+                                  >
+                                    Drop
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center p-4 border border-dashed border-border rounded-md">
+                            <p className="text-sm text-muted-foreground">No items in inventory</p>
+                          </div>
+                        )}
+                      </TabsContent>
+                      
+                      <TabsContent value="loot">
+                        <div className="mb-3 flex items-center justify-between">
+                          <h4 className="text-sm font-medium">Available Loot</h4>
+                          {availableLoot.length > 0 && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs h-7"
+                              onClick={handleTakeAllLoot}
+                            >
+                              Take All
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {availableLoot.length > 0 ? (
+                          <div className="space-y-2">
+                            {availableLoot.map((item, index) => (
+                              <div key={index} className="p-2 border border-border rounded-md">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">{item.name}</span>
+                                  <div className="flex items-center">
+                                    <span className="text-xs text-muted-foreground mr-2">
+                                      {item.weight ? `${item.weight} lbs` : ''}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {item.quantity > 1 ? `x${item.quantity}` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {item.description || 'No description available'}
+                                </p>
+                                
+                                <div className="flex justify-between mt-2">
+                                  <span className="text-xs text-muted-foreground">
+                                    Source: {item.source}
+                                  </span>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-xs h-7"
+                                    onClick={() => handleTakeLootItem(item)}
+                                  >
+                                    Take
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center p-4 border border-dashed border-border rounded-md">
+                            <p className="text-sm text-muted-foreground">No loot available</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Loot will appear here when you defeat enemies or find treasure
+                            </p>
+                          </div>
+                        )}
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 )}
                 
@@ -1096,120 +1815,164 @@ export default function CampaignPage() {
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">Battle in Progress</span>
                           <span className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full">
-                            Round 2
+                            Round {combatRound}
                           </span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-2">Initiative Order</h4>
+                      <h4 className="text-sm font-medium mb-2 flex items-center justify-between">
+                        <span>Initiative Order</span>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-7"
+                          onClick={() => advanceTurn()}
+                        >
+                          Next Turn
+                        </Button>
+                      </h4>
                       <div className="space-y-1">
-                        <div className="p-2 border border-border rounded-md bg-primary/5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <span className="text-xs bg-primary text-white px-1.5 py-0.5 rounded-full mr-2">
-                                20
-                              </span>
-                              <span className="text-sm font-medium">{currentCharacter.name}</span>
+                        {combatParticipants.map(participant => (
+                          <div 
+                            key={participant.id} 
+                            className={`p-2 border border-border rounded-md ${
+                              participant.isActive ? 'bg-primary/5' : ''
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <span className={`text-xs ${
+                                  participant.isActive 
+                                    ? 'bg-primary text-white' 
+                                    : 'bg-muted'
+                                } px-1.5 py-0.5 rounded-full mr-2`}>
+                                  {participant.initiative}
+                                </span>
+                                <span className="text-sm font-medium">{participant.name}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <span className="text-xs text-muted-foreground mr-2">
+                                  HP: {participant.hp}/{participant.maxHp}
+                                </span>
+                                {participant.isActive && (
+                                  <span className="text-xs text-primary font-medium">
+                                    Current Turn
+                                  </span>
+                                )}
+                                {participant.isEnemy && (
+                                  <span className="text-xs text-destructive ml-1">
+                                    Enemy
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <span className="text-xs text-primary font-medium">
-                              Current Turn
-                            </span>
+                            
+                            {/* Show last roll if available */}
+                            {participant.lastRoll && (
+                              <div className="mt-1 text-xs bg-muted/40 p-1 rounded">
+                                <span>
+                                  Last Roll: {participant.lastRoll.type} ({participant.lastRoll.result}) 
+                                  {participant.lastRoll.total !== participant.lastRoll.result && 
+                                    ` + ${participant.lastRoll.total - participant.lastRoll.result} = ${participant.lastRoll.total}`
+                                  }
+                                  {participant.lastRoll.success !== undefined && 
+                                    ` - ${participant.lastRoll.success ? 'Hit' : 'Miss'}`
+                                  }
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Loot button for defeated enemies */}
+                            {participant.isEnemy && participant.hp <= 0 && (
+                              <div className="mt-1 flex justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs h-6"
+                                  onClick={() => handleLootEnemy(participant)}
+                                >
+                                  <Backpack className="mr-1 h-3 w-3" />
+                                  Loot
+                                </Button>
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        ))}
                         
-                        <div className="p-2 border border-border rounded-md">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full mr-2">
-                                15
-                              </span>
-                              <span className="text-sm font-medium">Goblin Archer</span>
-                            </div>
-                            <span className="text-xs text-destructive">
-                              Enemy
-                            </span>
+                        {combatParticipants.length === 0 && (
+                          <div className="text-center p-4 border border-dashed border-border rounded-md">
+                            <p className="text-sm text-muted-foreground">No combat in progress</p>
                           </div>
-                        </div>
-                        
-                        <div className="p-2 border border-border rounded-md">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full mr-2">
-                                12
-                              </span>
-                              <span className="text-sm font-medium">Goblin Warrior</span>
-                            </div>
-                            <span className="text-xs text-destructive">
-                              Enemy
-                            </span>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                     
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-2">Available Actions</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs h-8 justify-start"
-                          onClick={() => {
-                            setPlayerInput("I attack the goblin archer with my sword");
-                          }}
-                        >
-                          <Sword className="mr-1 h-3 w-3" />
-                          Attack
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs h-8 justify-start"
-                          onClick={() => {
-                            setPlayerInput("I cast a spell at the goblin warrior");
-                          }}
-                        >
-                          <HelpCircle className="mr-1 h-3 w-3" />
-                          Cast Spell
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs h-8 justify-start"
-                          onClick={() => {
-                            setPlayerInput("I use a potion to heal myself");
-                          }}
-                        >
-                          <ShieldAlert className="mr-1 h-3 w-3" />
-                          Use Item
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs h-8 justify-start"
-                          onClick={() => {
-                            setPlayerInput("I try to hide behind the rock");
-                          }}
-                        >
-                          <Backpack className="mr-1 h-3 w-3" />
-                          Other
-                        </Button>
+                    {/* Show actions only for active player character's turn */}
+                    {inCombat && combatParticipants.find(p => p.isActive && !p.isEnemy) && (
+                      <div className="mb-4">
+                        <h4 className="text-sm font-medium mb-2">Available Actions</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {combatParticipants
+                            .find(p => p.isActive && !p.isEnemy)
+                            ?.actions.map((action, idx) => (
+                              <Button 
+                                key={idx}
+                                variant="outline" 
+                                size="sm" 
+                                className="text-xs h-8 justify-start"
+                                onClick={() => {
+                                  // Find a valid enemy target if available
+                                  const target = combatParticipants.find(p => p.isEnemy && p.hp > 0)?.name;
+                                  setPlayerInput(`I ${action.toLowerCase()}${target ? ` the ${target}` : ''}`);
+                                }}
+                              >
+                                {action === "Attack" && <Sword className="mr-1 h-3 w-3" />}
+                                {action === "Cast Spell" && <Wand2 className="mr-1 h-3 w-3" />}
+                                {action === "Use Item" && <Package className="mr-1 h-3 w-3" />}
+                                {action === "Dash" && <MoveRight className="mr-1 h-3 w-3" />}
+                                {action === "Dodge" && <Shield className="mr-1 h-3 w-3" />}
+                                {action === "Hide" && <EyeOff className="mr-1 h-3 w-3" />}
+                                {action}
+                              </Button>
+                            ))
+                          }
+                        </div>
                       </div>
-                    </div>
+                    )}
                     
                     <div>
-                      <h4 className="text-sm font-medium mb-2">Battle Log</h4>
+                      <h4 className="text-sm font-medium mb-2 flex items-center justify-between">
+                        <span>Battle Log</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-6"
+                          onClick={() => endCombat("fled")}
+                        >
+                          Flee Combat
+                        </Button>
+                      </h4>
                       <div className="h-48 overflow-y-auto border border-border rounded-md p-2 text-xs">
-                        <p className="text-muted-foreground mb-1">You rolled 18 (15 + 3) for initiative</p>
-                        <p className="text-muted-foreground mb-1">Battle begins!</p>
-                        <p className="text-muted-foreground mb-1">Goblin Archer attacks you and misses</p>
-                        <p className="text-muted-foreground mb-1">Goblin Warrior hits you for 3 damage</p>
-                        <p className="text-muted-foreground mb-1">It's now your turn</p>
+                        {/* Filter game logs for combat-related entries */}
+                        {gameLogs
+                          .filter(log => log.type === "system" || log.type === "roll" || 
+                            (log.type === "narrative" && inCombat))
+                          .reverse()
+                          .slice(0, 20)
+                          .map((log, idx) => (
+                            <p key={idx} className="text-muted-foreground mb-1">
+                              {log.content.substring(0, 150)}
+                              {log.content.length > 150 ? '...' : ''}
+                            </p>
+                          ))}
+                          
+                        {gameLogs.filter(log => log.type === "system" || log.type === "roll").length === 0 && (
+                          <p className="text-muted-foreground mb-1">
+                            Combat has begun! Roll for initiative to determine turn order.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1400,6 +2163,91 @@ export default function CampaignPage() {
           {/* Player Input Area */}
           <div className="border-t border-border p-4 bg-white">
             <div className="max-w-prose mx-auto">
+              {/* Action Shortcuts */}
+              {inCombat && (
+                <div className="mb-3">
+                  <h3 className="text-sm font-medium mb-2">Combat Actions</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {/* Show actions based on current turn */}
+                    {combatParticipants.find(p => p.isActive)?.actions.map((action, idx) => (
+                      <Button
+                        key={idx}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          const target = combatParticipants.find(p => p.isEnemy)?.name;
+                          setPlayerInput(`I ${action.toLowerCase()}${target ? ` the ${target}` : ''}`);
+                        }}
+                      >
+                        {action}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => advanceTurn()}
+                    >
+                      End Turn
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Common Action Shortcuts */}
+              <div className="mb-3">
+                <h3 className="text-sm font-medium mb-2">Quick Actions</h3>
+                <div className="flex flex-wrap gap-1">
+                  {actionShortcuts.map(shortcut => (
+                    <Button
+                      key={shortcut.id}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setPlayerInput(shortcut.action)}
+                    >
+                      {shortcut.icon === "sword" && <Sword className="mr-1 h-3 w-3" />}
+                      {shortcut.icon === "shield" && <ShieldCheck className="mr-1 h-3 w-3" />}
+                      {shortcut.icon === "wand" && <Wand2 className="mr-1 h-3 w-3" />}
+                      {shortcut.icon === "heart" && <Heart className="mr-1 h-3 w-3" />}
+                      {shortcut.icon === "eye" && <Eye className="mr-1 h-3 w-3" />}
+                      {shortcut.icon === "message-circle" && <MessageCircle className="mr-1 h-3 w-3" />}
+                      {shortcut.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Turn Tracker */}
+              {inCombat && (
+                <div className="mb-3 p-2 border border-border rounded-md bg-muted/20">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-medium">Turn Tracker</span>
+                    <span className="text-xs">Round {combatRound}</span>
+                  </div>
+                  <div className="flex flex-nowrap overflow-x-auto gap-1 pb-1">
+                    {combatParticipants.map((participant, idx) => (
+                      <div 
+                        key={participant.id}
+                        className={`flex-shrink-0 px-2 py-1 rounded-md text-xs ${
+                          participant.isActive 
+                            ? 'bg-primary text-primary-foreground font-medium' 
+                            : participant.isEnemy
+                              ? 'bg-destructive/10 text-destructive'
+                              : 'bg-muted'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>{participant.name}</span>
+                          <span className="text-[10px] opacity-80">{participant.hp}/{participant.maxHp} HP</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
