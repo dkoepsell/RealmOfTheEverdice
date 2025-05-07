@@ -1,16 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useDice } from '@/hooks/use-dice';
+import { useDice, DiceType } from '@/hooks/use-dice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Dice5, Dice2, Info, Target, PlusCircle, MinusCircle, AlertCircle, HelpCircle } from 'lucide-react';
-
-export type DiceType = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
+import { Dice5, Dice2, Dice1, Dice3, Dice4, Dice6, Info, Target, PlusCircle, MinusCircle, AlertCircle, HelpCircle } from 'lucide-react';
 
 interface DiceProps {
   diceType: DiceType;
@@ -20,14 +18,33 @@ interface DiceProps {
 // Individual die component with rolling animation
 const Die = ({ diceType, onRoll }: DiceProps) => {
   const { rollDice, isRolling } = useDice();
+  const [animating, setAnimating] = useState(false);
   
   const handleClick = () => {
+    setAnimating(true);
     const result = rollDice(diceType);
+    
+    // Pass the result immediately to the parent component
     if (onRoll) onRoll(result);
+    
+    // Reset animation when it completes
+    setTimeout(() => {
+      setAnimating(false);
+    }, 800); // Same duration as in CSS animation
   };
   
   const getIcon = () => {
     switch (diceType) {
+      case 'd4':
+        return <Dice4 className="h-8 w-8" />;
+      case 'd6':
+        return <Dice6 className="h-8 w-8" />;
+      case 'd8':
+        return <Dice3 className="h-8 w-8" />;
+      case 'd10':
+        return <Dice4 className="h-8 w-8" />;
+      case 'd12':
+        return <Dice5 className="h-8 w-8" />;
       case 'd20':
         return <Dice5 className="h-8 w-8" />;
       default:
@@ -39,8 +56,8 @@ const Die = ({ diceType, onRoll }: DiceProps) => {
     <Button 
       variant="outline" 
       onClick={handleClick}
-      className={`dice p-2 rounded bg-parchment border border-accent hover:bg-accent/20 flex items-center justify-center ${isRolling ? 'dice-rolling' : ''}`}
-      disabled={isRolling}
+      className={`dice p-2 rounded bg-parchment border border-accent hover:bg-accent/20 flex items-center justify-center ${animating ? 'dice-rolling' : ''}`}
+      disabled={isRolling || animating}
     >
       {getIcon()}
     </Button>

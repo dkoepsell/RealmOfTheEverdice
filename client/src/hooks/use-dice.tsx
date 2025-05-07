@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useToast } from "./use-toast";
 
-type DiceType = "d4" | "d6" | "d8" | "d10" | "d12" | "d20";
+export type DiceType = "d4" | "d6" | "d8" | "d10" | "d12" | "d20";
 
 interface UseDiceReturn {
   rollDice: (type: DiceType) => number;
@@ -20,32 +20,28 @@ export function useDice(): UseDiceReturn {
   // Calculate the max value for a given dice type
   const getMaxValue = (type: DiceType): number => {
     switch (type) {
-      case "d4":
-        return 4;
-      case "d6":
-        return 6;
-      case "d8":
-        return 8;
-      case "d10":
-        return 10;
-      case "d12":
-        return 12;
-      case "d20":
-        return 20;
-      default:
-        return 6;
+      case "d4": return 4;
+      case "d6": return 6;
+      case "d8": return 8;
+      case "d10": return 10;
+      case "d12": return 12;
+      case "d20": return 20;
+      default: return 6;
     }
   };
 
   // Roll a dice of the specified type
-  const rollDice = (type: DiceType): number => {
+  const rollDice = useCallback((type: DiceType): number => {
+    // Generate the actual roll result immediately
+    const max = getMaxValue(type);
+    const result = Math.floor(Math.random() * max) + 1;
+    
+    // Update state for UI
     setIsRolling(true);
     setDiceType(type);
     
-    // Simulate rolling animation time
+    // Store the result but don't show it until animation completes
     setTimeout(() => {
-      const max = getMaxValue(type);
-      const result = Math.floor(Math.random() * max) + 1;
       setRollResult(result);
       setIsRolling(false);
       
@@ -65,20 +61,18 @@ export function useDice(): UseDiceReturn {
           });
         }
       }
-      
-      return result;
     }, 800); // Match the animation duration
 
-    // Return a temporary random number while animation is playing
-    return Math.floor(Math.random() * getMaxValue(type)) + 1;
-  };
+    // Return the actual result immediately to the caller
+    return result;
+  }, [toast]);
 
   // Reset dice state
-  const resetDice = () => {
+  const resetDice = useCallback(() => {
     setRollResult(null);
     setDiceType(null);
     setIsRolling(false);
-  };
+  }, []);
 
   return {
     rollDice,

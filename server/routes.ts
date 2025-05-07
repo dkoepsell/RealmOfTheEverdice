@@ -26,6 +26,336 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);
   
+  // Item related routes (add, remove, trade, equip)
+  app.post("/api/characters/:id/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const character = await storage.getCharacter(parseInt(req.params.id));
+      if (!character) return res.status(404).json({ message: "Character not found" });
+      
+      // Only owner can add items
+      if (character.userId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updatedCharacter = await storage.addItemToCharacter(character.id, req.body);
+      res.status(201).json(updatedCharacter);
+    } catch (error) {
+      console.error("Error adding item to character:", error);
+      res.status(500).json({ message: "Failed to add item to character" });
+    }
+  });
+  
+  app.delete("/api/characters/:id/items/:itemIndex", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const character = await storage.getCharacter(parseInt(req.params.id));
+      if (!character) return res.status(404).json({ message: "Character not found" });
+      
+      // Only owner can remove items
+      if (character.userId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updatedCharacter = await storage.removeItemFromCharacter(
+        character.id, 
+        parseInt(req.params.itemIndex)
+      );
+      
+      if (!updatedCharacter) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      res.json(updatedCharacter);
+    } catch (error) {
+      console.error("Error removing item from character:", error);
+      res.status(500).json({ message: "Failed to remove item from character" });
+    }
+  });
+  
+  app.post("/api/characters/:id/items/:itemIndex/equip", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const character = await storage.getCharacter(parseInt(req.params.id));
+      if (!character) return res.status(404).json({ message: "Character not found" });
+      
+      // Only owner can equip items
+      if (character.userId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const equip = req.body.equip === true;
+      const updatedCharacter = await storage.equipItemForCharacter(
+        character.id, 
+        parseInt(req.params.itemIndex),
+        equip
+      );
+      
+      if (!updatedCharacter) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      res.json(updatedCharacter);
+    } catch (error) {
+      console.error("Error equipping item for character:", error);
+      res.status(500).json({ message: "Failed to equip item for character" });
+    }
+  });
+  
+  app.post("/api/characters/:fromId/items/:itemIndex/transfer/:toId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const fromCharacter = await storage.getCharacter(parseInt(req.params.fromId));
+      const toCharacter = await storage.getCharacter(parseInt(req.params.toId));
+      
+      if (!fromCharacter || !toCharacter) {
+        return res.status(404).json({ message: "Character not found" });
+      }
+      
+      // Only owner of the fromCharacter can transfer items
+      if (fromCharacter.userId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const result = await storage.transferItemBetweenCharacters(
+        fromCharacter.id,
+        toCharacter.id,
+        parseInt(req.params.itemIndex),
+        req.body.quantity
+      );
+      
+      if (!result) {
+        return res.status(404).json({ message: "Item not found or transfer failed" });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error transferring item between characters:", error);
+      res.status(500).json({ message: "Failed to transfer item between characters" });
+    }
+  });
+  
+  // Random item generation for discovery/loot
+  app.post("/api/generate/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const { 
+        itemType = "random",
+        rarity = "common",
+        category = "any",
+        characterLevel = 1
+      } = req.body;
+      
+      // Call the OpenAI function to generate a random item (we will implement this later)
+      const item = await generateRandomItem({
+        itemType,
+        rarity,
+        category,
+        characterLevel
+      });
+      
+      res.json(item);
+    } catch (error) {
+      console.error("Error generating random item:", error);
+      res.status(500).json({ message: "Failed to generate random item" });
+    }
+  });
+  
+  // Map location routes
+  app.get("/api/campaigns/:id/map/locations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or players in the campaign can access map locations
+      if (campaign.dmId !== req.user.id) {
+        // TODO: Check if user is a player in the campaign
+        // For now, we'll just allow access to the DM
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const locations = await storage.getMapLocationsByCampaignId(campaign.id);
+      res.json(locations);
+    } catch (error) {
+      console.error("Error getting map locations:", error);
+      res.status(500).json({ message: "Failed to get map locations" });
+    }
+  });
+  
+  app.post("/api/campaigns/:id/map/locations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM can add map locations
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const location = await storage.createMapLocation({
+        ...req.body,
+        campaignId: campaign.id
+      });
+      
+      res.status(201).json(location);
+    } catch (error) {
+      console.error("Error creating map location:", error);
+      res.status(500).json({ message: "Failed to create map location" });
+    }
+  });
+  
+  app.patch("/api/campaigns/:campaignId/map/locations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.campaignId));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM can update map locations
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updatedLocation = await storage.updateMapLocation(req.params.id, req.body);
+      if (!updatedLocation) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+      
+      res.json(updatedLocation);
+    } catch (error) {
+      console.error("Error updating map location:", error);
+      res.status(500).json({ message: "Failed to update map location" });
+    }
+  });
+  
+  app.delete("/api/campaigns/:campaignId/map/locations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.campaignId));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM can delete map locations
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const success = await storage.deleteMapLocation(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+      
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting map location:", error);
+      res.status(500).json({ message: "Failed to delete map location" });
+    }
+  });
+  
+  // Journey path routes
+  app.get("/api/campaigns/:id/map/paths", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or players in the campaign can access journey paths
+      if (campaign.dmId !== req.user.id) {
+        // TODO: Check if user is a player in the campaign
+        // For now, we'll just allow access to the DM
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const paths = await storage.getJourneyPathsByCampaignId(campaign.id);
+      res.json(paths);
+    } catch (error) {
+      console.error("Error getting journey paths:", error);
+      res.status(500).json({ message: "Failed to get journey paths" });
+    }
+  });
+  
+  app.post("/api/campaigns/:id/map/paths", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM can add journey paths
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const path = await storage.createJourneyPath({
+        ...req.body,
+        campaignId: campaign.id
+      });
+      
+      res.status(201).json(path);
+    } catch (error) {
+      console.error("Error creating journey path:", error);
+      res.status(500).json({ message: "Failed to create journey path" });
+    }
+  });
+  
+  app.patch("/api/campaigns/:campaignId/map/paths/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.campaignId));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM can update journey paths
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updatedPath = await storage.updateJourneyPath(req.params.id, req.body);
+      if (!updatedPath) {
+        return res.status(404).json({ message: "Path not found" });
+      }
+      
+      res.json(updatedPath);
+    } catch (error) {
+      console.error("Error updating journey path:", error);
+      res.status(500).json({ message: "Failed to update journey path" });
+    }
+  });
+  
+  app.delete("/api/campaigns/:campaignId/map/paths/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.campaignId));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM can delete journey paths
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const success = await storage.deleteJourneyPath(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Path not found" });
+      }
+      
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting journey path:", error);
+      res.status(500).json({ message: "Failed to delete journey path" });
+    }
+  });
+  
   // Campaigns Routes
   app.get("/api/campaigns", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });

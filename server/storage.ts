@@ -11,8 +11,10 @@ import {
   UserSession, InsertUserSession,
   ChatMessage, InsertChatMessage,
   CampaignInvitation, InsertCampaignInvitation,
+  MapLocation, InsertMapLocation,
+  JourneyPath, InsertJourneyPath,
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
-  friendships, userSessions, chatMessages, campaignInvitations
+  friendships, userSessions, chatMessages, campaignInvitations, mapLocations, journeyPaths
 } from "@shared/schema";
 
 // Define our own Campaign type without partyName since it's not in the DB yet
@@ -138,6 +140,296 @@ export class DatabaseStorage implements IStorage {
       pool, 
       createTableIfMissing: true 
     });
+  }
+  
+  // Implement Map location methods
+  async getMapLocationsByCampaignId(campaignId: number): Promise<MapLocation[]> {
+    try {
+      return db.select().from(mapLocations).where(eq(mapLocations.campaignId, campaignId));
+    } catch (error) {
+      console.error("Error getting map locations:", error);
+      return [];
+    }
+  }
+  
+  async getMapLocation(id: string): Promise<MapLocation | undefined> {
+    try {
+      const [location] = await db.select().from(mapLocations).where(eq(mapLocations.id, id));
+      return location;
+    } catch (error) {
+      console.error("Error getting map location:", error);
+      return undefined;
+    }
+  }
+  
+  async createMapLocation(location: InsertMapLocation): Promise<MapLocation> {
+    try {
+      const [newLocation] = await db.insert(mapLocations).values(location).returning();
+      return newLocation;
+    } catch (error) {
+      console.error("Error creating map location:", error);
+      throw error;
+    }
+  }
+  
+  async updateMapLocation(id: string, location: Partial<MapLocation>): Promise<MapLocation | undefined> {
+    try {
+      const [updatedLocation] = await db
+        .update(mapLocations)
+        .set(location)
+        .where(eq(mapLocations.id, id))
+        .returning();
+      return updatedLocation;
+    } catch (error) {
+      console.error("Error updating map location:", error);
+      return undefined;
+    }
+  }
+  
+  async deleteMapLocation(id: string): Promise<boolean> {
+    try {
+      const result = await db.delete(mapLocations).where(eq(mapLocations.id, id)).returning();
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting map location:", error);
+      return false;
+    }
+  }
+  
+  // Implement Journey path methods
+  async getJourneyPathsByCampaignId(campaignId: number): Promise<JourneyPath[]> {
+    try {
+      return db.select().from(journeyPaths).where(eq(journeyPaths.campaignId, campaignId));
+    } catch (error) {
+      console.error("Error getting journey paths:", error);
+      return [];
+    }
+  }
+  
+  async getJourneyPath(id: string): Promise<JourneyPath | undefined> {
+    try {
+      const [path] = await db.select().from(journeyPaths).where(eq(journeyPaths.id, id));
+      return path;
+    } catch (error) {
+      console.error("Error getting journey path:", error);
+      return undefined;
+    }
+  }
+  
+  async createJourneyPath(path: InsertJourneyPath): Promise<JourneyPath> {
+    try {
+      const [newPath] = await db.insert(journeyPaths).values(path).returning();
+      return newPath;
+    } catch (error) {
+      console.error("Error creating journey path:", error);
+      throw error;
+    }
+  }
+  
+  async updateJourneyPath(id: string, path: Partial<JourneyPath>): Promise<JourneyPath | undefined> {
+    try {
+      const [updatedPath] = await db
+        .update(journeyPaths)
+        .set(path)
+        .where(eq(journeyPaths.id, id))
+        .returning();
+      return updatedPath;
+    } catch (error) {
+      console.error("Error updating journey path:", error);
+      return undefined;
+    }
+  }
+  
+  async deleteJourneyPath(id: string): Promise<boolean> {
+    try {
+      const result = await db.delete(journeyPaths).where(eq(journeyPaths.id, id)).returning();
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting journey path:", error);
+      return false;
+    }
+  }
+  
+  // Implement Item management methods
+  async addItemToCharacter(characterId: number, item: any): Promise<Character | undefined> {
+    try {
+      // Get the character first
+      const character = await this.getCharacter(characterId);
+      if (!character) return undefined;
+      
+      // Create a new equipment object with inventory if it doesn't exist
+      const equipment = character.equipment || { weapons: [], armor: "", items: [], inventory: [] };
+      
+      // Add the item to the inventory
+      if (!Array.isArray(equipment.inventory)) {
+        equipment.inventory = [];
+      }
+      
+      // Find the next available slot number
+      const maxSlot = equipment.inventory.reduce((max, item) => Math.max(max, item.slot || 0), 0);
+      const newItem = {
+        ...item,
+        slot: maxSlot + 1,
+        isEquipped: false
+      };
+      
+      equipment.inventory.push(newItem);
+      
+      // Update the character
+      return this.updateCharacter(characterId, { equipment });
+    } catch (error) {
+      console.error("Error adding item to character:", error);
+      return undefined;
+    }
+  }
+  
+  async removeItemFromCharacter(characterId: number, itemIndex: number): Promise<Character | undefined> {
+    try {
+      // Get the character first
+      const character = await this.getCharacter(characterId);
+      if (!character || !character.equipment || !Array.isArray(character.equipment.inventory)) {
+        return undefined;
+      }
+      
+      // Remove the item from the inventory
+      const inventory = character.equipment.inventory.filter((_, index) => index !== itemIndex);
+      
+      // Update the character equipment
+      const updatedEquipment = {
+        ...character.equipment,
+        inventory
+      };
+      
+      // Update the character
+      return this.updateCharacter(characterId, { equipment: updatedEquipment });
+    } catch (error) {
+      console.error("Error removing item from character:", error);
+      return undefined;
+    }
+  }
+  
+  async transferItemBetweenCharacters(
+    fromCharId: number, 
+    toCharId: number, 
+    itemIndex: number, 
+    quantity?: number
+  ): Promise<{from: Character, to: Character} | undefined> {
+    try {
+      // Get both characters
+      const fromCharacter = await this.getCharacter(fromCharId);
+      const toCharacter = await this.getCharacter(toCharId);
+      
+      if (!fromCharacter || !toCharacter) return undefined;
+      
+      // Check if from character has inventory and the item
+      if (!fromCharacter.equipment || 
+          !Array.isArray(fromCharacter.equipment.inventory) || 
+          itemIndex >= fromCharacter.equipment.inventory.length) {
+        return undefined;
+      }
+      
+      // Get the item to transfer
+      const item = fromCharacter.equipment.inventory[itemIndex];
+      
+      // Determine quantity to transfer
+      const transferQuantity = quantity && quantity < item.quantity ? quantity : item.quantity;
+      
+      // Create a new equipment object for the to character if needed
+      const toEquipment = toCharacter.equipment || { weapons: [], armor: "", items: [], inventory: [] };
+      if (!Array.isArray(toEquipment.inventory)) {
+        toEquipment.inventory = [];
+      }
+      
+      // Find the next available slot number for the to character
+      const maxSlot = toEquipment.inventory.reduce((max, item) => Math.max(max, item.slot || 0), 0);
+      
+      // Create the item to transfer
+      const transferItem = {
+        ...item,
+        quantity: transferQuantity,
+        slot: maxSlot + 1,
+        isEquipped: false
+      };
+      
+      // Add the item to the to character
+      toEquipment.inventory.push(transferItem);
+      
+      // Update the from character's inventory
+      let fromEquipment = { ...fromCharacter.equipment };
+      if (transferQuantity === item.quantity) {
+        // Remove the item completely
+        fromEquipment.inventory = fromEquipment.inventory.filter((_, index) => index !== itemIndex);
+      } else {
+        // Reduce the quantity
+        fromEquipment.inventory[itemIndex] = {
+          ...item,
+          quantity: item.quantity - transferQuantity
+        };
+      }
+      
+      // Update both characters
+      const updatedFromChar = await this.updateCharacter(fromCharId, { equipment: fromEquipment });
+      const updatedToChar = await this.updateCharacter(toCharId, { equipment: toEquipment });
+      
+      if (!updatedFromChar || !updatedToChar) return undefined;
+      
+      return {
+        from: updatedFromChar,
+        to: updatedToChar
+      };
+    } catch (error) {
+      console.error("Error transferring item between characters:", error);
+      return undefined;
+    }
+  }
+  
+  async equipItemForCharacter(characterId: number, itemIndex: number, equip: boolean): Promise<Character | undefined> {
+    try {
+      // Get the character first
+      const character = await this.getCharacter(characterId);
+      if (!character || !character.equipment || !Array.isArray(character.equipment.inventory)) {
+        return undefined;
+      }
+      
+      // Check if the item exists
+      if (itemIndex >= character.equipment.inventory.length) {
+        return undefined;
+      }
+      
+      // Create a copy of the equipment
+      const updatedEquipment = { ...character.equipment };
+      const updatedInventory = [...updatedEquipment.inventory];
+      
+      // Update the item's equipped status
+      updatedInventory[itemIndex] = {
+        ...updatedInventory[itemIndex],
+        isEquipped: equip
+      };
+      
+      // If we're equipping a weapon or armor, update the main equipment lists too
+      const item = updatedInventory[itemIndex];
+      if (equip) {
+        if (item.type === "weapon" && !updatedEquipment.weapons.includes(item.name)) {
+          updatedEquipment.weapons = [...updatedEquipment.weapons, item.name];
+        } else if (item.type === "armor") {
+          updatedEquipment.armor = item.name;
+        }
+      } else {
+        if (item.type === "weapon") {
+          updatedEquipment.weapons = updatedEquipment.weapons.filter(w => w !== item.name);
+        } else if (item.type === "armor" && updatedEquipment.armor === item.name) {
+          updatedEquipment.armor = "";
+        }
+      }
+      
+      updatedEquipment.inventory = updatedInventory;
+      
+      // Update the character
+      return this.updateCharacter(characterId, { equipment: updatedEquipment });
+    } catch (error) {
+      console.error("Error equipping item for character:", error);
+      return undefined;
+    }
   }
 
   // User methods
