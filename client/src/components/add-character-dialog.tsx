@@ -109,7 +109,7 @@ export function AddCharacterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-parchment border-accent max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
+      <DialogContent className="sm:max-w-md bg-parchment border-accent max-h-[80vh] overflow-y-auto w-[92vw] sm:w-auto p-4 sm:p-6 left-[50%] -translate-x-[50%] top-[50%] -translate-y-[50%] fixed">
         <DialogHeader>
           <DialogTitle className="text-2xl font-medieval text-primary">
             Add Character to Campaign
@@ -138,15 +138,17 @@ export function AddCharacterDialog({
                   <SelectValue placeholder="Select a character" />
                 </SelectTrigger>
                 <SelectContent 
-                  className="bg-white border border-accent z-[100] fixed" 
+                  className="bg-white border border-accent z-[200] max-h-[40vh] overflow-y-auto" 
                   position="popper"
                   sideOffset={5}
-                  align="start"
+                  align="center"
+                  avoidCollisions={true}
                 >
                   {characters.map((character) => (
                     <SelectItem
                       key={character.id}
                       value={character.id.toString()}
+                      className="py-3"
                     >
                       {character.name} - Level {character.level} {character.race} {character.class}
                     </SelectItem>
@@ -159,7 +161,12 @@ export function AddCharacterDialog({
               <p className="mb-2">You don't have any characters yet.</p>
               <Button 
                 variant="link" 
-                onClick={() => window.location.href = "/characters/create"}
+                onClick={() => {
+                  onOpenChange(false);
+                  // Use setTimeout to ensure dialog closes properly before navigation
+                  setTimeout(() => window.location.href = "/characters/create", 100);
+                }}
+                className="text-primary font-semibold text-lg hover:underline"
               >
                 Create a Character
               </Button>
