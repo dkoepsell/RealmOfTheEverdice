@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { v4 as uuidv4 } from 'uuid';
 import { Adventure, Campaign, GameLog, Character } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -177,38 +178,179 @@ export default function CampaignPage() {
     ? gameLogs.filter(log => log.type === 'narrative').slice(-1)[0]?.content || ""
     : "";
     
-  // Use combat detection hook to automatically detect and manage combat
+  // Combat state
+  const [combatRound, setCombatRound] = useState(1);
+  const [combatTurn, setCombatTurn] = useState(0);
+  const [combatParticipants, setCombatParticipants] = useState<any[]>([]);
+  
+  // Use combat detection hook to automatically detect threats in the narrative
   const { 
     inCombat, 
-    combatRound, 
-    combatTurn,
-    combatParticipants,
+    detectedThreats,
     availableLoot: detectedLoot,
-    onNextTurn,
-    onEndCombat,
-    onAddParticipant,
-    onApplyDamage,
-    onApplyHealing,
-    onAddCondition,
-    onRemoveCondition,
-    onDiceRoll
-  } = useCombatDetection({
-    content: latestNarrativeContent,
-    currentCharacter: currentCharacter as any,
-    partyCharacters: campaignCharacters as any[] || []
-  });
+    setInCombat,
+    setDetectedThreats,
+    setAvailableLoot: updateAvailableLoot
+  } = useCombatDetection(latestNarrativeContent || "");
+  
+  // Add detected threats to combat participants when combat starts
+  useEffect(() => {
+    if (inCombat && detectedThreats.length > 0) {
+      // Convert threats to combat participants format
+      const newParticipants = detectedThreats.map(threat => ({
+        id: threat.id,
+        name: threat.name,
+        initiative: threat.initiative || Math.floor(Math.random() * 20) + 1,
+        isEnemy: true,
+        isActive: false,
+        hp: threat.hp,
+        maxHp: threat.maxHp,
+        ac: threat.ac,
+        conditions: [],
+        actions: threat.attacks || [],
+        stats: threat.stats,
+      }));
+      
+      // Add to existing participants (avoid duplicates)
+      setCombatParticipants(prev => {
+        const existingIds = prev.map(p => p.id);
+        const filteredNew = newParticipants.filter(p => !existingIds.includes(p.id));
+        return [...prev, ...filteredNew];
+      });
+    }
+  }, [inCombat, detectedThreats]);
+  
+  // Combat action handlers
+  const onNextTurn = () => {
+    // Advance turn or round
+    if (combatParticipants.length > 0) {
+      if (combatTurn >= combatParticipants.length - 1) {
+        setCombatTurn(0);
+        setCombatRound(prevRound => prevRound + 1);
+      } else {
+        setCombatTurn(prevTurn => prevTurn + 1);
+      }
+      
+      // Update active participant
+      setCombatParticipants(prevParticipants => 
+        prevParticipants.map((participant, index) => ({
+          ...participant,
+          isActive: index === (combatTurn + 1) % prevParticipants.length
+        }))
+      );
+    }
+  };
+  
+  const onEndCombat = () => {
+    setInCombat(false);
+    setCombatTurn(0);
+    setCombatRound(1);
+    setCombatParticipants([]);
+  };
+  
+  const onAddParticipant = (participant: any) => {
+    setCombatParticipants(prev => [...prev, { 
+      ...participant, 
+      id: participant.id || uuidv4() 
+    }]);
+  };
+  
+  const onApplyDamage = (participantId: string, amount: number) => {
+    setCombatParticipants(prevParticipants => 
+      prevParticipants.map(participant => {
+        if (participant.id === participantId) {
+          const newHp = Math.max(0, participant.hp - amount);
+          return {
+            ...participant,
+            hp: newHp
+          };
+        }
+        return participant;
+      })
+    );
+  };
+  
+  const onApplyHealing = (participantId: string, amount: number) => {
+    setCombatParticipants(prevParticipants => 
+      prevParticipants.map(participant => {
+        if (participant.id === participantId) {
+          const newHp = Math.min(participant.maxHp, participant.hp + amount);
+          return {
+            ...participant,
+            hp: newHp
+          };
+        }
+        return participant;
+      })
+    );
+  };
+  
+  const onAddCondition = (participantId: string, condition: string) => {
+    setCombatParticipants(prevParticipants => 
+      prevParticipants.map(participant => {
+        if (participant.id === participantId) {
+          const updatedConditions = [...(participant.conditions || [])];
+          if (!updatedConditions.includes(condition)) {
+            updatedConditions.push(condition);
+          }
+          return {
+            ...participant,
+            conditions: updatedConditions
+          };
+        }
+        return participant;
+      })
+    );
+  };
+  
+  const onRemoveCondition = (participantId: string, condition: string) => {
+    setCombatParticipants(prevParticipants => 
+      prevParticipants.map(participant => {
+        if (participant.id === participantId) {
+          return {
+            ...participant,
+            conditions: (participant.conditions || []).filter(c => c !== condition)
+          };
+        }
+        return participant;
+      })
+    );
+  };
+  
+  const onDiceRoll = (participantId: string, type: string, purpose: string) => {
+    // Simple dice roll implementation
+    const dieSize = parseInt(type.substring(1));
+    const result = Math.floor(Math.random() * dieSize) + 1;
+    
+    setCombatParticipants(prevParticipants => 
+      prevParticipants.map(participant => {
+        if (participant.id === participantId) {
+          return {
+            ...participant,
+            lastRoll: {
+              type: purpose,
+              result,
+              total: result,
+              success: undefined
+            }
+          };
+        }
+        return participant;
+      })
+    );
+  };
   
   // Update available loot when new loot is detected
   useEffect(() => {
     if (detectedLoot.length > 0) {
-      setAvailableLoot(prevLoot => {
+      updateAvailableLoot(prevLoot => {
         // Combine previous loot with new loot, avoiding duplicates by id
         const existingIds = new Set(prevLoot.map(item => item.id));
         const newLoot = detectedLoot.filter(item => !existingIds.has(item.id));
         return [...prevLoot, ...newLoot];
       });
     }
-  }, [detectedLoot]);
+  }, [detectedLoot, updateAvailableLoot]);
   
   // Handle DM mode toggle
   const handleDmModeToggle = () => {
