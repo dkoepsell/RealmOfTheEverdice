@@ -242,8 +242,15 @@ export function BattleTracker({
   const handleUsePC = (character: Character) => {
     if (!character) return;
     
-    // Extract stats
-    const stats = character.stats || {
+    // Extract stats with proper typing
+    const stats: {
+      strength: number;
+      dexterity: number;
+      constitution: number;
+      intelligence: number;
+      wisdom: number;
+      charisma: number;
+    } = (character.stats as any) || {
       strength: 10,
       dexterity: 10,
       constitution: 10,
@@ -307,7 +314,7 @@ export function BattleTracker({
       class: character.class,
       level: character.level,
       stats,
-      equipment: character.equipment
+      equipment: character.equipment as any
     });
     
     setShowUsePcSelector(false);
@@ -488,7 +495,7 @@ export function BattleTracker({
         toast({
           title: "Miss!",
           description: `${participant.name}'s attack missed ${activeParticipant.name}`,
-          variant: "secondary"
+          variant: "default"
         });
       }
     }
@@ -563,7 +570,7 @@ export function BattleTracker({
             toast({
               title: "Miss!",
               description: `${participant.name}'s attack missed ${activeParticipant.name}`,
-              variant: "secondary"
+              variant: "default"
             });
           }
         }

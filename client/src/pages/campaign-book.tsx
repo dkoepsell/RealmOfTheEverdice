@@ -309,7 +309,7 @@ export default function CampaignPage() {
         if (participant.id === participantId) {
           return {
             ...participant,
-            conditions: (participant.conditions || []).filter(c => c !== condition)
+            conditions: (participant.conditions || []).filter((c: string) => c !== condition)
           };
         }
         return participant;
