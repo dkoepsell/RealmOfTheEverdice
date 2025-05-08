@@ -1444,7 +1444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Log the bot's response
         await storage.createGameLog({
           campaignId: parseInt(campaignId),
-          content: response,
+          content: response || "No response from companion",
           type: "companion"
         });
       }
@@ -1489,7 +1489,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "World map not found" });
       }
       
-      res.json(worldMap);
+      // Return in the format the client expects
+      res.json({
+        campaignId: worldMap.campaignId,
+        mapUrl: worldMap.mapUrl,
+        generatedAt: worldMap.generatedAt,
+        updatedAt: worldMap.updatedAt
+      });
     } catch (error) {
       console.error("Error getting world map:", error);
       res.status(500).json({ message: "Failed to get world map" });
@@ -1517,7 +1523,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mapUrl: mapData.url
       });
       
-      res.status(201).json(worldMap);
+      // Return in the format the client expects
+      res.status(201).json({
+        campaignId: worldMap.campaignId,
+        mapUrl: worldMap.mapUrl,
+        generatedAt: worldMap.generatedAt,
+        updatedAt: worldMap.updatedAt
+      });
     } catch (error) {
       console.error("Error generating world map:", error);
       res.status(500).json({ message: "Failed to generate world map" });

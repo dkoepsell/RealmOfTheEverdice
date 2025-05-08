@@ -414,20 +414,35 @@ export function AdventureMapPanel({
     async function fetchWorldMap() {
       try {
         setIsLoading(true);
+        console.log(`Fetching world map for campaign ID: ${campaignId}`);
         const response = await fetch(`/api/campaigns/${campaignId}/world-map`);
+        console.log("World map response status:", response.status);
+        
         if (response.ok) {
           const data = await response.json();
-          console.log("World map data:", data); // Debug log
-          if (data && data.mapUrl) {
-            setWorldMap(data.mapUrl);
-          } else if (data && typeof data === 'object' && 'url' in data) {
-            // Handle alternative response format
-            setWorldMap(data.url);
+          console.log("World map data received:", data);
+          
+          // Handle various response formats to ensure we get the map URL
+          if (data && typeof data === 'object') {
+            if (data.mapUrl) {
+              console.log("Using mapUrl from response:", data.mapUrl);
+              setWorldMap(data.mapUrl);
+            } else if ('url' in data) {
+              console.log("Using url from response:", data.url);
+              setWorldMap(data.url);
+            } else {
+              console.error("No map URL found in response data:", data);
+            }
           } else {
-            console.error("Invalid world map data format:", data);
+            console.error("Invalid world map data format, expected object:", data);
           }
         } else {
-          console.error("Failed to fetch world map:", response.status, response.statusText);
+          try {
+            const errorData = await response.json();
+            console.error("Failed to fetch world map:", response.status, response.statusText, errorData);
+          } catch (e) {
+            console.error("Failed to fetch world map:", response.status, response.statusText);
+          }
         }
       } catch (error) {
         console.error("Error fetching world map:", error);
