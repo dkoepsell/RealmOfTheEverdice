@@ -1431,6 +1431,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Failed to list bot companions" });
     }
   });
+  
+  // World Map endpoints (generate, view)
+  app.get("/api/campaigns/:id/world-map", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Anyone in the campaign (DM or player) can view the world map
+      const campaignId = campaign.id;
+      const worldMap = await storage.getCampaignWorldMap(campaignId);
+      
+      if (!worldMap) {
+        return res.status(404).json({ message: "World map not found" });
+      }
+      
+      res.json(worldMap);
+    } catch (error) {
+      console.error("Error getting world map:", error);
+      res.status(500).json({ message: "Failed to get world map" });
+    }
+  });
+  
+  app.post("/api/campaigns/:id/world-map/generate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only the DM can generate a world map
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Generate the world map using OpenAI
+      const mapData = await generateWorldMap(campaign.id, campaign);
+      
+      // Save the world map to the database
+      const worldMap = await storage.createOrUpdateCampaignWorldMap({
+        campaignId: campaign.id,
+        mapUrl: mapData.url
+      });
+      
+      res.status(201).json(worldMap);
+    } catch (error) {
+      console.error("Error generating world map:", error);
+      res.status(500).json({ message: "Failed to generate world map" });
+    }
+  });
 
   const httpServer = createServer(app);
   
