@@ -10,7 +10,8 @@ import {
   generateNPC, 
   generateDialogue, 
   generateCampaign,
-  generateRandomItem
+  generateRandomItem,
+  generateWorldMap
 } from "./openai";
 import { z } from "zod";
 import { 

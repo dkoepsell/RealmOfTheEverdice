@@ -390,10 +390,14 @@ export async function generateWorldMap(campaignId: number, campaignInfo: any) {
       response_format: "url"
     });
 
+    if (!response.data || !response.data[0] || !response.data[0].url) {
+      throw new Error("No image URL returned from OpenAI");
+    }
+
     return { url: response.data[0].url, campaignId };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating world map:", error);
-    throw new Error(`Failed to generate world map: ${error.message}`);
+    throw new Error(`Failed to generate world map: ${error.message || "Unknown error"}`);
   }
 }
 

@@ -13,8 +13,10 @@ import {
   CampaignInvitation, InsertCampaignInvitation,
   MapLocation, InsertMapLocation,
   JourneyPath, InsertJourneyPath,
+  CampaignWorldMap, InsertCampaignWorldMap,
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
-  friendships, userSessions, chatMessages, campaignInvitations, mapLocations, journeyPaths
+  friendships, userSessions, chatMessages, campaignInvitations, mapLocations, journeyPaths,
+  campaignWorldMaps
 } from "@shared/schema";
 
 // Define our own Campaign type without partyName since it's not in the DB yet
@@ -124,6 +126,10 @@ export interface IStorage {
   createJourneyPath(path: InsertJourneyPath): Promise<JourneyPath>;
   updateJourneyPath(id: string, path: Partial<JourneyPath>): Promise<JourneyPath | undefined>;
   deleteJourneyPath(id: string): Promise<boolean>;
+  
+  // World map methods
+  getCampaignWorldMap(campaignId: number): Promise<CampaignWorldMap | undefined>;
+  createOrUpdateCampaignWorldMap(worldMap: InsertCampaignWorldMap): Promise<CampaignWorldMap>;
   
   // Item management methods
   addItemToCharacter(characterId: number, item: any): Promise<Character | undefined>;
@@ -247,6 +253,47 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error deleting journey path:", error);
       return false;
+    }
+  }
+  
+  // Implement World Map methods
+  async getCampaignWorldMap(campaignId: number): Promise<CampaignWorldMap | undefined> {
+    try {
+      const [worldMap] = await db.select().from(campaignWorldMaps).where(eq(campaignWorldMaps.campaignId, campaignId));
+      return worldMap;
+    } catch (error) {
+      console.error("Error getting campaign world map:", error);
+      return undefined;
+    }
+  }
+  
+  async createOrUpdateCampaignWorldMap(worldMap: InsertCampaignWorldMap): Promise<CampaignWorldMap> {
+    try {
+      // Check if a world map already exists for this campaign
+      const existingMap = await this.getCampaignWorldMap(worldMap.campaignId);
+      
+      if (existingMap) {
+        // Update the existing map
+        const [updatedMap] = await db
+          .update(campaignWorldMaps)
+          .set({ 
+            mapUrl: worldMap.mapUrl,
+            updatedAt: new Date()
+          })
+          .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
+          .returning();
+        return updatedMap;
+      } else {
+        // Create a new map
+        const [newMap] = await db
+          .insert(campaignWorldMaps)
+          .values(worldMap)
+          .returning();
+        return newMap;
+      }
+    } catch (error) {
+      console.error("Error creating/updating campaign world map:", error);
+      throw error;
     }
   }
   
