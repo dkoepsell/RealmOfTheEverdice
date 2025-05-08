@@ -567,8 +567,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCampaign(id: number): Promise<boolean> {
-    const result = await db.delete(campaigns).where(eq(campaigns.id, id)).returning();
-    return result.length > 0;
+    try {
+      // First, delete related campaign_world_maps record which has a foreign key constraint
+      await db.delete(campaignWorldMaps).where(eq(campaignWorldMaps.campaignId, id));
+      
+      // Then delete the campaign
+      const result = await db.delete(campaigns).where(eq(campaigns.id, id)).returning();
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting campaign:", error);
+      throw error;
+    }
   }
 
   // Campaign Character methods
