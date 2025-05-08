@@ -8,9 +8,11 @@ import {
   LayerGroup,
   CircleMarker,
   Tooltip as LeafletTooltip,
-  Polyline
+  Polyline,
+  ImageOverlay,
+  useMap
 } from 'react-leaflet';
-import { Icon, LatLngExpression, DivIcon, Map as LeafletMap } from 'leaflet';
+import { Icon, LatLngExpression, DivIcon, Map as LeafletMap, LatLngBounds } from 'leaflet';
 import { Button } from '@/components/ui/button';
 import { 
   Map, 
@@ -117,9 +119,33 @@ export function CampaignMap({
   const [newMarkerType, setNewMarkerType] = useState<MapMarkerType>('landmark');
   const [newMarkerName, setNewMarkerName] = useState('');
   const [newMarkerDescription, setNewMarkerDescription] = useState('');
+  const [worldMap, setWorldMap] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const mapRef = useRef<any>(null);
 
   const defaultCenter: LatLngExpression = [40, -20]; // Default center of the map
+  
+  // Fetch the world map from the API
+  useEffect(() => {
+    async function fetchWorldMap() {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/campaigns/${campaignId}/world-map`);
+        if (response.ok) {
+          const data = await response.json();
+          setWorldMap(data.mapUrl);
+        }
+      } catch (error) {
+        console.error("Error fetching world map:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    if (campaignId) {
+      fetchWorldMap();
+    }
+  }, [campaignId]);
 
   // Center map on current location if available
   useEffect(() => {
@@ -219,11 +245,21 @@ export function CampaignMap({
         ref={mapRef}
         attributionControl={false}
       >
-        {/* Base map styles */}
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        />
+        {/* Conditional rendering based on world map availability */}
+        {worldMap ? (
+          // Display the AI-generated world map
+          <ImageOverlay
+            url={worldMap}
+            bounds={new LatLngBounds([-85, -180], [85, 180])}
+            opacity={0.85}
+          />
+        ) : (
+          // Fallback to default map style
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          />
+        )}
         
         {/* Draw journey paths */}
         {paths.map(path => (
