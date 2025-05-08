@@ -55,7 +55,8 @@ import {
   Search,
   Filter,
   Trash2,
-  Beaker
+  Beaker,
+  Info
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -145,6 +146,41 @@ export function InventoryManagement({
     const inventory = character?.equipment?.inventory || [];
     return calculateTotalWeight(inventory);
   };
+  
+  // Calculate encumbrance status based on weight
+  const getEncumbranceStatus = () => {
+    const capacity = calculateCarryingCapacity();
+    const weight = calculateInventoryWeight();
+    const percentage = (parseFloat(weight) / capacity) * 100;
+    
+    if (percentage >= 100) {
+      return {
+        status: "Heavily Encumbered",
+        description: "Speed reduced by 20 feet. Disadvantage on ability checks, attack rolls, and saving throws that use Strength, Dexterity, or Constitution.",
+        color: "text-red-600"
+      };
+    } else if (percentage >= 66.67) {
+      return {
+        status: "Encumbered",
+        description: "Speed reduced by 10 feet. Disadvantage on ability checks that use Strength, Dexterity, or Constitution.",
+        color: "text-amber-600"
+      };
+    } else if (percentage >= 33.33) {
+      return {
+        status: "Partially Encumbered",
+        description: "No penalties, but approaching encumbrance.",
+        color: "text-amber-500"
+      };
+    } else {
+      return {
+        status: "Unencumbered",
+        description: "No movement or ability penalties.",
+        color: "text-green-600"
+      };
+    }
+  };
+  
+  const encumbranceInfo = getEncumbranceStatus();
   
   // Get all characters in the campaign that aren't the current character
   const otherCharacters = campaignCharacters.filter(c => c.id !== characterId);
@@ -377,6 +413,20 @@ export function InventoryManagement({
                     <span>
                       Weight: {calculateInventoryWeight()} / {calculateCarryingCapacity()} lbs
                     </span>
+                  </div>
+                  <div className={`text-xs flex items-center space-x-1 ${encumbranceInfo.color}`}>
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Status: {encumbranceInfo.status}</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 cursor-pointer" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>{encumbranceInfo.description}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
