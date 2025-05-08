@@ -64,7 +64,10 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
                   >
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                   </svg>
-                  <h1 className="ml-2 text-xl font-medieval tracking-wider">Quest Tavern</h1>
+                  <div className="ml-2">
+                    <h1 className="text-xl font-medieval tracking-wider">Realm of the Everdice</h1>
+                    <p className="text-xs text-parchment/80 -mt-1">A Storycrafter's Companion</p>
+                  </div>
                 </a>
               </Link>
             </div>
