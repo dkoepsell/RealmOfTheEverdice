@@ -43,6 +43,8 @@ import { DndQuickReference } from "@/components/dnd-quick-reference";
 import InteractiveDiceSuggestions from "@/components/interactive-dice-suggestions";
 import { InventoryManagement } from "@/components/inventory-management";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
+import BattleTracker from "@/components/battle-tracker";
+import { useCombatDetection } from "@/hooks/use-combat-detection";
 
 export default function CampaignPage() {
   // URL parameters
@@ -66,26 +68,7 @@ export default function CampaignPage() {
   const [playerInput, setPlayerInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Battle tracking state
-  const [inCombat, setInCombat] = useState(false);
-  const [combatRound, setCombatRound] = useState(1);
-  const [combatTurn, setCombatTurn] = useState(0);
-  const [combatParticipants, setCombatParticipants] = useState<Array<{
-    id: string;
-    name: string;
-    initiative: number;
-    isEnemy: boolean;
-    isActive: boolean;
-    hp: number;
-    maxHp: number;
-    actions: string[];
-    lastRoll?: {
-      type: string;
-      result: number;
-      total: number;
-      success?: boolean;
-    };
-  }>>([]);
+
   
   // Loot system state
   const [availableLoot, setAvailableLoot] = useState<Array<{
@@ -188,6 +171,44 @@ export default function CampaignPage() {
       setSelectedCharacterId(campaignCharacters[0].id);
     }
   }, [campaignCharacters, selectedCharacterId]);
+  
+  // Get the latest narrative content for combat detection
+  const latestNarrativeContent = gameLogs.length > 0 
+    ? gameLogs.filter(log => log.type === 'narrative').slice(-1)[0]?.content || ""
+    : "";
+    
+  // Use combat detection hook to automatically detect and manage combat
+  const { 
+    inCombat, 
+    combatRound, 
+    combatTurn,
+    combatParticipants,
+    availableLoot: detectedLoot,
+    onNextTurn,
+    onEndCombat,
+    onAddParticipant,
+    onApplyDamage,
+    onApplyHealing,
+    onAddCondition,
+    onRemoveCondition,
+    onDiceRoll
+  } = useCombatDetection({
+    content: latestNarrativeContent,
+    currentCharacter: currentCharacter as any,
+    partyCharacters: campaignCharacters as any[] || []
+  });
+  
+  // Update available loot when new loot is detected
+  useEffect(() => {
+    if (detectedLoot.length > 0) {
+      setAvailableLoot(prevLoot => {
+        // Combine previous loot with new loot, avoiding duplicates by id
+        const existingIds = new Set(prevLoot.map(item => item.id));
+        const newLoot = detectedLoot.filter(item => !existingIds.has(item.id));
+        return [...prevLoot, ...newLoot];
+      });
+    }
+  }, [detectedLoot]);
   
   // Handle DM mode toggle
   const handleDmModeToggle = () => {
@@ -879,6 +900,23 @@ export default function CampaignPage() {
             )}
           </div>
         </ResizablePanels>
+        
+        {/* Battle Tracker */}
+        <BattleTracker
+          inCombat={inCombat}
+          combatParticipants={combatParticipants}
+          combatRound={combatRound}
+          combatTurn={combatTurn}
+          onEndCombat={onEndCombat}
+          onNextTurn={onNextTurn}
+          onAddParticipant={onAddParticipant}
+          onApplyDamage={onApplyDamage}
+          onApplyHealing={onApplyHealing}
+          onAddCondition={onAddCondition}
+          onRemoveCondition={onRemoveCondition}
+          onDiceRoll={onDiceRoll}
+          partyCharacters={campaignCharacters as any[]}
+        />
         
         {/* Dice Roller Dialog */}
         {showDiceRoller && (
