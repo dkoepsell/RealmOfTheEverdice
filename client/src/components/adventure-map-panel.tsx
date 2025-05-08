@@ -252,6 +252,7 @@ export function AdventureMapPanel({
   const [isDrawingPath, setIsDrawingPath] = useState(false);
   const [currentPathPoints, setCurrentPathPoints] = useState<[number, number][]>([]);
   const [showDiscoveredOnly, setShowDiscoveredOnly] = useState(false);
+  const [worldMap, setWorldMap] = useState<string | null>(null);
   
   const queryClient = useQueryClient();
   
@@ -407,6 +408,28 @@ export function AdventureMapPanel({
   
   // Get all paths
   const journeyPaths: JourneyPath[] = pathsQuery.data || [];
+  
+  // Fetch world map from the API
+  useEffect(() => {
+    async function fetchWorldMap() {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/campaigns/${campaignId}/world-map`);
+        if (response.ok) {
+          const data = await response.json();
+          setWorldMap(data.mapUrl);
+        }
+      } catch (error) {
+        console.error("Error fetching world map:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    if (campaignId && isOpen) {
+      fetchWorldMap();
+    }
+  }, [campaignId, isOpen]);
   
   // Filter locations based on discovered status (for player view)
   const filteredLocations = showDiscoveredOnly && !isDm
@@ -574,12 +597,21 @@ export function AdventureMapPanel({
                 className="fantasy-map-container border-4 border-amber-800/50 rounded-lg shadow-inner"
               >
                 {/* Fantasy Map Image Overlay */}
-                <ImageOverlay
-                  url="https://i.imgur.com/GJ35Hdx.jpg"
-                  bounds={[[-85, -180], [85, 180]]}
-                  opacity={0.8}
-                  zIndex={10}
-                />
+                {worldMap ? (
+                  <ImageOverlay
+                    url={worldMap}
+                    bounds={[[-85, -180], [85, 180]]}
+                    opacity={1.0}
+                    zIndex={10}
+                  />
+                ) : (
+                  <ImageOverlay
+                    url="https://i.imgur.com/GJ35Hdx.jpg"
+                    bounds={[[-85, -180], [85, 180]]}
+                    opacity={0.8}
+                    zIndex={10}
+                  />
+                )}
                 
                 {/* Fallback map tiles that show through in areas without fantasy map coverage */}
                 <TileLayer
