@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Campaign, Character } from "@shared/schema";
 import { 
@@ -24,6 +24,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   CalendarDays, 
   Users, 
@@ -34,11 +46,14 @@ import {
   Plus, 
   RefreshCcw,
   Send,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from "lucide-react";
 
 export function CampaignsDashboard() {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   
   // Fetch user's campaigns
   const { 
@@ -56,6 +71,40 @@ export function CampaignsDashboard() {
   } = useQuery<Character[]>({
     queryKey: ["/api/characters"],
   });
+  
+  // Delete campaign mutation
+  const deleteCampaignMutation = useMutation({
+    mutationFn: async (campaignId: number) => {
+      return await apiRequest("DELETE", `/api/campaigns/${campaignId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Campaign Deleted",
+        description: "The campaign was successfully deleted.",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      setCampaignToDelete(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error Deleting Campaign",
+        description: error.message || "There was an error deleting the campaign. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  const handleDeleteCampaign = (campaign: Campaign, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the card click
+    setCampaignToDelete(campaign);
+  };
+  
+  const confirmDeleteCampaign = () => {
+    if (campaignToDelete) {
+      deleteCampaignMutation.mutate(campaignToDelete.id);
+    }
+  };
   
   const handleCampaignClick = (campaignId: number) => {
     navigate(`/campaigns/${campaignId}`);
@@ -150,12 +199,25 @@ export function CampaignsDashboard() {
             </CardContent>
             
             <CardFooter className="flex-col gap-2">
-              <Button 
-                className="w-full font-medieval"
-                onClick={() => handleCampaignClick(campaign.id)}
-              >
-                <ScrollText className="mr-2 h-4 w-4" /> Continue Adventure
-              </Button>
+              <div className="flex w-full gap-2">
+                <Button 
+                  className="w-full font-medieval"
+                  onClick={() => handleCampaignClick(campaign.id)}
+                >
+                  <ScrollText className="mr-2 h-4 w-4" /> Continue Adventure
+                </Button>
+                
+                {/* Only show delete button if user is the DM */}
+                {campaign.dmId && (
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={(e) => handleDeleteCampaign(campaign, e)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               
               <TooltipProvider>
                 <Tooltip>
@@ -247,6 +309,41 @@ export function CampaignsDashboard() {
   
   return (
     <div className="space-y-6">
+      {/* Delete Campaign Confirmation Dialog */}
+      <Dialog open={!!campaignToDelete} onOpenChange={() => setCampaignToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete Campaign</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {campaignToDelete?.name}? This action cannot be undone.
+              All campaign data, adventures, and logs will be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setCampaignToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteCampaign}
+              disabled={deleteCampaignMutation.isPending}
+            >
+              {deleteCampaignMutation.isPending ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>Delete Campaign</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       <div className="bg-gradient-to-b from-accent/10 to-background rounded-lg p-4 md:p-6 mb-8 border border-accent/20">
         <h2 className="text-2xl font-medieval text-primary mb-2">Your D&D Adventures</h2>
         <p className="text-muted-foreground mb-4">

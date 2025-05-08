@@ -565,6 +565,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.delete("/api/campaigns/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      const campaign = await storage.getCampaign(campaignId);
+      
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM can delete campaign
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const success = await storage.deleteCampaign(campaignId);
+      if (success) {
+        res.status(200).json({ success: true, message: "Campaign deleted successfully" });
+      } else {
+        res.status(500).json({ success: false, message: "Failed to delete campaign" });
+      }
+    } catch (error) {
+      console.error("Error deleting campaign:", error);
+      res.status(500).json({ message: "Failed to delete campaign", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+  
   // Campaign Characters Routes
   app.get("/api/campaigns/:id/characters", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
