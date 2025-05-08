@@ -1848,6 +1848,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }));
         }
         
+        // Handle party planning updates (item added, updated, deleted, etc.)
+        if (data.type === 'planning' && data.campaignId) {
+          const campaignId = parseInt(data.campaignId);
+          
+          // Broadcast the update to all clients in the campaign
+          if (connections[campaignId]) {
+            connections[campaignId].forEach(client => {
+              if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                  type: 'planning',
+                  action: data.action,
+                  planId: data.planId,
+                  itemId: data.itemId,
+                  userId: data.userId,
+                  username: data.username,
+                  timestamp: new Date()
+                }));
+              }
+            });
+          }
+        }
+        
         // Handle chat messages
         if (data.type === 'chat' && clientCampaignId) {
           // Broadcast the message to all connected clients for this campaign
