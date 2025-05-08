@@ -27,7 +27,8 @@ import {
   AlertCircle,
   ArrowRightCircle,
   Crown,
-  UserPlus
+  UserPlus,
+  Zap
 } from "lucide-react";
 import { 
   Tooltip, 
@@ -37,6 +38,14 @@ import {
 } from "@/components/ui/tooltip";
 import { Character } from "@shared/schema";
 import { toast } from "@/hooks/use-toast";
+import { 
+  calculateActionResult, 
+  calculateWeaponDamage, 
+  calculateSpellDamage,
+  COMMON_WEAPONS,
+  COMMON_SPELLS
+} from "@/lib/combat-utils";
+import { v4 as uuidv4 } from 'uuid';
 
 export interface CombatParticipant {
   id: string;
@@ -52,11 +61,34 @@ export interface CombatParticipant {
   imgUrl?: string;
   race?: string;
   class?: string;
+  level?: number;
+  stats?: {
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+  };
+  equipment?: {
+    items: Array<{
+      name: string;
+      type: string;
+      isEquipped: boolean;
+    }>;
+  };
   lastRoll?: {
     type: string;
     result: number;
+    modifier?: number;
     total: number;
     success?: boolean;
+    damage?: number;
+    damageRolls?: number[];
+    damageBonus?: number;
+    damageType?: string;
+    damageDesc?: string;
+    criticalHit?: boolean;
   };
 }
 
@@ -101,102 +133,479 @@ export function BattleTracker({
     isEnemy: true,
     hp: 20,
     maxHp: 20,
-    ac: 14,
-    actions: ["Attack", "Dodge", "Disengage"]
+    ac: 12,
+    actions: ["attack", "dodge"]
   });
+  const [showConditionInput, setShowConditionInput] = useState<string | null>(null);
+  const [conditionInput, setConditionInput] = useState("");
+  const [showUsePcSelector, setShowUsePcSelector] = useState(false);
 
-  // Sort participants by initiative
+  // Sort participants by initiative order
   const sortedParticipants = [...combatParticipants].sort((a, b) => b.initiative - a.initiative);
   
-  // Get the active participant
+  // Find the currently active participant
   const activeParticipant = sortedParticipants.find(p => p.isActive);
   
-  // Handle damage application
-  const handleApplyDamage = (id: string) => {
-    const amount = parseInt(damageAmount[id] || "0");
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Invalid damage amount",
-        description: "Please enter a positive number",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (onApplyDamage) {
-      onApplyDamage(id, amount);
-      // Clear the input
-      setDamageAmount(prev => ({ ...prev, [id]: "" }));
-    }
-  };
-  
-  // Handle healing application
-  const handleApplyHealing = (id: string) => {
-    const amount = parseInt(healAmount[id] || "0");
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Invalid healing amount",
-        description: "Please enter a positive number",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (onApplyHealing) {
-      onApplyHealing(id, amount);
-      // Clear the input
-      setHealAmount(prev => ({ ...prev, [id]: "" }));
-    }
-  };
-  
-  // Handle adding a new participant
+  // Handle form submission for adding a participant
   const handleAddParticipant = () => {
     if (!newParticipant.name) {
       toast({
-        title: "Missing name",
-        description: "Please enter a name for the participant",
+        title: "Name required",
+        description: "Please provide a name for the participant.",
         variant: "destructive"
       });
       return;
     }
     
-    if (onAddParticipant) {
-      onAddParticipant({
-        ...newParticipant,
-        isActive: false
+    onAddParticipant?.({
+      ...newParticipant,
+      isActive: false,
+      conditions: []
+    });
+    
+    // Reset form
+    setNewParticipant({
+      name: "",
+      initiative: 10,
+      isEnemy: true,
+      hp: 20,
+      maxHp: 20,
+      ac: 12,
+      actions: ["attack", "dodge"]
+    });
+    setShowAddParticipant(false);
+  };
+  
+  // Handle applying damage to a participant
+  const handleApplyDamage = (participantId: string) => {
+    const amount = parseInt(damageAmount[participantId] || "0");
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid damage amount.",
+        variant: "destructive"
       });
+      return;
+    }
+    
+    onApplyDamage?.(participantId, amount);
+    
+    // Clear the input
+    setDamageAmount(prev => {
+      const newDamageAmount = { ...prev };
+      delete newDamageAmount[participantId];
+      return newDamageAmount;
+    });
+  };
+  
+  // Handle applying healing to a participant
+  const handleApplyHealing = (participantId: string) => {
+    const amount = parseInt(healAmount[participantId] || "0");
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid healing amount.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onApplyHealing?.(participantId, amount);
+    
+    // Clear the input
+    setHealAmount(prev => {
+      const newHealAmount = { ...prev };
+      delete newHealAmount[participantId];
+      return newHealAmount;
+    });
+  };
+  
+  // Handle adding a condition to a participant
+  const handleAddCondition = (participantId: string) => {
+    if (!conditionInput) {
+      toast({
+        title: "Condition required",
+        description: "Please provide a condition name.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onAddCondition?.(participantId, conditionInput);
+    
+    // Clear the input and hide the form
+    setConditionInput("");
+    setShowConditionInput(null);
+  };
+  
+  // Handle using a PC from the party as a combat participant
+  const handleUsePC = (character: Character) => {
+    if (!character) return;
+    
+    // Extract stats
+    const stats = character.stats || {
+      strength: 10,
+      dexterity: 10,
+      constitution: 10,
+      intelligence: 10,
+      wisdom: 10,
+      charisma: 10
+    };
+    
+    // Calculate HP based on class and level if not set
+    let hp = 0;
+    const level = character.level || 1;
+    const conModifier = Math.floor((stats.constitution - 10) / 2);
+    
+    // Simplified HP calculation based on class
+    switch (character.class?.toLowerCase()) {
+      case 'barbarian':
+        hp = 12 + conModifier + (7 + conModifier) * (level - 1);
+        break;
+      case 'fighter': 
+      case 'paladin':
+      case 'ranger':
+        hp = 10 + conModifier + (6 + conModifier) * (level - 1);
+        break;
+      case 'bard':
+      case 'cleric':
+      case 'druid':
+      case 'monk':
+      case 'rogue':
+      case 'warlock':
+        hp = 8 + conModifier + (5 + conModifier) * (level - 1);
+        break;
+      case 'sorcerer':
+      case 'wizard':
+        hp = 6 + conModifier + (4 + conModifier) * (level - 1);
+        break;
+      default:
+        hp = 8 + conModifier + (5 + conModifier) * (level - 1);
+    }
+    
+    // Calculate initiative modifier based on Dexterity
+    const initModifier = Math.floor((stats.dexterity - 10) / 2);
+    
+    // Roll initiative (1d20 + DEX modifier)
+    const initiativeRoll = Math.floor(Math.random() * 20) + 1 + initModifier;
+    
+    // Calculate armor class based on DEX and equipment
+    let ac = 10 + Math.floor((stats.dexterity - 10) / 2); // Base AC + DEX modifier
+    
+    // Add PC to combat
+    onAddParticipant?.({
+      name: character.name,
+      initiative: initiativeRoll,
+      isEnemy: false,
+      isActive: false,
+      hp: Math.max(1, hp),
+      maxHp: Math.max(1, hp),
+      ac,
+      conditions: [],
+      actions: ["attack", "cast spell", "dodge", "help", "disengage"],
+      race: character.race,
+      class: character.class,
+      level: character.level,
+      stats,
+      equipment: character.equipment
+    });
+    
+    setShowUsePcSelector(false);
+  };
+  
+  // Handle dice roll for a participant
+  const handleDiceRoll = (participantId: string, diceType: string, purpose: string) => {
+    // Get the participant
+    const participant = combatParticipants.find(p => p.id === participantId);
+    if (!participant) return;
+    
+    // Basic dice roll
+    const dieSize = parseInt(diceType.substring(1));
+    const result = Math.floor(Math.random() * dieSize) + 1;
+    
+    // Calculate modifier based on purpose and participant stats
+    let modifier = 0;
+    let total = result;
+    
+    if (participant.stats) {
+      // Add appropriate modifier based on the roll purpose
+      switch (purpose.toLowerCase()) {
+        case 'attack':
+          // For attack rolls, use STR for melee, DEX for ranged
+          modifier = Math.floor((participant.stats.strength - 10) / 2);
+          // Some participants might prefer DEX for attacks (finesse weapons)
+          const dexMod = Math.floor((participant.stats.dexterity - 10) / 2);
+          if (dexMod > modifier) {
+            modifier = dexMod;
+          }
+          break;
+        case 'save':
+          // Default to DEX for saves, which is common in combat
+          modifier = Math.floor((participant.stats.dexterity - 10) / 2);
+          break;
+        case 'damage':
+          // Default to STR for damage
+          modifier = Math.floor((participant.stats.strength - 10) / 2);
+          break;
+        case 'initiative':
+          // Initiative uses DEX
+          modifier = Math.floor((participant.stats.dexterity - 10) / 2);
+          break;
+        default:
+          // No modifier
+          break;
+      }
       
-      // Reset the form
-      setNewParticipant({
-        name: "",
-        initiative: 10,
-        isEnemy: true,
-        hp: 20,
-        maxHp: 20,
-        ac: 14,
-        actions: ["Attack", "Dodge", "Disengage"]
-      });
-      setShowAddParticipant(false);
+      total = result + modifier;
+    }
+    
+    // Consider proficiency bonus for PCs (non-enemies)
+    if (!participant.isEnemy && purpose.toLowerCase() === 'attack') {
+      // Calculate proficiency bonus based on level or CR
+      // Basic formula: 2 + (level - 1) / 4, rounded down
+      const level = participant.level || 1;
+      const proficiencyBonus = 2 + Math.floor((level - 1) / 4);
+      total += proficiencyBonus;
+      // Note that we're adding to total but not to modifier for display clarity
+    }
+    
+    if (onDiceRoll) {
+      onDiceRoll(participantId, diceType, purpose);
+    }
+    
+    // Update the participant's roll information
+    const updatedParticipants = combatParticipants.map(p => {
+      if (p.id === participantId) {
+        return {
+          ...p,
+          lastRoll: {
+            type: purpose,
+            result,
+            modifier,
+            total,
+            success: undefined
+          }
+        };
+      }
+      return p;
+    });
+    
+    // If this is an attack roll, follow up with damage roll on high rolls (15+)
+    if (purpose.toLowerCase() === 'attack' && total >= 15) {
+      setTimeout(() => {
+        handleDamageRoll(participantId);
+      }, 1000);
     }
   };
   
-  // If not in combat, don't render
+  // Handle damage roll based on character's weapon or abilities
+  const handleDamageRoll = (participantId: string) => {
+    const participant = combatParticipants.find(p => p.id === participantId);
+    if (!participant) return;
+    
+    // Default damage calculation for simple attacks
+    let damageDice = '1d4'; // Default damage die
+    let damageBonus = 0;
+    let damageType = 'bludgeoning';
+    let rolls = [];
+    let totalDamage = 0;
+    let criticalHit = false;
+    
+    // Check if the participant has stats for proper calculation
+    if (participant.stats) {
+      // Find equipped weapon if available
+      let weaponName = 'Unarmed Strike';
+      
+      if (participant.equipment?.items) {
+        const equippedWeapons = participant.equipment.items.filter(item => 
+          item.type === 'weapon' && item.isEquipped
+        );
+        
+        if (equippedWeapons.length > 0) {
+          weaponName = equippedWeapons[0].name;
+        }
+      }
+      
+      // Use combat utils to calculate damage based on weapon
+      const weaponDamage = calculateWeaponDamage(
+        weaponName,
+        participant.stats,
+        2 + Math.floor(((participant.level || 1) - 1) / 4) // Calculate proficiency bonus
+      );
+      
+      totalDamage = weaponDamage.damage;
+      rolls = weaponDamage.damageRolls;
+      damageBonus = weaponDamage.damageBonus;
+      damageType = weaponDamage.damageType;
+      criticalHit = weaponDamage.criticalHit || false;
+    } else {
+      // Simple damage roll for participants without stats
+      const roll = Math.floor(Math.random() * 6) + 1; // 1d6
+      rolls = [roll];
+      totalDamage = roll;
+    }
+    
+    // Create a descriptive roll result
+    const rollDescription = `${rolls.join(' + ')}${damageBonus !== 0 ? ` + ${damageBonus}` : ''} = ${totalDamage}`;
+    
+    // Update the participant's last roll information
+    const updatedParticipants = combatParticipants.map(p => {
+      if (p.id === participantId) {
+        return {
+          ...p,
+          lastRoll: {
+            ...(p.lastRoll || {}),
+            damage: totalDamage,
+            damageRolls: rolls,
+            damageBonus,
+            damageType,
+            damageDesc: rollDescription,
+            criticalHit
+          }
+        };
+      }
+      return p;
+    });
+    
+    // If target's AC is known, determine hit/miss
+    if (participant.lastRoll && activeParticipant && activeParticipant.ac) {
+      const isHit = participant.lastRoll.total >= activeParticipant.ac;
+      
+      if (isHit && onApplyDamage) {
+        // Automatically apply damage to the target
+        setTimeout(() => {
+          onApplyDamage(activeParticipant.id, totalDamage);
+          
+          // Show toast notification
+          toast({
+            title: criticalHit ? "Critical Hit!" : "Hit!",
+            description: `${participant.name} deals ${totalDamage} ${damageType} damage to ${activeParticipant.name}`,
+            variant: criticalHit ? "destructive" : "default"
+          });
+        }, 500);
+      } else if (!isHit) {
+        // Show miss notification
+        toast({
+          title: "Miss!",
+          description: `${participant.name}'s attack missed ${activeParticipant.name}`,
+          variant: "secondary"
+        });
+      }
+    }
+  };
+
+  // Handle weapon or spell attack for a participant
+  const handleActionAttack = (participantId: string, actionType: 'weapon' | 'spell' = 'weapon') => {
+    const participant = combatParticipants.find(p => p.id === participantId);
+    if (!participant) return;
+    
+    if (actionType === 'weapon') {
+      // Determine weapon from equipped items or default
+      let weaponName = 'Unarmed Strike';
+      
+      if (participant.equipment?.items) {
+        const equippedWeapons = participant.equipment.items.filter(item => 
+          item.type === 'weapon' && item.isEquipped
+        );
+        
+        if (equippedWeapons.length > 0) {
+          weaponName = equippedWeapons[0].name;
+        }
+      }
+      
+      // Calculate attack and damage
+      if (participant.stats) {
+        const actionResult = calculateActionResult(
+          `attack with ${weaponName}`,
+          participant,
+          2 + Math.floor(((participant.level || 1) - 1) / 4) // Calculate proficiency bonus
+        );
+        
+        // Update participant with roll results
+        const updatedParticipants = combatParticipants.map(p => {
+          if (p.id === participantId) {
+            return {
+              ...p,
+              lastRoll: {
+                type: 'attack',
+                result: actionResult.dieRoll || actionResult.attackRoll,
+                modifier: actionResult.attackBonus,
+                total: actionResult.attackRoll,
+                damage: actionResult.damage,
+                damageRolls: actionResult.damageRolls,
+                damageBonus: actionResult.damageBonus,
+                damageType: actionResult.damageType,
+                criticalHit: actionResult.criticalHit
+              }
+            };
+          }
+          return p;
+        });
+        
+        // If target's AC is known, determine hit/miss
+        if (activeParticipant && activeParticipant.ac) {
+          const isHit = actionResult.attackRoll >= activeParticipant.ac;
+          
+          if (isHit && onApplyDamage && actionResult.damage) {
+            // Automatically apply damage to the target
+            setTimeout(() => {
+              onApplyDamage(activeParticipant.id, actionResult.damage as number);
+              
+              // Show toast notification
+              toast({
+                title: actionResult.criticalHit ? "Critical Hit!" : "Hit!",
+                description: `${participant.name} deals ${actionResult.damage} ${actionResult.damageType} damage to ${activeParticipant.name}`,
+                variant: actionResult.criticalHit ? "destructive" : "default"
+              });
+            }, 500);
+          } else if (!isHit) {
+            // Show miss notification
+            toast({
+              title: "Miss!",
+              description: `${participant.name}'s attack missed ${activeParticipant.name}`,
+              variant: "secondary"
+            });
+          }
+        }
+      } else {
+        // Fallback to simple dice roll if no stats
+        handleDiceRoll(participantId, 'd20', 'attack');
+      }
+    } else if (actionType === 'spell') {
+      // TODO: Implement spell casting with spell selection
+      handleDiceRoll(participantId, 'd20', 'spellcasting');
+    }
+  };
+  
   if (!inCombat) return null;
   
   return (
-    <div className="battle-tracker fixed bottom-0 right-0 z-50 max-w-sm mb-16 mr-4">
-      <Card className="border-red-300 shadow-lg">
-        <CardHeader className="bg-red-50/80 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <Sword className="h-5 w-5 text-red-500" />
-              <CardTitle className="text-md font-medieval">Battle Tracker</CardTitle>
+    <div className="fixed bottom-0 right-0 mb-4 mr-4 z-40 w-72">
+      <Card className="border-red-200 shadow-lg">
+        <CardHeader className="py-3 px-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-base flex items-center" onClick={() => setExpanded(!expanded)}>
+                <Sword className="h-4 w-4 mr-2 text-red-500" />
+                Battle Tracker
+                <Badge variant="outline" className="ml-2 text-xs">
+                  Round {combatRound}
+                </Badge>
+              </CardTitle>
             </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline" className="bg-red-100 text-red-800 mr-1">
-                Round {combatRound}
-              </Badge>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {
+            <div className="flex">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0 mr-1" 
+                onClick={() => setExpanded(!expanded)}>
+                {expanded ? <X className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="h-6 w-6 p-0 text-red-500" 
+                onClick={(e) => {
                 e.stopPropagation();
                 onEndCombat();
               }}>
@@ -257,8 +666,14 @@ export function BattleTracker({
                         </div>
                         <div className="flex items-center">
                           {participant.lastRoll && (
-                            <Badge variant="outline" className="mr-1 text-xs">
+                            <Badge 
+                              variant="outline" 
+                              className={`mr-1 text-xs ${participant.lastRoll.criticalHit ? 'bg-yellow-100 border-yellow-300 text-yellow-800' : ''}`}
+                            >
                               {participant.lastRoll.type}: {participant.lastRoll.total}
+                              {participant.lastRoll.damage && (
+                                <> → {participant.lastRoll.damage}</>
+                              )}
                             </Badge>
                           )}
                         </div>
@@ -298,75 +713,34 @@ export function BattleTracker({
                             >
                               {condition}
                               {onRemoveCondition && (
-                                <X 
-                                  className="h-3 w-3 ml-1 cursor-pointer" 
+                                <button 
+                                  className="ml-1 text-purple-800 opacity-70 hover:opacity-100"
                                   onClick={() => onRemoveCondition(participant.id, condition)}
-                                />
+                                >
+                                  <X className="h-2 w-2" />
+                                </button>
                               )}
                             </Badge>
                           ))}
                         </div>
                       )}
                       
-                      <div className="flex items-center space-x-1 mt-2">
-                        <div className="flex-1 flex space-x-1">
-                          <div className="relative flex-1">
-                            <input 
-                              type="number"
-                              placeholder="Dmg"
-                              className="w-full h-6 text-xs rounded border border-red-300 pl-2 pr-6"
-                              value={damageAmount[participant.id] || ""}
-                              onChange={e => setDamageAmount(prev => ({ 
-                                ...prev, 
-                                [participant.id]: e.target.value 
-                              }))}
-                            />
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 absolute right-0 top-0 text-red-500 hover:text-red-700 p-0"
-                              onClick={() => handleApplyDamage(participant.id)}
-                            >
-                              <Crosshair className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          
-                          <div className="relative flex-1">
-                            <input 
-                              type="number"
-                              placeholder="Heal"
-                              className="w-full h-6 text-xs rounded border border-green-300 pl-2 pr-6"
-                              value={healAmount[participant.id] || ""}
-                              onChange={e => setHealAmount(prev => ({ 
-                                ...prev, 
-                                [participant.id]: e.target.value 
-                              }))}
-                            />
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 absolute right-0 top-0 text-green-500 hover:text-green-700 p-0"
-                              onClick={() => handleApplyHealing(participant.id)}
-                            >
-                              <Heart className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                        
+                      <div className="flex flex-wrap gap-1 mt-2">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-6 w-6 p-0"
-                                onClick={() => onDiceRoll && onDiceRoll(participant.id, 'd20', 'attack')}
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-6 px-2 text-xs"
+                                onClick={() => handleActionAttack(participant.id, 'weapon')}
                               >
-                                <Sword className="h-3 w-3" />
+                                <Sword className="h-3 w-3 mr-1" />
+                                Attack
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">Attack Roll</p>
+                              <p className="text-xs">Make a weapon attack</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -374,31 +748,119 @@ export function BattleTracker({
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-6 w-6 p-0"
-                                onClick={() => onDiceRoll && onDiceRoll(participant.id, 'd20', 'save')}
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-6 px-2 text-xs"
+                                onClick={() => handleActionAttack(participant.id, 'spell')}
                               >
-                                <Shield className="h-3 w-3" />
+                                <Zap className="h-3 w-3 mr-1" />
+                                Spell
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">Saving Throw</p>
+                              <p className="text-xs">Cast a spell</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-6 px-2 text-xs"
+                                onClick={() => handleDiceRoll(participant.id, 'd20', 'save')}
+                              >
+                                <Shield className="h-3 w-3 mr-1" />
+                                Save
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Make a saving throw</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
+
+                      <div className="flex items-center gap-1 mt-2">
+                        <div className="flex items-center flex-1">
+                          <input
+                            type="number"
+                            className="w-full h-6 text-xs rounded border pl-2"
+                            placeholder="DMG"
+                            value={damageAmount[participant.id] || ""}
+                            onChange={e => setDamageAmount({
+                              ...damageAmount,
+                              [participant.id]: e.target.value
+                            })}
+                          />
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            className="h-6 px-2 text-xs ml-1"
+                            onClick={() => handleApplyDamage(participant.id)}
+                          >
+                            Dmg
+                          </Button>
+                        </div>
+                        
+                        <div className="flex items-center flex-1">
+                          <input
+                            type="number"
+                            className="w-full h-6 text-xs rounded border pl-2"
+                            placeholder="HEAL"
+                            value={healAmount[participant.id] || ""}
+                            onChange={e => setHealAmount({
+                              ...healAmount,
+                              [participant.id]: e.target.value
+                            })}
+                          />
+                          <Button 
+                            size="sm" 
+                            variant="default" 
+                            className="h-6 px-2 text-xs ml-1 bg-green-500 hover:bg-green-600"
+                            onClick={() => handleApplyHealing(participant.id)}
+                          >
+                            Heal
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-1 mt-1">
+                        {showConditionInput === participant.id ? (
+                          <div className="flex items-center w-full">
+                            <input
+                              type="text"
+                              className="w-full h-6 text-xs rounded border pl-2"
+                              placeholder="Condition name"
+                              value={conditionInput}
+                              onChange={e => setConditionInput(e.target.value)}
+                            />
+                            <Button 
+                              size="sm" 
+                              variant="secondary" 
+                              className="h-6 px-2 text-xs ml-1"
+                              onClick={() => handleAddCondition(participant.id)}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-6 px-2 text-xs w-full"
+                            onClick={() => setShowConditionInput(participant.id)}
+                          >
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Add Condition
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
-                  
-                  {combatParticipants.length === 0 && (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <AlertCircle className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                      <p>No participants in battle yet</p>
-                      <p className="text-xs">Add participants to begin</p>
-                    </div>
-                  )}
                   
                   {showAddParticipant && (
                     <div className="p-3 border border-dashed rounded-md mt-2">
@@ -479,6 +941,39 @@ export function BattleTracker({
                       </div>
                     </div>
                   )}
+                  
+                  {showUsePcSelector && (
+                    <div className="p-3 border border-dashed rounded-md mt-2">
+                      <h4 className="font-medium text-sm mb-2">Select Party Character</h4>
+                      {partyCharacters.length > 0 ? (
+                        <div className="space-y-2">
+                          {partyCharacters.map(character => (
+                            <Button
+                              key={character.id}
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7 w-full justify-start"
+                              onClick={() => handleUsePC(character)}
+                            >
+                              {character.name} ({character.race} {character.class})
+                            </Button>
+                          ))}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="text-xs h-7 w-full"
+                            onClick={() => setShowUsePcSelector(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground text-center py-2">
+                          No party characters available
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>
@@ -489,11 +984,32 @@ export function BattleTracker({
                   size="sm"
                   variant="outline"
                   className="text-xs h-7"
-                  onClick={() => setShowAddParticipant(!showAddParticipant)}
+                  onClick={() => {
+                    if (showAddParticipant) {
+                      setShowAddParticipant(false);
+                    } else if (showUsePcSelector) {
+                      setShowUsePcSelector(false);
+                    } else {
+                      setShowAddParticipant(true);
+                    }
+                  }}
                 >
                   <UserPlus className="h-3 w-3 mr-1" />
                   {showAddParticipant ? "Cancel" : "Add"}
                 </Button>
+                
+                {partyCharacters.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-7"
+                    onClick={() => setShowUsePcSelector(!showUsePcSelector)}
+                    disabled={showAddParticipant}
+                  >
+                    <UserCheck className="h-3 w-3 mr-1" />
+                    {showUsePcSelector ? "Cancel" : "Use PC"}
+                  </Button>
+                )}
               </div>
               
               <div className="flex space-x-2">
