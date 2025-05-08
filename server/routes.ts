@@ -21,7 +21,10 @@ import {
   insertFriendshipSchema,
   insertUserSessionSchema,
   insertChatMessageSchema,
-  insertCampaignInvitationSchema
+  insertCampaignInvitationSchema,
+  insertPartyPlanSchema,
+  insertPartyPlanItemSchema,
+  insertPartyPlanCommentSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1533,6 +1536,280 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating world map:", error);
       res.status(500).json({ message: "Failed to generate world map" });
+    }
+  });
+  
+  // Party Planning routes
+  // Get all plans for a campaign
+  app.get("/api/campaigns/:id/plans", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or players in the campaign can access plans
+      const isPlayerInCampaign = await storage.isPlayerInCampaign(req.user.id, campaign.id);
+      if (campaign.dmId !== req.user.id && !isPlayerInCampaign) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const plans = await storage.getPartyPlansByCampaignId(campaign.id);
+      res.json(plans);
+    } catch (error) {
+      console.error("Error getting party plans:", error);
+      res.status(500).json({ message: "Failed to get party plans" });
+    }
+  });
+  
+  // Create a new plan for a campaign
+  app.post("/api/campaigns/:id/plans", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or players in the campaign can create plans
+      const isPlayerInCampaign = await storage.isPlayerInCampaign(req.user.id, campaign.id);
+      if (campaign.dmId !== req.user.id && !isPlayerInCampaign) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const planData = insertPartyPlanSchema.parse({
+        ...req.body,
+        campaignId: campaign.id,
+        createdById: req.user.id
+      });
+      
+      const plan = await storage.createPartyPlan(planData);
+      res.status(201).json(plan);
+    } catch (error) {
+      console.error("Error creating party plan:", error);
+      res.status(500).json({ message: "Failed to create party plan" });
+    }
+  });
+  
+  // Get a single plan with its items
+  app.get("/api/plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const plan = await storage.getPartyPlanWithItems(parseInt(req.params.id));
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or players in the campaign can access plan details
+      const isPlayerInCampaign = await storage.isPlayerInCampaign(req.user.id, campaign.id);
+      if (campaign.dmId !== req.user.id && !isPlayerInCampaign) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      res.json(plan);
+    } catch (error) {
+      console.error("Error getting party plan:", error);
+      res.status(500).json({ message: "Failed to get party plan" });
+    }
+  });
+  
+  // Update a plan
+  app.patch("/api/plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const plan = await storage.getPartyPlan(parseInt(req.params.id));
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM, plan creator, or players in the campaign can update a plan
+      const isPlayerInCampaign = await storage.isPlayerInCampaign(req.user.id, campaign.id);
+      if (campaign.dmId !== req.user.id && plan.createdById !== req.user.id && !isPlayerInCampaign) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updatedPlan = await storage.updatePartyPlan(plan.id, req.body);
+      res.json(updatedPlan);
+    } catch (error) {
+      console.error("Error updating party plan:", error);
+      res.status(500).json({ message: "Failed to update party plan" });
+    }
+  });
+  
+  // Delete a plan
+  app.delete("/api/plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const plan = await storage.getPartyPlan(parseInt(req.params.id));
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or plan creator can delete a plan
+      if (campaign.dmId !== req.user.id && plan.createdById !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deletePartyPlan(plan.id);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting party plan:", error);
+      res.status(500).json({ message: "Failed to delete party plan" });
+    }
+  });
+  
+  // Plan Items API
+  // Add an item to a plan
+  app.post("/api/plans/:id/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const plan = await storage.getPartyPlan(parseInt(req.params.id));
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or players in the campaign can add items to a plan
+      const isPlayerInCampaign = await storage.isPlayerInCampaign(req.user.id, campaign.id);
+      if (campaign.dmId !== req.user.id && !isPlayerInCampaign) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const itemData = insertPartyPlanItemSchema.parse({
+        ...req.body,
+        planId: plan.id,
+        createdById: req.user.id
+      });
+      
+      const item = await storage.createPartyPlanItem(itemData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Error creating party plan item:", error);
+      res.status(500).json({ message: "Failed to create party plan item" });
+    }
+  });
+  
+  // Update a plan item
+  app.patch("/api/plan-items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const item = await storage.getPartyPlanItem(parseInt(req.params.id));
+      if (!item) return res.status(404).json({ message: "Item not found" });
+      
+      const plan = await storage.getPartyPlan(item.planId);
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM, item creator, or assigned user can update an item
+      if (campaign.dmId !== req.user.id && item.createdById !== req.user.id && 
+          (item.assignedToId !== req.user.id && item.assignedToId !== null)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updatedItem = await storage.updatePartyPlanItem(item.id, req.body);
+      res.json(updatedItem);
+    } catch (error) {
+      console.error("Error updating party plan item:", error);
+      res.status(500).json({ message: "Failed to update party plan item" });
+    }
+  });
+  
+  // Delete a plan item
+  app.delete("/api/plan-items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const item = await storage.getPartyPlanItem(parseInt(req.params.id));
+      if (!item) return res.status(404).json({ message: "Item not found" });
+      
+      const plan = await storage.getPartyPlan(item.planId);
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or item creator can delete an item
+      if (campaign.dmId !== req.user.id && item.createdById !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deletePartyPlanItem(item.id);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting party plan item:", error);
+      res.status(500).json({ message: "Failed to delete party plan item" });
+    }
+  });
+  
+  // Plan Comments API
+  // Add a comment to a plan item
+  app.post("/api/plan-items/:id/comments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const item = await storage.getPartyPlanItem(parseInt(req.params.id));
+      if (!item) return res.status(404).json({ message: "Item not found" });
+      
+      const plan = await storage.getPartyPlan(item.planId);
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or players in the campaign can add comments
+      const isPlayerInCampaign = await storage.isPlayerInCampaign(req.user.id, campaign.id);
+      if (campaign.dmId !== req.user.id && !isPlayerInCampaign) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const commentData = insertPartyPlanCommentSchema.parse({
+        ...req.body,
+        itemId: item.id,
+        userId: req.user.id
+      });
+      
+      const comment = await storage.createPartyPlanComment(commentData);
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error("Error creating party plan comment:", error);
+      res.status(500).json({ message: "Failed to create party plan comment" });
+    }
+  });
+  
+  // Get comments for a plan item
+  app.get("/api/plan-items/:id/comments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const item = await storage.getPartyPlanItem(parseInt(req.params.id));
+      if (!item) return res.status(404).json({ message: "Item not found" });
+      
+      const plan = await storage.getPartyPlan(item.planId);
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Only DM or players in the campaign can view comments
+      const isPlayerInCampaign = await storage.isPlayerInCampaign(req.user.id, campaign.id);
+      if (campaign.dmId !== req.user.id && !isPlayerInCampaign) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const comments = await storage.getPartyPlanCommentsByItemId(item.id);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error getting party plan comments:", error);
+      res.status(500).json({ message: "Failed to get party plan comments" });
     }
   });
 

@@ -14,9 +14,12 @@ import {
   MapLocation, InsertMapLocation,
   JourneyPath, InsertJourneyPath,
   CampaignWorldMap, InsertCampaignWorldMap,
+  PartyPlan, InsertPartyPlan,
+  PartyPlanItem, InsertPartyPlanItem,
+  PartyPlanComment, InsertPartyPlanComment,
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
   friendships, userSessions, chatMessages, campaignInvitations, mapLocations, journeyPaths,
-  campaignWorldMaps
+  campaignWorldMaps, partyPlans, partyPlanItems, partyPlanComments
 } from "@shared/schema";
 
 // Define our own Campaign type without partyName since it's not in the DB yet
@@ -136,6 +139,28 @@ export interface IStorage {
   removeItemFromCharacter(characterId: number, itemIndex: number): Promise<Character | undefined>;
   transferItemBetweenCharacters(fromCharId: number, toCharId: number, itemIndex: number, quantity?: number): Promise<{from: Character, to: Character} | undefined>;
   equipItemForCharacter(characterId: number, itemIndex: number, equip: boolean): Promise<Character | undefined>;
+  
+  // Party planning methods
+  getPartyPlan(id: number): Promise<PartyPlan | undefined>;
+  getPartyPlansByCampaignId(campaignId: number): Promise<PartyPlan[]>;
+  getPartyPlanWithItems(id: number): Promise<PartyPlan & { items: PartyPlanItem[] } | undefined>;
+  createPartyPlan(plan: InsertPartyPlan): Promise<PartyPlan>;
+  updatePartyPlan(id: number, updates: Partial<PartyPlan>): Promise<PartyPlan | undefined>;
+  deletePartyPlan(id: number): Promise<boolean>;
+  
+  // Party plan item methods
+  getPartyPlanItem(id: number): Promise<PartyPlanItem | undefined>;
+  getPartyPlanItemsByPlanId(planId: number): Promise<PartyPlanItem[]>;
+  createPartyPlanItem(item: InsertPartyPlanItem): Promise<PartyPlanItem>;
+  updatePartyPlanItem(id: number, updates: Partial<PartyPlanItem>): Promise<PartyPlanItem | undefined>;
+  deletePartyPlanItem(id: number): Promise<boolean>;
+  
+  // Party plan comment methods
+  getPartyPlanCommentsByItemId(itemId: number): Promise<PartyPlanComment[]>;
+  createPartyPlanComment(comment: InsertPartyPlanComment): Promise<PartyPlanComment>;
+  
+  // Permissions method
+  isPlayerInCampaign(userId: number, campaignId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
