@@ -404,10 +404,10 @@ export function AdventureMapPanel({
   });
   
   // Get all locations
-  const locations: MapLocation[] = locationsQuery.data || [];
+  const locations: MapLocation[] = Array.isArray(locationsQuery.data) ? locationsQuery.data : [];
   
   // Get all paths
-  const journeyPaths: JourneyPath[] = pathsQuery.data || [];
+  const journeyPaths: JourneyPath[] = Array.isArray(pathsQuery.data) ? pathsQuery.data : [];
   
   // Fetch world map from the API
   useEffect(() => {
@@ -417,7 +417,17 @@ export function AdventureMapPanel({
         const response = await fetch(`/api/campaigns/${campaignId}/world-map`);
         if (response.ok) {
           const data = await response.json();
-          setWorldMap(data.mapUrl);
+          console.log("World map data:", data); // Debug log
+          if (data && data.mapUrl) {
+            setWorldMap(data.mapUrl);
+          } else if (data && typeof data === 'object' && 'url' in data) {
+            // Handle alternative response format
+            setWorldMap(data.url);
+          } else {
+            console.error("Invalid world map data format:", data);
+          }
+        } else {
+          console.error("Failed to fetch world map:", response.status, response.statusText);
         }
       } catch (error) {
         console.error("Error fetching world map:", error);
@@ -606,7 +616,7 @@ export function AdventureMapPanel({
                   />
                 ) : (
                   <ImageOverlay
-                    url="https://i.imgur.com/GJ35Hdx.jpg"
+                    url="https://cdna.artstation.com/p/assets/images/images/018/066/339/large/anastasia-shabalina-.jpg"
                     bounds={[[-85, -180], [85, 180]]}
                     opacity={0.8}
                     zIndex={10}
