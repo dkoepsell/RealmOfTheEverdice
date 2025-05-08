@@ -1165,6 +1165,21 @@ export default function CampaignPage() {
             </div>
           </div>
         )}
+        
+        {/* Add Character Dialog */}
+        <AddCharacterDialog
+          campaignId={campaignId}
+          open={showAddCharacterDialog}
+          onOpenChange={setShowAddCharacterDialog}
+          onCharacterAdded={() => {
+            queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
+            toast({
+              title: "Character Added",
+              description: "Your character has joined the campaign!",
+              variant: "default",
+            });
+          }}
+        />
       </div>
     </div>
   );
