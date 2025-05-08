@@ -398,9 +398,9 @@ export default function TavernLobby() {
         <div className="bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48ZyBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiPjxwYXRoIGQ9Ik0wIDBoNDB2NDBoLTQweiIvPjxwYXRoIGQ9Ik0yMCAyMGgyMHYyMGgtMjB6Ii8+PC9nPjwvc3ZnPg==')] text-white">
           <div className="container mx-auto px-4 py-16 text-center">
             <Beer className="h-16 w-16 mx-auto mb-4 text-amber-300" />
-            <h1 className="text-3xl md:text-5xl font-medieval mb-3 bg-clip-text text-transparent bg-gradient-to-r from-amber-200 to-amber-400">The Quest Tavern</h1>
+            <h1 className="text-3xl md:text-5xl font-medieval mb-3 bg-clip-text text-transparent bg-gradient-to-r from-amber-200 to-amber-400">The Inn Between Worlds</h1>
             <p className="text-lg max-w-2xl mx-auto text-amber-100">
-              Welcome, adventurer! The tavern is where heroes meet, stories begin, and legends are born.
+              Welcome, adventurer! This is where heroes meet, stories begin, and legends are born.
             </p>
             <div className="mt-6 italic text-amber-300 text-sm max-w-xl mx-auto border-t border-b border-amber-700/50 py-3">
               {currentEvent}
@@ -418,7 +418,7 @@ export default function TavernLobby() {
             </Avatar>
             <div>
               <div className="font-medium">{user?.username}</div>
-              <div className="text-sm text-muted-foreground">Tavern Patron</div>
+              <div className="text-sm text-muted-foreground">Inn Traveler</div>
             </div>
           </div>
           
@@ -456,7 +456,7 @@ export default function TavernLobby() {
           <TabsList className="w-full justify-start mb-6 overflow-auto">
             <TabsTrigger value="patrons">
               <Users className="h-4 w-4 mr-2" />
-              Tavern Patrons
+              Inn Travelers
             </TabsTrigger>
             <TabsTrigger value="notice-board">
               <Map className="h-4 w-4 mr-2" />
@@ -464,7 +464,7 @@ export default function TavernLobby() {
             </TabsTrigger>
             <TabsTrigger value="games">
               <Gamepad2 className="h-4 w-4 mr-2" />
-              Tavern Games
+              Inn Games
             </TabsTrigger>
             <TabsTrigger value="learning">
               <BookOpen className="h-4 w-4 mr-2" />
@@ -571,9 +571,9 @@ export default function TavernLobby() {
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center text-lg">
                     <Beer className="h-5 w-5 mr-2 text-amber-500" />
-                    All Tavern Patrons
+                    All Inn Travelers
                   </CardTitle>
-                  <CardDescription>Everyone currently in the tavern</CardDescription>
+                  <CardDescription>Everyone currently in the inn</CardDescription>
                 </CardHeader>
                 <CardContent className="max-h-[400px] overflow-y-auto">
                   {loadingUsers ? (
@@ -599,8 +599,8 @@ export default function TavernLobby() {
                   ) : (
                     <div className="text-center p-8 text-muted-foreground">
                       <Beer className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                      <p>The tavern seems quiet right now.</p>
-                      <p className="text-sm mt-2">Check back later for more patrons!</p>
+                      <p>The inn seems quiet right now.</p>
+                      <p className="text-sm mt-2">Check back later for more travelers!</p>
                     </div>
                   )}
                 </CardContent>
