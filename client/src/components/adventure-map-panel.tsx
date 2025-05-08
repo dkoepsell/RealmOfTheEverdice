@@ -417,12 +417,17 @@ export function AdventureMapPanel({
       console.log(`Fetching world map for campaign ID: ${campaignId}`);
       
       try {
-        const response = await fetch(`/api/campaigns/${campaignId}/world-map`);
+        const response = await apiRequest('GET', `/api/campaigns/${campaignId}/world-map`);
         console.log("World map response status:", response.status);
         
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Failed to fetch world map:", response.status, response.statusText, errorText);
+          toast({
+            title: "Map loading issue",
+            description: "Could not load the custom world map",
+            variant: "destructive"
+          });
           return null;
         }
         
@@ -443,18 +448,29 @@ export function AdventureMapPanel({
           return data.url;
         } else {
           console.error("No map URL found in response data:", data);
+          toast({
+            title: "Map data issue",
+            description: "The map data is in an unexpected format",
+            variant: "destructive"
+          });
           return null;
         }
       } catch (error) {
         console.error("Error fetching world map:", error);
+        toast({
+          title: "Map error",
+          description: "Failed to load the map due to an error",
+          variant: "destructive"
+        });
         return null;
       } finally {
         setIsLoading(false);
       }
     },
-    enabled: !!campaignId && isOpen,
+    enabled: !!campaignId,
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    retry: 3 // Retry failed requests up to 3 times
+    retry: 3, // Retry failed requests up to 3 times
+    retryDelay: (attempt) => Math.min(attempt > 1 ? 2 ** attempt * 1000 : 1000, 30 * 1000)
   });
   
   // Update worldMap state when the query data changes
