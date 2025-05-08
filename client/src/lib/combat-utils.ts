@@ -433,8 +433,15 @@ export function calculateActionResult(
   character: any,
   proficiencyBonus: number = 2
 ) {
-  // Extract character stats
-  const stats = {
+  // Extract character stats with proper typing
+  const stats: {
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+  } = {
     strength: character.stats?.strength || 10,
     dexterity: character.stats?.dexterity || 10,
     constitution: character.stats?.constitution || 10,
@@ -545,7 +552,9 @@ export function calculateActionResult(
     }
     
     if (ability) {
-      const abilityModifier = calculateAbilityModifier(stats[ability]);
+      // Use type assertion to index into stats safely
+      const abilityValue = stats[ability as keyof typeof stats];
+      const abilityModifier = calculateAbilityModifier(abilityValue);
       const dieRoll = Math.floor(Math.random() * 20) + 1;
       const total = dieRoll + abilityModifier;
       

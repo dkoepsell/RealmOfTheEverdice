@@ -2,7 +2,42 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { v4 as uuidv4 } from 'uuid';
-import { Adventure, Campaign, GameLog, Character } from "@shared/schema";
+import { Adventure, Campaign, GameLog } from "@shared/schema";
+
+// Character interface with explicit typing
+interface Character {
+  id: number;
+  name: string;
+  race: string;
+  class: string;
+  level: number;
+  background: string | null;
+  appearance: string | null;
+  backstory: string | null;
+  stats: {
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+  };
+  hp: number;
+  maxHp: number;
+  equipment: {
+    items: Array<{
+      name: string;
+      type: string;
+      isEquipped: boolean;
+    }>;
+    inventory?: any[];
+  };
+  spells?: any;
+  abilities?: any;
+  userId: number;
+  isBot: boolean;
+  createdAt: Date | null;
+};
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/navbar";
@@ -110,13 +145,29 @@ export default function CampaignPage() {
   
   // Fetch campaign characters
   const {
-    data: campaignCharacters,
+    data: campaignCharactersRaw,
     isLoading: charactersLoading,
     error: charactersError
-  } = useQuery<Character[]>({
+  } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignId}/characters`],
     enabled: !!campaignId && !!user,
   });
+  
+  // Cast the raw data to our Character type with proper stats shape
+  const campaignCharacters: Character[] | undefined = campaignCharactersRaw?.map(char => ({
+    ...char,
+    stats: char.stats as Character['stats'] || {
+      strength: 10,
+      dexterity: 10,
+      constitution: 10, 
+      intelligence: 10,
+      wisdom: 10,
+      charisma: 10
+    },
+    equipment: char.equipment as Character['equipment'] || {
+      items: []
+    }
+  }));
   
   // Fetch adventures
   const {
@@ -1091,6 +1142,7 @@ export default function CampaignPage() {
                 onRollResult={(type, result, modifier, purpose, threshold) => {
                   // Handle roll result
                   addCampaignRoll({
+                    id: uuidv4(),
                     characterName: currentCharacter?.name || "Character",
                     diceType: type,
                     result: result,
