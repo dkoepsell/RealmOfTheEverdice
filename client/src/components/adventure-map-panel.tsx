@@ -8,7 +8,8 @@ import {
   useMap,
   Circle,
   useMapEvents,
-  ZoomControl
+  ZoomControl,
+  ImageOverlay
 } from 'react-leaflet';
 import { 
   DivIcon, 
@@ -568,12 +569,23 @@ export function AdventureMapPanel({
               <MapContainer
                 center={mapCenter}
                 zoom={zoom}
-                style={{ height: '100%', width: '100%' }}
+                style={{ height: '100%', width: '100%', background: '#2a3b47' }}
                 zoomControl={false}
+                className="fantasy-map-container border-4 border-amber-800/50 rounded-lg shadow-inner"
               >
+                {/* Fantasy Map Image Overlay */}
+                <ImageOverlay
+                  url="https://i.imgur.com/GJ35Hdx.jpg"
+                  bounds={[[-85, -180], [85, 180]]}
+                  opacity={0.8}
+                  zIndex={10}
+                />
+                
+                {/* Fallback map tiles that show through in areas without fantasy map coverage */}
                 <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+                  className="blend-multiply"
                 />
                 <ZoomControl position="bottomright" />
                 <ChangeMapView center={mapCenter} zoom={zoom} />

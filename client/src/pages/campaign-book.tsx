@@ -784,17 +784,29 @@ export default function CampaignPage() {
                   )}
                   
                   {rightPanelTab === "map" && (
-                    <AdventureMapPanel 
-                      campaignId={campaignId}
-                      isDm={campaign?.dmId === user?.id}
-                      onLocationClick={(location) => {
-                        // Handle location click - could generate description or reveal info
-                        toast({
-                          title: location.name,
-                          description: location.description || "A mysterious location on your adventure map.",
-                        });
-                      }}
-                    />
+                    <div className="relative">
+                      <div className="absolute top-0 right-0 z-10">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setRightPanelTab(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <AdventureMapPanel 
+                        campaignId={campaignId}
+                        isDm={campaign?.dmId === user?.id}
+                        onLocationClick={(location) => {
+                          // Handle location click - could generate description or reveal info
+                          toast({
+                            title: location.name,
+                            description: location.description || "A mysterious location on your adventure map.",
+                          });
+                        }}
+                      />
+                    </div>
                   )}
                   
                   {rightPanelTab === "companion" && (
