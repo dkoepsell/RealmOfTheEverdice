@@ -92,7 +92,7 @@ interface PartyPlanBoardProps {
     content: string;
   }) => Promise<PartyPlanComment>;
   userId: number;
-  isDungeonMaster: boolean;
+  isDungeonMaster: boolean | null;
 }
 
 export function PartyPlanBoard({ 

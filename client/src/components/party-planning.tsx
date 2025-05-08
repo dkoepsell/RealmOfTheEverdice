@@ -38,7 +38,7 @@ import { Loader2, Plus, PlusCircle, ListPlus, CalendarPlus, ClipboardList } from
 interface PartyPlanningProps {
   campaignId: number;
   characters?: Character[];
-  isDungeonMaster?: boolean;
+  isDungeonMaster?: boolean | null;
 }
 
 export function PartyPlanning({ 
@@ -53,8 +53,8 @@ export function PartyPlanning({
   const [newPlanDescription, setNewPlanDescription] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   
-  // Determine if user is DM based on prop or by checking campaign ownership (to be implemented)
-  const isCampaignDm = isDungeonMaster || (user && characters.length > 0);
+  // Determine if user is DM based on props
+  const isCampaignDm = isDungeonMaster === true;
   
   const {
     plans,

@@ -584,6 +584,7 @@ export default function CampaignPage() {
             <PartyPlanning 
               campaignId={campaignId}
               characters={campaignCharacters || []}
+              isDungeonMaster={campaign.dmId === user?.id}
             />
           </div>
         )}
@@ -727,6 +728,7 @@ export default function CampaignPage() {
               <PartyPlanning 
                 campaignId={campaignId}
                 characters={campaignCharacters || []}
+                isDungeonMaster={campaign.dmId === user?.id}
               />
             )}
           </div>
