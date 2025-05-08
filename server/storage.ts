@@ -134,30 +134,33 @@ export interface IStorage {
   getCampaignWorldMap(campaignId: number): Promise<CampaignWorldMap | undefined>;
   createOrUpdateCampaignWorldMap(worldMap: InsertCampaignWorldMap): Promise<CampaignWorldMap>;
   
-  // Item management methods
-  addItemToCharacter(characterId: number, item: any): Promise<Character | undefined>;
-  removeItemFromCharacter(characterId: number, itemIndex: number): Promise<Character | undefined>;
-  transferItemBetweenCharacters(fromCharId: number, toCharId: number, itemIndex: number, quantity?: number): Promise<{from: Character, to: Character} | undefined>;
-  equipItemForCharacter(characterId: number, itemIndex: number, equip: boolean): Promise<Character | undefined>;
+  // Campaign permissions
+  isPlayerInCampaign(userId: number, campaignId: number): Promise<boolean>;
   
-  // Party planning methods
+  // Party Planning methods
   getPartyPlan(id: number): Promise<PartyPlan | undefined>;
   getPartyPlansByCampaignId(campaignId: number): Promise<PartyPlan[]>;
-  getPartyPlanWithItems(id: number): Promise<PartyPlan & { items: PartyPlanItem[] } | undefined>;
+  getPartyPlanWithItems(id: number): Promise<(PartyPlan & { items: PartyPlanItem[] }) | undefined>;
   createPartyPlan(plan: InsertPartyPlan): Promise<PartyPlan>;
   updatePartyPlan(id: number, updates: Partial<PartyPlan>): Promise<PartyPlan | undefined>;
   deletePartyPlan(id: number): Promise<boolean>;
   
-  // Party plan item methods
+  // Party Plan Item methods
   getPartyPlanItem(id: number): Promise<PartyPlanItem | undefined>;
   getPartyPlanItemsByPlanId(planId: number): Promise<PartyPlanItem[]>;
   createPartyPlanItem(item: InsertPartyPlanItem): Promise<PartyPlanItem>;
   updatePartyPlanItem(id: number, updates: Partial<PartyPlanItem>): Promise<PartyPlanItem | undefined>;
   deletePartyPlanItem(id: number): Promise<boolean>;
   
-  // Party plan comment methods
+  // Party Plan Comment methods
   getPartyPlanCommentsByItemId(itemId: number): Promise<PartyPlanComment[]>;
   createPartyPlanComment(comment: InsertPartyPlanComment): Promise<PartyPlanComment>;
+  
+  // Item management methods
+  addItemToCharacter(characterId: number, item: any): Promise<Character | undefined>;
+  removeItemFromCharacter(characterId: number, itemIndex: number): Promise<Character | undefined>;
+  transferItemBetweenCharacters(fromCharId: number, toCharId: number, itemIndex: number, quantity?: number): Promise<{from: Character, to: Character} | undefined>;
+  equipItemForCharacter(characterId: number, itemIndex: number, equip: boolean): Promise<Character | undefined>;
   
   // Permissions method
   isPlayerInCampaign(userId: number, campaignId: number): Promise<boolean>;
