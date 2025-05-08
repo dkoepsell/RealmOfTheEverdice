@@ -1,255 +1,371 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
-export type PlanItemStatus = 'pending' | 'in_progress' | 'completed';
-
-export interface PlanItem {
-  id: string;
-  title: string;
-  description: string;
-  status: PlanItemStatus;
-  assignedTo?: string; // Character ID or name
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PlanningAction {
-  action: 'add' | 'update' | 'remove' | 'assign' | 'status_change';
-  planId?: string;
-  planData?: PlanItem;
-}
-
-export interface UsePartyPlanningOptions {
+// Types for party planning
+interface PartyPlan {
+  id: number;
   campaignId: number;
-  onConnect?: () => void;
-  onDisconnect?: () => void;
-  onPlanUpdate?: (items: PlanItem[]) => void;
+  title: string;
+  description: string | null;
+  createdById: number;
+  createdAt: string;
+  updatedAt: string | null;
+  items: PartyPlanItem[];
 }
 
-export function usePartyPlanning({ 
-  campaignId, 
-  onConnect, 
-  onDisconnect,
-  onPlanUpdate 
-}: UsePartyPlanningOptions) {
-  const [connected, setConnected] = useState(false);
-  const [planItems, setPlanItems] = useState<PlanItem[]>([]);
-  const [loading, setLoading] = useState(true);
+interface PartyPlanItem {
+  id: number;
+  planId: number;
+  content: string;
+  type: string;
+  status: string;
+  position: number;
+  createdById: number;
+  assignedToId: number | null;
+  createdAt: string;
+  updatedAt: string | null;
+  comments?: PartyPlanComment[];
+}
+
+interface PartyPlanComment {
+  id: number;
+  itemId: number;
+  userId: number;
+  content: string;
+  createdAt: string;
+  user?: {
+    username: string;
+  };
+}
+
+// Define parameter and return types
+interface UsePartyPlanningOptions {
+  enabled?: boolean;
+}
+
+interface UsePartyPlanningReturn {
+  plans: PartyPlan[];
+  currentPlan: PartyPlan | null;
+  isLoading: boolean;
+  error: Error | null;
+  createPlan: (plan: Omit<PartyPlan, "id" | "createdAt" | "updatedAt" | "items">) => Promise<PartyPlan>;
+  deletePlan: (id: number) => Promise<void>;
+  createPlanItem: (item: Omit<PartyPlanItem, "id" | "createdAt" | "updatedAt" | "comments" | "status"> & { status?: string }) => Promise<PartyPlanItem>;
+  updatePlanItem: (id: number, updates: Partial<PartyPlanItem>) => Promise<void>;
+  deletePlanItem: (id: number) => Promise<void>;
+  addComment: (comment: Omit<PartyPlanComment, "id" | "createdAt" | "user">) => Promise<PartyPlanComment>;
+  setActivePlan: (planId: number) => void;
+  connected: boolean;
+}
+
+/**
+ * Hook for managing party planning functionality with WebSocket integration
+ */
+export function usePartyPlanning(
+  campaignId: number,
+  options: UsePartyPlanningOptions = {}
+): UsePartyPlanningReturn {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const wsRef = useRef<WebSocket | null>(null);
+  const queryClient = useQueryClient();
+  const [currentPlanId, setCurrentPlanId] = useState<number | null>(null);
+  const [connected, setConnected] = useState(false);
+  const socketRef = useRef<WebSocket | null>(null);
   
-  // Connect to WebSocket
-  useEffect(() => {
-    if (!campaignId || !user) return;
-    
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    
-    ws.onopen = () => {
-      // Join the campaign chat room
-      ws.send(JSON.stringify({
-        type: 'join',
-        campaignId: campaignId
-      }));
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // Handle connection confirmation
-        if (data.type === 'join_confirm') {
-          setConnected(true);
-          setLoading(false);
-          if (onConnect) onConnect();
+  // Query for fetching all plans
+  const { 
+    data: plans = [], 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/plans`],
+    enabled: options.enabled !== false
+  });
+  
+  // Find the current plan
+  const currentPlan = plans.find(p => p.id === currentPlanId) || null;
+  
+  // Mutations for CRUD operations
+  const createPlanMutation = useMutation({
+    mutationFn: async (plan: Omit<PartyPlan, "id" | "createdAt" | "updatedAt" | "items">) => {
+      const response = await apiRequest(
+        "POST", 
+        `/api/campaigns/${campaignId}/plans`, 
+        plan
+      );
+      return await response.json();
+    },
+    onSuccess: (newPlan) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
+      setCurrentPlanId(newPlan.id);
+    }
+  });
+  
+  const deletePlanMutation = useMutation({
+    mutationFn: async (planId: number) => {
+      await apiRequest(
+        "DELETE", 
+        `/api/campaigns/${campaignId}/plans/${planId}`
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
+      if (plans.length > 0 && currentPlanId) {
+        // Set to another plan if available
+        const otherPlan = plans.find(p => p.id !== currentPlanId);
+        if (otherPlan) {
+          setCurrentPlanId(otherPlan.id);
+        } else {
+          setCurrentPlanId(null);
         }
-        
-        // Handle planning updates
-        if (data.type === 'planning') {
-          handlePlanningUpdate(data);
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
       }
-    };
-    
-    ws.onclose = () => {
-      setConnected(false);
-      if (onDisconnect) onDisconnect();
-      
-      // You might want to attempt reconnection here
-      toast({
-        title: 'Connection Lost',
-        description: 'Party planning connection lost. Reconnecting...',
-        variant: 'destructive',
-      });
-    };
-    
-    return () => {
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        ws.close();
-      }
-    };
-  }, [campaignId, user, toast, onConnect, onDisconnect]);
-  
-  // Handle planning updates received from server
-  const handlePlanningUpdate = useCallback((data: any) => {
-    if (!data.action || !data.planData) return;
-    
-    // Different actions to handle
-    switch (data.action) {
-      case 'add':
-        setPlanItems(prev => [...prev, data.planData]);
-        break;
-        
-      case 'update':
-        setPlanItems(prev => 
-          prev.map(item => 
-            item.id === data.planId ? { ...item, ...data.planData } : item
-          )
-        );
-        break;
-        
-      case 'remove':
-        setPlanItems(prev => prev.filter(item => item.id !== data.planId));
-        break;
-        
-      case 'assign':
-        setPlanItems(prev => 
-          prev.map(item => 
-            item.id === data.planId ? { ...item, assignedTo: data.planData.assignedTo } : item
-          )
-        );
-        break;
-        
-      case 'status_change':
-        setPlanItems(prev => 
-          prev.map(item => 
-            item.id === data.planId ? { ...item, status: data.planData.status } : item
-          )
-        );
-        break;
-        
-      default:
-        console.warn('Unknown planning action:', data.action);
     }
-    
-    // Call the onPlanUpdate callback if provided
-    if (onPlanUpdate) {
-      onPlanUpdate(planItems);
-    }
-  }, [planItems, onPlanUpdate]);
+  });
   
-  // Send planning actions to server
-  const sendPlanningAction = useCallback((planningAction: PlanningAction) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !user) {
-      toast({
-        title: 'Connection Error',
-        description: 'Could not send planning data. Please check your connection.',
-        variant: 'destructive',
-      });
-      return false;
-    }
-    
-    wsRef.current.send(JSON.stringify({
-      type: 'planning',
-      action: planningAction.action,
-      planId: planningAction.planId,
-      planData: planningAction.planData,
-      userId: user.id,
-      username: user.username,
-      campaignId: campaignId
-    }));
-    
-    return true;
-  }, [campaignId, user, toast]);
-  
-  // Add a new plan item
-  const addPlanItem = useCallback((title: string, description: string) => {
-    if (!user) return false;
-    
-    const newItem: PlanItem = {
-      id: crypto.randomUUID(),
-      title,
-      description,
-      status: 'pending',
-      createdBy: user.username,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    return sendPlanningAction({
-      action: 'add',
-      planData: newItem
-    });
-  }, [user, sendPlanningAction]);
-  
-  // Update an existing plan item
-  const updatePlanItem = useCallback((id: string, updates: Partial<PlanItem>) => {
-    const item = planItems.find(i => i.id === id);
-    
-    if (!item) {
-      console.error('Cannot update non-existent plan item');
-      return false;
-    }
-    
-    return sendPlanningAction({
-      action: 'update',
-      planId: id,
-      planData: {
+  const createPlanItemMutation = useMutation({
+    mutationFn: async (item: Omit<PartyPlanItem, "id" | "createdAt" | "updatedAt" | "comments" | "status"> & { status?: string }) => {
+      const itemWithStatus = {
         ...item,
-        ...updates,
-        updatedAt: new Date()
+        status: item.status || "pending"
+      };
+      
+      const response = await apiRequest(
+        "POST", 
+        `/api/campaigns/${campaignId}/plans/${item.planId}/items`, 
+        itemWithStatus
+      );
+      return await response.json();
+    },
+    onSuccess: (newItem) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
+      
+      // Send WebSocket update
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          type: "ITEM_CREATED",
+          data: {
+            campaignId,
+            planId: newItem.planId,
+            item: newItem
+          }
+        }));
       }
-    });
-  }, [planItems, sendPlanningAction]);
+    }
+  });
   
-  // Remove a plan item
-  const removePlanItem = useCallback((id: string) => {
-    return sendPlanningAction({
-      action: 'remove',
-      planId: id
-    });
-  }, [sendPlanningAction]);
+  const updatePlanItemMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number, updates: Partial<PartyPlanItem> }) => {
+      await apiRequest(
+        "PATCH", 
+        `/api/campaigns/${campaignId}/plans/items/${id}`, 
+        updates
+      );
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
+      
+      // Find the item to get its planId
+      const plan = plans.find(p => p.items.some(item => item.id === variables.id));
+      if (plan && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          type: "ITEM_UPDATED",
+          data: {
+            campaignId,
+            planId: plan.id,
+            itemId: variables.id,
+            updates: variables.updates
+          }
+        }));
+      }
+    }
+  });
   
-  // Assign a plan item to a character
-  const assignPlanItem = useCallback((id: string, characterId: string) => {
-    return sendPlanningAction({
-      action: 'assign',
-      planId: id,
-      planData: {
-        assignedTo: characterId,
-        updatedAt: new Date()
-      } as any
-    });
-  }, [sendPlanningAction]);
+  const deletePlanItemMutation = useMutation({
+    mutationFn: async (itemId: number) => {
+      await apiRequest(
+        "DELETE", 
+        `/api/campaigns/${campaignId}/plans/items/${itemId}`
+      );
+    },
+    onSuccess: (_, itemId) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
+      
+      // Find the item to get its planId
+      const plan = plans.find(p => p.items.some(item => item.id === itemId));
+      if (plan && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          type: "ITEM_DELETED",
+          data: {
+            campaignId,
+            planId: plan.id,
+            itemId
+          }
+        }));
+      }
+    }
+  });
   
-  // Change the status of a plan item
-  const changePlanItemStatus = useCallback((id: string, status: PlanItemStatus) => {
-    return sendPlanningAction({
-      action: 'status_change',
-      planId: id,
-      planData: {
-        status,
-        updatedAt: new Date()
-      } as any
-    });
-  }, [sendPlanningAction]);
+  const addCommentMutation = useMutation({
+    mutationFn: async (comment: Omit<PartyPlanComment, "id" | "createdAt" | "user">) => {
+      const response = await apiRequest(
+        "POST", 
+        `/api/campaigns/${campaignId}/plans/items/${comment.itemId}/comments`, 
+        comment
+      );
+      return await response.json();
+    },
+    onSuccess: (newComment) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
+      
+      // Find the item to get its planId
+      const plan = plans.find(p => p.items.some(item => item.id === newComment.itemId));
+      if (plan && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          type: "COMMENT_ADDED",
+          data: {
+            campaignId,
+            planId: plan.id,
+            itemId: newComment.itemId,
+            comment: newComment
+          }
+        }));
+      }
+    }
+  });
+  
+  // WebSocket connection setup
+  useEffect(() => {
+    if (!campaignId) return;
+    
+    const setupSocket = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const socket = new WebSocket(`${protocol}//${host}/ws`);
+      
+      socket.onopen = () => {
+        console.log('WebSocket connected for party planning');
+        setConnected(true);
+        
+        // Join the campaign's party planning room
+        socket.send(JSON.stringify({
+          type: 'JOIN_CAMPAIGN',
+          data: { campaignId }
+        }));
+      };
+      
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          // Handle different message types
+          switch (message.type) {
+            case 'ITEM_CREATED':
+            case 'ITEM_UPDATED':
+            case 'ITEM_DELETED':
+            case 'COMMENT_ADDED':
+              // Invalidate the query to refetch the plans
+              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
+              break;
+              
+            default:
+              break;
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+      
+      socket.onclose = () => {
+        console.log('WebSocket disconnected');
+        setConnected(false);
+        
+        // Attempt to reconnect after a delay
+        setTimeout(() => {
+          if (socketRef.current?.readyState !== WebSocket.OPEN) {
+            setupSocket();
+          }
+        }, 3000);
+      };
+      
+      socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        socket.close();
+      };
+      
+      socketRef.current = socket;
+    };
+    
+    setupSocket();
+    
+    // Cleanup on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+    };
+  }, [campaignId, queryClient]);
+  
+  // Wrapper functions for the mutations
+  const createPlan = useCallback(
+    async (plan: Omit<PartyPlan, "id" | "createdAt" | "updatedAt" | "items">) => {
+      return await createPlanMutation.mutateAsync(plan);
+    },
+    [createPlanMutation]
+  );
+  
+  const deletePlan = useCallback(
+    async (id: number) => {
+      await deletePlanMutation.mutateAsync(id);
+    },
+    [deletePlanMutation]
+  );
+  
+  const createPlanItem = useCallback(
+    async (item: Omit<PartyPlanItem, "id" | "createdAt" | "updatedAt" | "comments" | "status"> & { status?: string }) => {
+      return await createPlanItemMutation.mutateAsync(item);
+    },
+    [createPlanItemMutation]
+  );
+  
+  const updatePlanItem = useCallback(
+    async (id: number, updates: Partial<PartyPlanItem>) => {
+      await updatePlanItemMutation.mutateAsync({ id, updates });
+    },
+    [updatePlanItemMutation]
+  );
+  
+  const deletePlanItem = useCallback(
+    async (id: number) => {
+      await deletePlanItemMutation.mutateAsync(id);
+    },
+    [deletePlanItemMutation]
+  );
+  
+  const addComment = useCallback(
+    async (comment: Omit<PartyPlanComment, "id" | "createdAt" | "user">) => {
+      return await addCommentMutation.mutateAsync(comment);
+    },
+    [addCommentMutation]
+  );
+  
+  const setActivePlan = useCallback((planId: number) => {
+    setCurrentPlanId(planId);
+  }, []);
   
   return {
-    connected,
-    loading,
-    planItems,
-    addPlanItem,
+    plans,
+    currentPlan,
+    isLoading,
+    error,
+    createPlan,
+    deletePlan,
+    createPlanItem,
     updatePlanItem,
-    removePlanItem,
-    assignPlanItem,
-    changePlanItemStatus
+    deletePlanItem,
+    addComment,
+    setActivePlan,
+    connected
   };
 }
