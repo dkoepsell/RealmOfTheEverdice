@@ -526,6 +526,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const campaign = await storage.createCampaign(validatedData);
       console.log("Campaign created successfully:", campaign);
+      
+      // Generate a world map for the new campaign
+      try {
+        console.log("Generating world map for new campaign:", campaign.id);
+        const mapData = await generateWorldMap(campaign.id, campaign);
+        await storage.createOrUpdateCampaignWorldMap({
+          campaignId: campaign.id,
+          mapUrl: mapData.url
+        });
+        console.log("World map generated successfully for campaign:", campaign.id);
+      } catch (mapError) {
+        console.error("Failed to generate world map for new campaign:", mapError);
+        // Continue even if map generation fails - we'll just not have a map initially
+      }
+      
       res.status(201).json(campaign);
     } catch (error) {
       console.error("Error creating campaign:", error);
