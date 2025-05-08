@@ -953,6 +953,236 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result.length > 0;
   }
+
+  // Implement permissions method
+  async isPlayerInCampaign(userId: number, campaignId: number): Promise<boolean> {
+    try {
+      // Get all characters owned by this user
+      const userCharacters = await this.getCharactersByUserId(userId);
+      if (!userCharacters.length) return false;
+      
+      // Get all character IDs in this campaign
+      const campaignCharacters = await this.getCampaignCharacters(campaignId);
+      if (!campaignCharacters.length) return false;
+      
+      // Check if any of the user's characters are in the campaign
+      const userCharacterIds = userCharacters.map(char => char.id);
+      const campaignCharacterIds = campaignCharacters.map(cc => cc.characterId);
+      
+      return userCharacterIds.some(id => campaignCharacterIds.includes(id));
+    } catch (error) {
+      console.error("Error checking if player is in campaign:", error);
+      return false;
+    }
+  }
+  
+  // Implement Party Planning methods
+  async getPartyPlan(id: number): Promise<PartyPlan | undefined> {
+    try {
+      const [plan] = await db.select().from(partyPlans).where(eq(partyPlans.id, id));
+      return plan;
+    } catch (error) {
+      console.error("Error getting party plan:", error);
+      return undefined;
+    }
+  }
+  
+  async getPartyPlansByCampaignId(campaignId: number): Promise<PartyPlan[]> {
+    try {
+      return db.select()
+        .from(partyPlans)
+        .where(eq(partyPlans.campaignId, campaignId))
+        .orderBy(desc(partyPlans.updatedAt));
+    } catch (error) {
+      console.error("Error getting party plans by campaign ID:", error);
+      return [];
+    }
+  }
+  
+  async getPartyPlanWithItems(id: number): Promise<(PartyPlan & { items: PartyPlanItem[] }) | undefined> {
+    try {
+      const plan = await this.getPartyPlan(id);
+      if (!plan) return undefined;
+      
+      const items = await this.getPartyPlanItemsByPlanId(id);
+      
+      return {
+        ...plan,
+        items
+      };
+    } catch (error) {
+      console.error("Error getting party plan with items:", error);
+      return undefined;
+    }
+  }
+  
+  async createPartyPlan(plan: InsertPartyPlan): Promise<PartyPlan> {
+    try {
+      const [newPlan] = await db.insert(partyPlans).values(plan).returning();
+      return newPlan;
+    } catch (error) {
+      console.error("Error creating party plan:", error);
+      throw error;
+    }
+  }
+  
+  async updatePartyPlan(id: number, updates: Partial<PartyPlan>): Promise<PartyPlan | undefined> {
+    try {
+      // Always update the updatedAt field
+      const updatedData = {
+        ...updates,
+        updatedAt: new Date()
+      };
+      
+      const [updatedPlan] = await db
+        .update(partyPlans)
+        .set(updatedData)
+        .where(eq(partyPlans.id, id))
+        .returning();
+      
+      return updatedPlan;
+    } catch (error) {
+      console.error("Error updating party plan:", error);
+      return undefined;
+    }
+  }
+  
+  async deletePartyPlan(id: number): Promise<boolean> {
+    try {
+      // First delete all items and their comments
+      const planItems = await this.getPartyPlanItemsByPlanId(id);
+      
+      // Delete all comments for each item
+      for (const item of planItems) {
+        await db.delete(partyPlanComments).where(eq(partyPlanComments.itemId, item.id));
+      }
+      
+      // Delete all items
+      await db.delete(partyPlanItems).where(eq(partyPlanItems.planId, id));
+      
+      // Finally delete the plan itself
+      const result = await db.delete(partyPlans).where(eq(partyPlans.id, id)).returning();
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting party plan:", error);
+      return false;
+    }
+  }
+  
+  // Implement Party Plan Item methods
+  async getPartyPlanItem(id: number): Promise<PartyPlanItem | undefined> {
+    try {
+      const [item] = await db.select().from(partyPlanItems).where(eq(partyPlanItems.id, id));
+      return item;
+    } catch (error) {
+      console.error("Error getting party plan item:", error);
+      return undefined;
+    }
+  }
+  
+  async getPartyPlanItemsByPlanId(planId: number): Promise<PartyPlanItem[]> {
+    try {
+      return db.select()
+        .from(partyPlanItems)
+        .where(eq(partyPlanItems.planId, planId))
+        .orderBy(partyPlanItems.position);
+    } catch (error) {
+      console.error("Error getting party plan items by plan ID:", error);
+      return [];
+    }
+  }
+  
+  async createPartyPlanItem(item: InsertPartyPlanItem): Promise<PartyPlanItem> {
+    try {
+      // Update the parent plan's updatedAt timestamp
+      await this.updatePartyPlan(item.planId, {});
+      
+      const [newItem] = await db.insert(partyPlanItems).values(item).returning();
+      return newItem;
+    } catch (error) {
+      console.error("Error creating party plan item:", error);
+      throw error;
+    }
+  }
+  
+  async updatePartyPlanItem(id: number, updates: Partial<PartyPlanItem>): Promise<PartyPlanItem | undefined> {
+    try {
+      // Get the item first to get the plan ID
+      const item = await this.getPartyPlanItem(id);
+      if (!item) return undefined;
+      
+      // Always update the updatedAt field
+      const updatedData = {
+        ...updates,
+        updatedAt: new Date()
+      };
+      
+      // Update the parent plan's updatedAt timestamp
+      await this.updatePartyPlan(item.planId, {});
+      
+      const [updatedItem] = await db
+        .update(partyPlanItems)
+        .set(updatedData)
+        .where(eq(partyPlanItems.id, id))
+        .returning();
+      
+      return updatedItem;
+    } catch (error) {
+      console.error("Error updating party plan item:", error);
+      return undefined;
+    }
+  }
+  
+  async deletePartyPlanItem(id: number): Promise<boolean> {
+    try {
+      // Get the item first to get the plan ID
+      const item = await this.getPartyPlanItem(id);
+      if (!item) return false;
+      
+      // Update the parent plan's updatedAt timestamp
+      await this.updatePartyPlan(item.planId, {});
+      
+      // Delete all comments for this item
+      await db.delete(partyPlanComments).where(eq(partyPlanComments.itemId, id));
+      
+      // Delete the item
+      const result = await db.delete(partyPlanItems).where(eq(partyPlanItems.id, id)).returning();
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting party plan item:", error);
+      return false;
+    }
+  }
+  
+  // Implement Party Plan Comment methods
+  async getPartyPlanCommentsByItemId(itemId: number): Promise<PartyPlanComment[]> {
+    try {
+      return db.select()
+        .from(partyPlanComments)
+        .where(eq(partyPlanComments.itemId, itemId))
+        .orderBy(partyPlanComments.createdAt);
+    } catch (error) {
+      console.error("Error getting party plan comments by item ID:", error);
+      return [];
+    }
+  }
+  
+  async createPartyPlanComment(comment: InsertPartyPlanComment): Promise<PartyPlanComment> {
+    try {
+      // Get the item first to get the plan ID
+      const item = await this.getPartyPlanItem(comment.itemId);
+      if (!item) throw new Error("Item not found");
+      
+      // Update the parent plan's updatedAt timestamp
+      await this.updatePartyPlan(item.planId, {});
+      
+      const [newComment] = await db.insert(partyPlanComments).values(comment).returning();
+      return newComment;
+    } catch (error) {
+      console.error("Error creating party plan comment:", error);
+      throw error;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
