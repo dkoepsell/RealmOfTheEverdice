@@ -611,7 +611,12 @@ export default function CampaignPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => setShowAddCharacterDialog(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Add Character button clicked (header)");
+                    setShowAddCharacterDialog(true);
+                  }}
                 >
                   <UserPlus className="h-3 w-3 mr-1" />
                   Add Character
@@ -1072,7 +1077,17 @@ export default function CampaignPage() {
                             variant="outline" 
                             size="sm"
                             className="w-full justify-start py-3"
-                            onClick={() => setShowAddCharacterDialog(true)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log("Add Character button clicked (sidebar)");
+                              setShowAddCharacterDialog(true);
+                            }}
+                            onTouchStart={(e) => {
+                              e.preventDefault();
+                              console.log("Touch start on Add Character button");
+                              setShowAddCharacterDialog(true);
+                            }}
                           >
                             <UserPlus className="h-4 w-4 mr-2 flex-shrink-0" />
                             <span className="truncate">Add Character</span>
@@ -1165,6 +1180,23 @@ export default function CampaignPage() {
             </div>
           </div>
         )}
+        
+        {/* Mobile Add Character Button */}
+        <div className="md:hidden fixed bottom-20 right-4 z-40">
+          <Button
+            variant="default"
+            size="lg"
+            className="rounded-full h-14 w-14 shadow-lg"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log("Mobile add character button clicked");
+              setShowAddCharacterDialog(true);
+            }}
+          >
+            <UserPlus className="h-6 w-6" />
+          </Button>
+        </div>
         
         {/* Add Character Dialog */}
         <AddCharacterDialog
