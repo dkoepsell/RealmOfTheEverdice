@@ -109,7 +109,7 @@ export function AddCharacterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-parchment border-accent">
+      <DialogContent className="sm:max-w-md bg-parchment border-accent max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-medieval text-primary">
             Add Character to Campaign
@@ -137,7 +137,12 @@ export function AddCharacterDialog({
                 <SelectTrigger className="w-full bg-parchment border-accent">
                   <SelectValue placeholder="Select a character" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border border-accent z-50">
+                <SelectContent 
+                  className="bg-white border border-accent z-[100] fixed" 
+                  position="popper"
+                  sideOffset={5}
+                  align="start"
+                >
                   {characters.map((character) => (
                     <SelectItem
                       key={character.id}
@@ -162,17 +167,19 @@ export function AddCharacterDialog({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 mt-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={addCharacterMutation.isPending}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
           <Button
             onClick={handleAddCharacter}
             disabled={!selectedCharacterId || addCharacterMutation.isPending}
+            className="w-full sm:w-auto"
           >
             {addCharacterMutation.isPending ? (
               <>

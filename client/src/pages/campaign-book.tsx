@@ -874,24 +874,26 @@ export default function CampaignPage() {
                       <div className="space-y-2 pt-3 border-t border-border">
                         <h4 className="text-sm font-semibold mb-2">Party Options</h4>
                         
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="w-full justify-start"
-                          onClick={() => setShowAddCharacterDialog(true)}
-                        >
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          Add Character
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start"
-                        >
-                          <UserCog className="h-4 w-4 mr-2" />
-                          Manage Party Roles
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="w-full justify-start py-3"
+                            onClick={() => setShowAddCharacterDialog(true)}
+                          >
+                            <UserPlus className="h-4 w-4 mr-2 flex-shrink-0" />
+                            <span className="truncate">Add Character</span>
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start py-3"
+                          >
+                            <UserCog className="h-4 w-4 mr-2 flex-shrink-0" />
+                            <span className="truncate">Manage Party Roles</span>
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
