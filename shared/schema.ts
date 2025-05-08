@@ -246,7 +246,10 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   receivedFriendRequests: many(friendships),
   session: one(userSessions),
   sentCampaignInvitations: many(campaignInvitations),
-  receivedCampaignInvitations: many(campaignInvitations)
+  receivedCampaignInvitations: many(campaignInvitations),
+  createdPlans: many(partyPlans, { relationName: "createdPlans" }),
+  assignedItems: many(partyPlanItems, { relationName: "assignedItems" }),
+  planComments: many(partyPlanComments)
 }));
 
 export const charactersRelations = relations(characters, ({ one, many }) => ({
@@ -279,6 +282,7 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
   invitations: many(campaignInvitations),
   mapLocations: many(mapLocations),
   journeyPaths: many(journeyPaths),
+  partyPlans: many(partyPlans),
   currentLocation: one(campaignCurrentLocations),
   worldMap: one(campaignWorldMaps)
 }));
@@ -508,3 +512,104 @@ export const campaignWorldMapsRelations = relations(campaignWorldMaps, ({ one })
     references: [campaigns.id]
   })
 }));
+
+// Party Planning model
+export const partyPlans = pgTable("party_plans", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"), // active, completed, archived
+  createdById: integer("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const partyPlanItems = pgTable("party_plan_items", {
+  id: serial("id").primaryKey(),
+  planId: integer("plan_id").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull().default("task"), // task, note, resource, strategy
+  status: text("status").notNull().default("pending"), // pending, in-progress, completed
+  assignedToId: integer("assigned_to_id"),
+  position: integer("position").notNull().default(0),
+  createdById: integer("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const partyPlanComments = pgTable("party_plan_comments", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull(),
+  content: text("content").notNull(),
+  userId: integer("user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const partyPlansRelations = relations(partyPlans, ({ one, many }) => ({
+  campaign: one(campaigns, {
+    fields: [partyPlans.campaignId],
+    references: [campaigns.id]
+  }),
+  createdBy: one(users, {
+    fields: [partyPlans.createdById],
+    references: [users.id]
+  }),
+  items: many(partyPlanItems)
+}));
+
+export const partyPlanItemsRelations = relations(partyPlanItems, ({ one, many }) => ({
+  plan: one(partyPlans, {
+    fields: [partyPlanItems.planId],
+    references: [partyPlans.id]
+  }),
+  createdBy: one(users, {
+    fields: [partyPlanItems.createdById],
+    references: [users.id]
+  }),
+  assignedTo: one(users, {
+    fields: [partyPlanItems.assignedToId],
+    references: [users.id],
+    relationName: "assignedItems"
+  }),
+  comments: many(partyPlanComments)
+}));
+
+export const partyPlanCommentsRelations = relations(partyPlanComments, ({ one }) => ({
+  item: one(partyPlanItems, {
+    fields: [partyPlanComments.itemId],
+    references: [partyPlanItems.id]
+  }),
+  user: one(users, {
+    fields: [partyPlanComments.userId],
+    references: [users.id]
+  })
+}));
+
+// Insert schemas for party planning
+export const insertPartyPlanSchema = createInsertSchema(partyPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertPartyPlanItemSchema = createInsertSchema(partyPlanItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertPartyPlanCommentSchema = createInsertSchema(partyPlanComments).omit({
+  id: true,
+  createdAt: true
+});
+
+// Type definitions for party planning
+export type PartyPlan = typeof partyPlans.$inferSelect;
+export type InsertPartyPlan = z.infer<typeof insertPartyPlanSchema>;
+
+export type PartyPlanItem = typeof partyPlanItems.$inferSelect;
+export type InsertPartyPlanItem = z.infer<typeof insertPartyPlanItemSchema>;
+
+export type PartyPlanComment = typeof partyPlanComments.$inferSelect;
+export type InsertPartyPlanComment = z.infer<typeof insertPartyPlanCommentSchema>;
