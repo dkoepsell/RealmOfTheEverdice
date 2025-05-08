@@ -373,6 +373,30 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
   }
 }
 
+export async function generateWorldMap(campaignId: number, campaignInfo: any) {
+  try {
+    const response = await openai.images.generate({
+      model: "dall-e-3", 
+      prompt: `Create a stylized fantasy map for a D&D campaign called "${campaignInfo.name}" set in a ${campaignInfo.setting || "fantasy world"}. 
+      This should look like an old-style hand-drawn map on aged parchment with labeled regions, mountains, forests, cities, and bodies of water. 
+      Include decorative elements like a compass rose, sea monsters in water areas, and ornate borders. 
+      The map should have a high contrast style that works well as a game reference. 
+      Design it in a top-down view with a color palette of browns, faded blues, and muted greens to mimic an antique map.
+      Do not include any text that labels this as "Dungeons and Dragons", "D&D" or any trademarked terms.
+      Make sure map features are clearly labeled with invented fantasy place names.`,
+      n: 1,
+      size: "1024x1024",
+      quality: "standard",
+      response_format: "url"
+    });
+
+    return { url: response.data[0].url, campaignId };
+  } catch (error) {
+    console.error("Error generating world map:", error);
+    throw new Error(`Failed to generate world map: ${error.message}`);
+  }
+}
+
 export async function generateCampaign(options: CampaignGenerationOptions = {}) {
   const {
     genre = "fantasy",

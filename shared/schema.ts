@@ -257,6 +257,14 @@ export const charactersRelations = relations(characters, ({ one, many }) => ({
   campaignCharacters: many(campaignCharacters)
 }));
 
+// Campaign World Maps model
+export const campaignWorldMaps = pgTable("campaign_world_maps", {
+  campaignId: integer("campaign_id").references(() => campaigns.id).primaryKey(),
+  mapUrl: text("map_url").notNull(),
+  generatedAt: timestamp("generated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
   dm: one(users, {
     fields: [campaigns.dmId],
@@ -271,7 +279,8 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
   invitations: many(campaignInvitations),
   mapLocations: many(mapLocations),
   journeyPaths: many(journeyPaths),
-  currentLocation: one(campaignCurrentLocations)
+  currentLocation: one(campaignCurrentLocations),
+  worldMap: one(campaignWorldMaps)
 }));
 
 export const campaignCharactersRelations = relations(campaignCharacters, ({ one }) => ({
@@ -484,3 +493,18 @@ export type InsertCampaignCurrentLocation = z.infer<typeof insertCampaignCurrent
 export const insertCampaignCurrentLocationSchema = createInsertSchema(campaignCurrentLocations).omit({
   updatedAt: true
 });
+
+// World Map types
+export type CampaignWorldMap = typeof campaignWorldMaps.$inferSelect;
+export type InsertCampaignWorldMap = z.infer<typeof insertCampaignWorldMapSchema>;
+export const insertCampaignWorldMapSchema = createInsertSchema(campaignWorldMaps).omit({
+  generatedAt: true,
+  updatedAt: true
+});
+
+export const campaignWorldMapsRelations = relations(campaignWorldMaps, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [campaignWorldMaps.campaignId],
+    references: [campaigns.id]
+  })
+}));
