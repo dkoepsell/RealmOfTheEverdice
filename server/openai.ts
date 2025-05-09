@@ -324,7 +324,9 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
     itemType = "random",
     rarity = "common",
     category = "any",
-    characterLevel = 1
+    characterLevel = 1,
+    context = "",
+    enemyType = ""
   } = options;
   
   try {
@@ -333,24 +335,33 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
       messages: [
         {
           role: "system",
-          content: `You are a magical artificer who crafts unique Dungeons & Dragons items. 
-          Generate a ${rarity} ${itemType === "random" ? "random" : itemType} item suitable for level ${characterLevel} characters.
-          ${category !== "any" ? `The item should be from the ${category} category.` : ''}
+          content: `You are an expert Dungeons & Dragons narrative designer who creates immersive, context-appropriate items based on the current game story and environment.
           
-          Follow D&D 5e rules and balance considerations.`
+          Instead of randomly generating items, you carefully craft items that:
+          1. Match the narrative context provided
+          2. Feel like natural discoveries within the game world
+          3. Have a plausible origin story or connection to the environment
+          4. Follow D&D 5e rules and balance considerations
+          5. Are appropriate for level ${characterLevel} characters
+          
+          ${enemyType ? `This item is being dropped from a defeated ${enemyType}. Consider what such a creature might realistically possess.` : ''}
+          ${context ? `The current narrative context is: "${context}"` : ''}`
         },
         {
           role: "user",
-          content: `Create a detailed D&D 5e item with these parameters:
-          - Item Type: ${itemType === "random" ? "any type" : itemType}
-          - Rarity: ${rarity}
-          - Category: ${category}
-          - Character Level: ${characterLevel}
+          content: `Create a narrative-appropriate ${rarity} item for this D&D adventure:
+          
+          ${context ? `Story Context: ${context}` : 'No specific context provided'}
+          ${enemyType ? `Dropped by: ${enemyType}` : 'Found within the environment'}
+          ${itemType !== "random" ? `Preferred Item Type: ${itemType}` : ''}
+          ${category !== "any" ? `Category: ${category}` : ''}
+          Character Level: ${characterLevel}
           
           Format your response as a JSON object with these fields:
           - name: A distinctive name for the item
-          - description: A detailed description of the item's appearance and effects
-          - type: One of "weapon", "armor", "potion", "scroll", "tool", "trinket", "quest", or "miscellaneous"
+          - description: A detailed description that includes how/why this item is found here
+          - type: One of "weapon", "armor", "apparel", "potion", "scroll", "tool", "trinket", "quest", or "miscellaneous"
+          - apparelSlot: If type is "apparel", include one of "head", "chest", "legs", "feet", "hands", "back", "neck", "finger", "waist"
           - rarity: One of "common", "uncommon", "rare", "very rare", "legendary", "artifact"
           - weight: The weight in pounds (can be decimal)
           - value: The value in gold pieces
@@ -358,7 +369,8 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
           - attunement: Boolean, whether it requires attunement
           - quantity: How many of this item (usually 1)
           - isEquipped: false (default unequipped state)
-          - slot: 0 (will be assigned when added to inventory)`
+          - slot: 0 (will be assigned when added to inventory)
+          - source: One of "loot", "crafted", "quest", "purchased", "starting"`
         }
       ],
       response_format: { type: "json_object" },

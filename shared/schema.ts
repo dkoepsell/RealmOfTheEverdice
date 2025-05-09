@@ -389,6 +389,17 @@ export type CharacterStats = {
 export type CharacterEquipment = {
   weapons: string[];
   armor: string;
+  apparel: {
+    head?: string;
+    chest?: string;
+    legs?: string;
+    feet?: string;
+    hands?: string;
+    back?: string;
+    neck?: string;
+    finger?: string;
+    waist?: string;
+  };
   items: string[];
   inventory: Array<{
     slot: number;
@@ -398,9 +409,11 @@ export type CharacterEquipment = {
     weight?: number; 
     value?: number;
     isEquipped: boolean;
-    type: "weapon" | "armor" | "potion" | "scroll" | "tool" | "trinket" | "quest" | "miscellaneous";
+    type: "weapon" | "armor" | "apparel" | "potion" | "scroll" | "tool" | "trinket" | "quest" | "miscellaneous";
+    apparelSlot?: "head" | "chest" | "legs" | "feet" | "hands" | "back" | "neck" | "finger" | "waist";
     properties?: string[];
     rarity?: "common" | "uncommon" | "rare" | "very rare" | "legendary" | "artifact";
+    source?: "loot" | "crafted" | "quest" | "purchased" | "starting";
   }>;
 };
 
