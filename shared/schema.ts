@@ -54,6 +54,7 @@ export const campaigns = pgTable("campaigns", {
   status: text("status").notNull().default("active"),
   setting: text("setting"),
   isAiDm: boolean("is_ai_dm").notNull().default(false),
+  currentTurnId: integer("current_turn_id"),
   // Note: partyName field exists in schema but not in DB yet
   // partyName: text("party_name"),
   createdAt: timestamp("created_at").defaultNow()
@@ -293,6 +294,75 @@ export const insertEverdiceWorldSchema = createInsertSchema(everdiceWorld).omit(
 
 export type EverdiceWorld = typeof everdiceWorld.$inferSelect;
 export type InsertEverdiceWorld = z.infer<typeof insertEverdiceWorldSchema>;
+
+// Campaign Turns System (for asynchronous play)
+export const campaignTurns = pgTable("campaign_turns", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  currentPlayerId: integer("current_player_id").references(() => users.id),
+  turnNumber: integer("turn_number").notNull().default(1),
+  turnStatus: text("turn_status").notNull().default("active"), // active, completed, skipped
+  startedAt: timestamp("started_at").defaultNow(),
+  endedAt: timestamp("ended_at"),
+  actionDescription: text("action_description"),
+  metadata: json("metadata")  // Additional turn-related data
+});
+
+export const insertCampaignTurnSchema = createInsertSchema(campaignTurns).omit({
+  id: true,
+  startedAt: true,
+  endedAt: true
+});
+
+export const campaignTurnsRelations = relations(campaignTurns, ({ one, many }) => ({
+  campaign: one(campaigns, {
+    fields: [campaignTurns.campaignId],
+    references: [campaigns.id]
+  }),
+  currentPlayer: one(users, {
+    fields: [campaignTurns.currentPlayerId],
+    references: [users.id]
+  }),
+  notifications: many(turnNotifications),
+  timeMarks: many(timeMarks)
+}));
+
+// Turn Notifications
+export const turnNotifications = pgTable("turn_notifications", {
+  id: serial("id").primaryKey(),
+  turnId: integer("turn_id").notNull().references(() => campaignTurns.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  notificationType: text("notification_type").notNull().default("turn_alert"), // turn_alert, turn_reminder, etc.
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  readAt: timestamp("read_at")
+});
+
+export const insertTurnNotificationSchema = createInsertSchema(turnNotifications).omit({
+  id: true,
+  createdAt: true,
+  readAt: true
+});
+
+// Turn Order (who goes next)
+export const turnOrder = pgTable("turn_order", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  playerId: integer("player_id").notNull().references(() => users.id),
+  position: integer("position").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => {
+  return {
+    uniqPlayerCampaign: primaryKey({ columns: [table.campaignId, table.playerId] })
+  };
+});
+
+export const insertTurnOrderSchema = createInsertSchema(turnOrder).omit({
+  id: true,
+  createdAt: true
+});
 
 // Campaign World Maps model (now connected to Everdice World)
 export const campaignWorldMaps = pgTable("campaign_world_maps", {
@@ -719,6 +789,38 @@ export type TavernNotice = typeof tavernNotices.$inferSelect;
 export type InsertTavernNotice = z.infer<typeof insertTavernNoticeSchema>;
 export type TavernNoticeReply = typeof tavernNoticeReplies.$inferSelect;
 export type InsertTavernNoticeReply = z.infer<typeof insertTavernNoticeReplySchema>;
+
+// Time markers for narrative flow
+export const timeMarks = pgTable("time_marks", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  turnId: integer("turn_id").references(() => campaignTurns.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  markerType: text("marker_type").notNull().default("time_passage"), // time_passage, day_end, rest, combat, etc.
+  timestamp: timestamp("timestamp").defaultNow(),
+  gameTimestamp: text("game_timestamp"), // For tracking in-game date/time
+  metadata: json("metadata") // Additional marker data
+});
+
+export const insertTimeMarkSchema = createInsertSchema(timeMarks).omit({
+  id: true,
+  timestamp: true
+});
+
+export const timeMarksRelations = relations(timeMarks, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [timeMarks.campaignId],
+    references: [campaigns.id]
+  }),
+  turn: one(campaignTurns, {
+    fields: [timeMarks.turnId],
+    references: [campaignTurns.id]
+  })
+}));
+
+export type TimeMark = typeof timeMarks.$inferSelect;
+export type InsertTimeMark = z.infer<typeof insertTimeMarkSchema>;
 
 // System Usage Stats
 export const systemStats = pgTable("system_stats", {
