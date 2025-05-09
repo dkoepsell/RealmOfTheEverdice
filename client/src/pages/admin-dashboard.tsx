@@ -143,22 +143,24 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-bold">Dungeon Master's Admin Console</h1>
         </div>
         <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            className="flex items-center" 
-            onClick={() => window.location.href = '/'}
-          >
-            <Book className="h-4 w-4 mr-2" />
-            Player View
-          </Button>
-          <Button 
-            variant="default" 
-            className="flex items-center" 
-            onClick={() => window.location.href = '/tavern-board'}
-          >
-            <BookOpenCheck className="h-4 w-4 mr-2" />
-            Tavern Board
-          </Button>
+          <Link href="/">
+            <Button 
+              variant="outline" 
+              className="flex items-center"
+            >
+              <Book className="h-4 w-4 mr-2" />
+              Player View
+            </Button>
+          </Link>
+          <Link href="/tavern-board">
+            <Button 
+              variant="default" 
+              className="flex items-center" 
+            >
+              <BookOpenCheck className="h-4 w-4 mr-2" />
+              Tavern Board
+            </Button>
+          </Link>
         </div>
       </div>
       
