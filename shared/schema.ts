@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email"),
+  role: text("role").notNull().default("user"), // Can be 'user', 'admin', 'superuser'
   createdAt: timestamp("created_at").defaultNow()
 });
 
@@ -249,7 +250,12 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   receivedCampaignInvitations: many(campaignInvitations),
   createdPlans: many(partyPlans, { relationName: "createdPlans" }),
   assignedItems: many(partyPlanItems, { relationName: "assignedItems" }),
-  planComments: many(partyPlanComments)
+  planComments: many(partyPlanComments),
+  tavernNotices: many(tavernNotices),
+  tavernNoticeReplies: many(tavernNoticeReplies),
+  sentMessages: many(userMessages, { relationName: "sentMessages" }),
+  receivedMessages: many(userMessages, { relationName: "receivedMessages" }),
+  systemStats: many(systemStats)
 }));
 
 export const charactersRelations = relations(characters, ({ one, many }) => ({
@@ -627,3 +633,113 @@ export type InsertPartyPlanItem = z.infer<typeof insertPartyPlanItemSchema>;
 
 export type PartyPlanComment = typeof partyPlanComments.$inferSelect;
 export type InsertPartyPlanComment = z.infer<typeof insertPartyPlanCommentSchema>;
+
+// Tavern Notice Board
+export const tavernNotices = pgTable("tavern_notices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull().default("quest"), // quest, party_search, announcement, etc.
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at")
+});
+
+export const insertTavernNoticeSchema = createInsertSchema(tavernNotices).omit({
+  id: true,
+  createdAt: true
+});
+
+export const tavernNoticeReplies = pgTable("tavern_notice_replies", {
+  id: serial("id").primaryKey(),
+  noticeId: integer("notice_id").notNull().references(() => tavernNotices.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertTavernNoticeReplySchema = createInsertSchema(tavernNoticeReplies).omit({
+  id: true,
+  createdAt: true
+});
+
+export const tavernNoticesRelations = relations(tavernNotices, ({ one, many }) => ({
+  user: one(users, {
+    fields: [tavernNotices.userId],
+    references: [users.id]
+  }),
+  replies: many(tavernNoticeReplies)
+}));
+
+export const tavernNoticeRepliesRelations = relations(tavernNoticeReplies, ({ one }) => ({
+  notice: one(tavernNotices, {
+    fields: [tavernNoticeReplies.noticeId],
+    references: [tavernNotices.id]
+  }),
+  user: one(users, {
+    fields: [tavernNoticeReplies.userId],
+    references: [users.id]
+  })
+}));
+
+export type TavernNotice = typeof tavernNotices.$inferSelect;
+export type InsertTavernNotice = z.infer<typeof insertTavernNoticeSchema>;
+export type TavernNoticeReply = typeof tavernNoticeReplies.$inferSelect;
+export type InsertTavernNoticeReply = z.infer<typeof insertTavernNoticeReplySchema>;
+
+// System Usage Stats
+export const systemStats = pgTable("system_stats", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  action: text("action").notNull(), // login, character_create, campaign_create, etc.
+  metadata: json("metadata"), // Additional data about the action
+  timestamp: timestamp("timestamp").defaultNow()
+});
+
+export const insertSystemStatSchema = createInsertSchema(systemStats).omit({
+  id: true,
+  timestamp: true
+});
+
+export const systemStatsRelations = relations(systemStats, ({ one }) => ({
+  user: one(users, {
+    fields: [systemStats.userId],
+    references: [users.id]
+  })
+}));
+
+export type SystemStat = typeof systemStats.$inferSelect;
+export type InsertSystemStat = z.infer<typeof insertSystemStatSchema>;
+
+// User Messages (for admin communication)
+export const userMessages = pgTable("user_messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").notNull().references(() => users.id),
+  recipientId: integer("recipient_id").notNull().references(() => users.id),
+  subject: text("subject").notNull(),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  sentAt: timestamp("sent_at").defaultNow()
+});
+
+export const insertUserMessageSchema = createInsertSchema(userMessages).omit({
+  id: true,
+  sentAt: true
+});
+
+export const userMessagesRelations = relations(userMessages, ({ one }) => ({
+  sender: one(users, {
+    fields: [userMessages.senderId],
+    references: [users.id],
+    relationName: "sentMessages"
+  }),
+  recipient: one(users, {
+    fields: [userMessages.recipientId],
+    references: [users.id],
+    relationName: "receivedMessages"
+  })
+}));
+
+export type UserMessage = typeof userMessages.$inferSelect;
+export type InsertUserMessage = z.infer<typeof insertUserMessageSchema>;
