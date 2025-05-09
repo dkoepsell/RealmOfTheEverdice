@@ -863,6 +863,7 @@ export default function CampaignPage() {
                           onItemUpdate={() => {
                             queryClient.invalidateQueries({ queryKey: [`/api/characters/${currentCharacter.id}`] });
                           }}
+                          isDm={user?.id === campaign?.dmId}
                         />
                       )}
                       
