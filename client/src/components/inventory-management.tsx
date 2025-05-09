@@ -66,6 +66,7 @@ const getItemIcon = (type: string) => {
   switch (type.toLowerCase()) {
     case 'weapon': return <Sword className="h-4 w-4" />;
     case 'armor': return <Shield className="h-4 w-4" />;
+    case 'apparel': return <Shirt className="h-4 w-4" />;
     case 'potion': return <Beaker className="h-4 w-4" />;
     case 'scroll': return <Scroll className="h-4 w-4" />;
     case 'quest': return <Sparkles className="h-4 w-4" />;
@@ -451,6 +452,7 @@ export function InventoryManagement({
                       <SelectItem value="all">All Types</SelectItem>
                       <SelectItem value="weapon">Weapons</SelectItem>
                       <SelectItem value="armor">Armor</SelectItem>
+                      <SelectItem value="apparel">Apparel</SelectItem>
                       <SelectItem value="potion">Potions</SelectItem>
                       <SelectItem value="scroll">Scrolls</SelectItem>
                       <SelectItem value="tool">Tools</SelectItem>
@@ -586,6 +588,7 @@ export function InventoryManagement({
                       <SelectItem value="all">Random Type</SelectItem>
                       <SelectItem value="weapon">Weapon</SelectItem>
                       <SelectItem value="armor">Armor</SelectItem>
+                      <SelectItem value="apparel">Apparel</SelectItem>
                       <SelectItem value="potion">Potion</SelectItem>
                       <SelectItem value="scroll">Scroll</SelectItem>
                       <SelectItem value="tool">Tool</SelectItem>

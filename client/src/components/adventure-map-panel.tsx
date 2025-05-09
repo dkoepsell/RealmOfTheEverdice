@@ -92,7 +92,11 @@ import {
   EyeOff,
   Check,
   X,
-  Settings2
+  Settings2,
+  Sparkles,
+  Swords,
+  Gem,
+  UserCircle
 } from 'lucide-react';
 
 // Default latitude/longitude for map center if none is provided
