@@ -56,6 +56,7 @@ import {
   BarChart, 
   Shield, 
   Book, 
+  BookOpenCheck,
   Map, 
   Users, 
   Clock, 
@@ -130,9 +131,29 @@ const AdminDashboard = () => {
   
   return (
     <div className="container py-8">
-      <div className="flex items-center mb-6">
-        <Shield className="h-8 w-8 mr-2 text-amber-600" />
-        <h1 className="text-3xl font-bold">Dungeon Master's Admin Console</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Shield className="h-8 w-8 mr-2 text-amber-600" />
+          <h1 className="text-3xl font-bold">Dungeon Master's Admin Console</h1>
+        </div>
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            className="flex items-center" 
+            onClick={() => window.location.href = '/'}
+          >
+            <Book className="h-4 w-4 mr-2" />
+            Player View
+          </Button>
+          <Button 
+            variant="default" 
+            className="flex items-center" 
+            onClick={() => window.location.href = '/tavern-board'}
+          >
+            <BookOpenCheck className="h-4 w-4 mr-2" />
+            Tavern Board
+          </Button>
+        </div>
       </div>
       
       <p className="text-muted-foreground mb-6">
@@ -463,7 +484,27 @@ const AdminDashboard = () => {
                   <p className="text-muted-foreground mb-4">
                     The Everdice superworld hasn't been initialized yet.
                   </p>
-                  <Button variant="outline">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to initialize the Everdice superworld? This will create the global map all campaigns exist within.")) {
+                        // Call the initialize Everdice world function
+                        fetch('/api/admin/initialize-everdice', { 
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' }
+                        })
+                        .then(response => {
+                          if (!response.ok) throw new Error('Failed to initialize Everdice');
+                          alert('Everdice world initialized successfully! Refreshing...');
+                          window.location.reload();
+                        })
+                        .catch(err => {
+                          console.error(err);
+                          alert('Failed to initialize Everdice world.');
+                        });
+                      }
+                    }}
+                  >
                     <Globe className="h-4 w-4 mr-2" />
                     Initialize Everdice World
                   </Button>
@@ -499,7 +540,7 @@ const AdminDashboard = () => {
                           </div>
                           <div className="flex justify-between">
                             <dt className="text-muted-foreground">Major Regions:</dt>
-                            <dd className="font-medium">{(everdiceWorld.continents?.reduce((sum, continent) => 
+                            <dd className="font-medium">{(everdiceWorld.continents?.reduce((sum: number, continent: any) => 
                               sum + (continent.regions?.length || 0), 0)) || 0}</dd>
                           </div>
                           <div className="flex justify-between">
@@ -515,7 +556,7 @@ const AdminDashboard = () => {
                             <dd className="font-medium">
                               {campaignRegions ? 
                                 `${(campaignRegions.campaigns?.length || 0)} campaigns in ${Math.min((campaignRegions.uniqueRegions?.length || 0), 
-                                (everdiceWorld.continents?.reduce((sum, continent) => 
+                                (everdiceWorld.continents?.reduce((sum: number, continent: any) => 
                                 sum + (continent.regions?.length || 0), 0)) || 1)} regions` :
                                 '0 campaigns'}
                             </dd>
