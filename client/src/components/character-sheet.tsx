@@ -119,8 +119,14 @@ export const CharacterSheet = ({ character, onUpdateCharacter }: CharacterSheetP
               <div className="space-y-2">
                 {abilities?.map((ability, index) => (
                   <div key={index} className="border rounded p-3">
-                    <div className="font-bold">{ability.name}</div>
-                    <div className="text-sm">{ability.description}</div>
+                    {typeof ability === 'string' ? (
+                      <div className="font-bold">{ability}</div>
+                    ) : (
+                      <>
+                        <div className="font-bold">{ability.name}</div>
+                        <div className="text-sm">{ability.description}</div>
+                      </>
+                    )}
                   </div>
                 ))}
                 {(!abilities || abilities.length === 0) && (
@@ -205,11 +211,17 @@ export const CharacterSheet = ({ character, onUpdateCharacter }: CharacterSheetP
                   <div className="space-y-2">
                     {spells?.map((spell, index) => (
                       <div key={index} className="border rounded p-3">
-                        <div className="flex justify-between">
-                          <span className="font-bold">{spell.name}</span>
-                          <span className="text-muted-foreground">Level {spell.level}</span>
-                        </div>
-                        <div className="text-sm mt-1">{spell.description}</div>
+                        {typeof spell === 'string' ? (
+                          <div className="font-bold">{spell}</div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="font-bold">{spell.name}</span>
+                              <span className="text-muted-foreground">Level {spell.level}</span>
+                            </div>
+                            <div className="text-sm mt-1">{spell.description}</div>
+                          </>
+                        )}
                       </div>
                     ))}
                     {(!spells || spells.length === 0) && (
