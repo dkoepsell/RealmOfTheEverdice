@@ -56,7 +56,7 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
           <div className="flex-1 flex items-center justify-center sm:items-stretch sm:justify-start">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/">
-                <a className="flex items-center">
+                <div className="flex items-center">
                   <svg 
                     className="h-8 w-auto text-accent"
                     viewBox="0 0 24 24"
@@ -68,14 +68,14 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
                     <h1 className="text-xl font-medieval tracking-wider">Realm of the Everdice</h1>
                     <p className="text-xs text-parchment/80 -mt-1">A Storycrafter's Companion</p>
                   </div>
-                </a>
+                </div>
               </Link>
             </div>
             <div className="hidden sm:block sm:ml-6">
               <div className="flex">
                 {navItems.map((item) => (
                   <Link key={item.name} href={item.href}>
-                    <a
+                    <div
                       className={`px-4 py-2 text-sm font-medium border-b-2 ${
                         location === item.href
                           ? "border-accent text-accent-foreground font-bold"
@@ -83,7 +83,7 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
                       }`}
                     >
                       {item.icon}{item.name}
-                    </a>
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -122,32 +122,47 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/profile">
-                      <a className="w-full">
+                      <div className="w-full">
                         <User className="mr-2 h-4 w-4 inline-block" />
                         Profile
-                      </a>
+                      </div>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/social">
-                      <a className="w-full">
+                      <div className="w-full">
                         <Users className="mr-2 h-4 w-4 inline-block" />
                         Friends & Invitations
-                      </a>
+                      </div>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/settings">
-                      <a className="w-full">
+                      <div className="w-full">
                         <svg className="mr-2 h-4 w-4 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <circle cx="12" cy="12" r="3"></circle>
                           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                         </svg>
                         Settings
-                      </a>
+                      </div>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  {user?.role === "superuser" || user?.role === "admin" ? (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin">
+                          <div className="w-full">
+                            <svg className="mr-2 h-4 w-4 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            Admin Dashboard
+                          </div>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  ) : null}
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
@@ -164,7 +179,7 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
         <div className="px-2 pt-2 pb-3 space-y-1">
           {navItems.map((item) => (
             <Link key={item.name} href={item.href}>
-              <a
+              <div
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
                   location === item.href
                     ? "bg-primary text-parchment"
@@ -173,7 +188,7 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {item.icon}{item.name}
-              </a>
+              </div>
             </Link>
           ))}
         </div>
