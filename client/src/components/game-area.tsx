@@ -22,9 +22,10 @@ import {
 import { Campaign, Character, GameLog } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
-import { DiceRoller, DiceType } from "@/components/dice-roll";
+import { DiceRoller } from "@/components/dice-roll";
 import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results";
 import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
+import { DiceType } from "@/hooks/use-dice";
 
 interface GameAreaProps {
   campaign: Campaign;

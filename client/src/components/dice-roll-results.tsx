@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Scroll, Trophy, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { DiceType } from "@/components/dice-roll";
+import { DiceType } from "@/hooks/use-dice";
 
 export interface DiceRollResult {
   id: string;
