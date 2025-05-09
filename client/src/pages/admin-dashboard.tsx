@@ -40,12 +40,22 @@ import { Loader2, UserIcon, MessageSquare, BarChart, Shield } from "lucide-react
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const { isSuperuser, users, isLoadingUsers, stats, isLoadingStats, sendMessage } = useAdmin();
+  const { 
+    isSuperuser, 
+    users, 
+    isLoadingUsers, 
+    stats, 
+    isLoadingStats, 
+    sendMessage,
+    promoteUser,
+    promoteUserLoading
+  } = useAdmin();
   
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [messageSubject, setMessageSubject] = useState("");
   const [messageContent, setMessageContent] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
   
   // Redirect if not a superuser
   if (!user) {
@@ -73,6 +83,13 @@ const AdminDashboard = () => {
   const openMessageDialog = (user: any) => {
     setSelectedUser(user);
     setIsDialogOpen(true);
+  };
+  
+  const handlePromoteUser = () => {
+    if (!selectedUser) return;
+    
+    promoteUser(selectedUser.id);
+    setIsPromoteDialogOpen(false);
   };
   
   return (
@@ -149,14 +166,30 @@ const AdminDashboard = () => {
                           {new Date(user.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => openMessageDialog(user)}
-                          >
-                            <MessageSquare className="h-4 w-4 mr-1" />
-                            Message
-                          </Button>
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => openMessageDialog(user)}
+                            >
+                              <MessageSquare className="h-4 w-4 mr-1" />
+                              Message
+                            </Button>
+                            
+                            {user.role === "user" && (
+                              <Button 
+                                variant="secondary" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setIsPromoteDialogOpen(true);
+                                }}
+                              >
+                                <Shield className="h-4 w-4 mr-1" />
+                                Promote
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -304,6 +337,52 @@ const AdminDashboard = () => {
               disabled={!messageSubject || !messageContent}
             >
               Send Message
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isPromoteDialogOpen} onOpenChange={setIsPromoteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Promote {selectedUser?.username} to Admin</DialogTitle>
+            <DialogDescription>
+              This will grant admin privileges to {selectedUser?.username}, allowing them to manage content and users.
+              Only you, as the superuser, can grant admin privileges.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+              <div className="flex">
+                <Shield className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-amber-900">Important Note</h4>
+                  <p className="text-amber-800 text-sm">
+                    Admin privileges should only be granted to trusted individuals. 
+                    Admins will have management rights but cannot promote others to admin or superuser.
+                    Only KoeppyLoco the Weird (you) can hold superuser powers in the realm.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPromoteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="default"
+              onClick={handlePromoteUser}
+              disabled={promoteUserLoading}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {promoteUserLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Promote to Admin
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -388,7 +388,7 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
   }
 }
 
-export async function generateWorldMap(campaignId: number, campaignInfo: any) {
+export async function generateWorldMap(campaignId: number, campaignInfo: any, everdiceWorld = null) {
   try {
     // First, extract key geographical features from the campaign description
     const geographyAnalysis = await openai.chat.completions.create({
@@ -397,24 +397,30 @@ export async function generateWorldMap(campaignId: number, campaignInfo: any) {
         {
           role: "system",
           content: `You are an expert geographical analyzer specializing in extracting landforms, terrain features, and spatial relationships from fantasy world descriptions. 
-          Your task is to carefully analyze campaign descriptions and identify ALL explicit and implied geographical features that should be represented on a map.`
+          Your task is to carefully analyze campaign descriptions and identify ALL explicit and implied geographical features that should be represented on a map.
+          
+          This campaign takes place in the greater world of Everdice - a vast realm containing numerous continents, nations, and regions. Each campaign exists within a specific region of Everdice.`
         },
         {
           role: "user",
-          content: `Analyze this D&D campaign description and extract all geographical features that should be reflected on a map:
+          content: `Analyze this D&D campaign description and extract all geographical features that should be reflected on a map. This campaign takes place in a region of the Everdice world.
           
           Campaign Name: "${campaignInfo.name}"
           Setting Type: ${campaignInfo.setting || "fantasy world"}
           Campaign Description: ${campaignInfo.description || "An epic adventure in a fantasy realm."}
           
           Format your response as a JSON object with these fields:
-          - primaryLandforms: Array of the dominant geographical features explicitly mentioned (e.g., "peninsula", "mountain range", "archipelago", "desert", etc.)
+          - everdiceContinent: Which continent of Everdice this region would logically belong to (e.g., "The Northern Reaches", "Mystara", "Solaran Peninsula", etc.)
+          - regionName: A name for this specific region within the continent
+          - regionType: The type of region (e.g., "island chain", "mountain valley", "coastal kingdom", "desert emirate", etc.)
+          - primaryLandforms: Array of the dominant geographical features (e.g., "peninsula", "mountain range", "archipelago", "desert", etc.)
           - secondaryFeatures: Array of additional geographical elements mentioned or implied
           - terrainDistribution: Object describing roughly what percentage of the map should be different terrain types
           - coastalFeatures: Any specific coastal elements mentioned (bays, gulfs, etc.)
           - waterBodies: Any oceans, seas, lakes, or rivers mentioned
           - settlements: Major cities, towns, or other settlements mentioned
-          - regionLayout: Brief description of how regions are arranged relative to each other`
+          - regionLayout: Brief description of how regions are arranged relative to each other
+          - connectionToEverdice: How this region connects to or relates to the broader world of Everdice`
         }
       ],
       response_format: { type: "json_object" },
@@ -498,10 +504,17 @@ Do not include any text that says "Dungeons and Dragons", "D&D", or any trademar
       throw new Error("No image URL returned from OpenAI");
     }
 
+    // Combine the geographical data with the Everdice world information
     return { 
       url: response.data[0].url, 
       campaignId,
-      worldData: worldData 
+      worldData: worldData,
+      everdiceData: {
+        continent: geographyData.everdiceContinent || "Unknown Continent",
+        regionName: geographyData.regionName || campaignInfo.name,
+        regionType: geographyData.regionType || "region",
+        connectionToEverdice: geographyData.connectionToEverdice || "This region exists within the world of Everdice."
+      }
     };
   } catch (error: any) {
     console.error("Error generating world map:", error);

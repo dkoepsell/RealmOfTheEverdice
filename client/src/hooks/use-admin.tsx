@@ -62,6 +62,28 @@ export function useAdmin() {
       });
     },
   });
+  
+  // Promote user to admin
+  const promoteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("POST", "/api/admin/promote", { userId });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "User promoted",
+        description: "The user has been granted admin privileges.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to promote user",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Log system stat
   const logStatMutation = useMutation({
@@ -90,6 +112,8 @@ export function useAdmin() {
     statsError,
     sendMessage: sendMessageMutation.mutate,
     sendMessageLoading: sendMessageMutation.isPending,
+    promoteUser: promoteUserMutation.mutate,
+    promoteUserLoading: promoteUserMutation.isPending,
     logStat: logStatMutation.mutate,
   };
 }

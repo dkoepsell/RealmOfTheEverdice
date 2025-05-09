@@ -1526,6 +1526,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // World Map endpoints (generate, view)
+  // Everdice World endpoints
+  app.get("/api/everdice", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      // Get the Everdice world
+      let everdiceWorld = await storage.getEverdiceWorld();
+      
+      // If no world exists yet, create it
+      if (!everdiceWorld) {
+        everdiceWorld = await storage.createOrUpdateEverdiceWorld({
+          name: "Everdice",
+          description: "The mystical realm of Everdice, where all adventures take place.",
+          lore: "Everdice is a realm of magic and wonder, where countless adventures unfold across its varied landscapes. From the mist-shrouded peaks of the Dragonspine Mountains to the sun-dappled shores of the Sapphire Coast, every corner of this vast world holds untold stories waiting to be discovered."
+        });
+      }
+      
+      res.json(everdiceWorld);
+    } catch (error) {
+      console.error("Error fetching Everdice world:", error);
+      res.status(500).json({ message: "Failed to fetch Everdice world" });
+    }
+  });
+  
+  app.post("/api/everdice/continents", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Only superuser and admins can create/update continents
+    if (req.user.role !== "superuser" && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const continent = req.body;
+      
+      if (!continent.id || !continent.name || !continent.position || !continent.bounds) {
+        return res.status(400).json({ message: "Missing required continent properties" });
+      }
+      
+      const updatedWorld = await storage.addContinentToEverdiceWorld(continent);
+      
+      // Log the action
+      await storage.createSystemStat({
+        action: "continent_created",
+        userId: req.user.id,
+        metadata: { continentId: continent.id, continentName: continent.name }
+      });
+      
+      res.status(201).json(updatedWorld);
+    } catch (error) {
+      console.error("Error creating continent:", error);
+      res.status(500).json({ message: "Failed to create continent" });
+    }
+  });
+  
+  // Campaign World Maps endpoints
   app.get("/api/campaigns/:id/world-map", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
@@ -1924,6 +1980,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending message:", error);
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+  
+  // Route to grant admin privileges to a user (only superusers can do this)
+  app.post("/api/admin/promote", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Only superusers can promote others
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden: Only superusers can promote users" });
+    }
+    
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+    
+    try {
+      // Get the user to promote
+      const userToPromote = await storage.getUser(userId);
+      
+      if (!userToPromote) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Make sure we're not trying to promote a superuser (only KoeppyLoco should be superuser)
+      if (userToPromote.role === "superuser") {
+        return res.status(403).json({ message: "Cannot modify a superuser's role" });
+      }
+      
+      // Update user to admin role (never to superuser)
+      const updatedUser = await storage.updateUserRole(userId, "admin");
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update user role" });
+      }
+      
+      // Log this action
+      await storage.createSystemStat({
+        action: "user_promoted_to_admin",
+        userId: req.user.id,
+        metadata: { 
+          promotedUserId: userId, 
+          promotedUsername: userToPromote.username,
+          promotedBy: req.user.username
+        }
+      });
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error promoting user:", error);
+      res.status(500).json({ message: "Failed to promote user" });
     }
   });
   
