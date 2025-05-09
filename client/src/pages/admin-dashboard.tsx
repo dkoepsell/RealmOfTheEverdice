@@ -11,6 +11,17 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Tabs,
   TabsContent,
   TabsList,
@@ -38,12 +49,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { 
   Loader2, 
   UserIcon, 
@@ -57,7 +62,8 @@ import {
   Globe, 
   CheckCircle, 
   XCircle,
-  LogIn 
+  LogIn,
+  ChevronsUpDown
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -67,7 +73,15 @@ const AdminDashboard = () => {
     users, 
     isLoadingUsers, 
     stats, 
-    isLoadingStats, 
+    isLoadingStats,
+    campaigns,
+    isLoadingCampaigns,
+    loginActivity,
+    isLoadingLoginActivity,
+    everdiceWorld,
+    isLoadingEverdiceWorld,
+    campaignRegions,
+    isLoadingCampaignRegions,
     sendMessage,
     promoteUser,
     promoteUserLoading
@@ -292,9 +306,140 @@ const AdminDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
+              {isLoadingCampaigns ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : campaigns?.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">
+                  No campaigns created yet.
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Total Campaigns</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="text-3xl font-bold">{campaigns?.length || 0}</div>
+                        <p className="text-sm text-muted-foreground">Active adventures in Everdice</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">AI DM Campaigns</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="text-3xl font-bold">
+                          {campaigns?.filter((c: any) => c.isAiDm).length || 0}
+                        </div>
+                        <p className="text-sm text-muted-foreground">AI-powered adventures</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Human DM Campaigns</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="text-3xl font-bold">
+                          {campaigns?.filter((c: any) => !c.isAiDm).length || 0}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Human-led adventures</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Campaign Name</TableHead>
+                        <TableHead>DM</TableHead>
+                        <TableHead>Players</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Map</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {campaigns?.map((campaign: any) => (
+                        <TableRow key={campaign.id}>
+                          <TableCell>{campaign.id}</TableCell>
+                          <TableCell className="font-medium">
+                            <Link href={`/campaign/${campaign.id}`}>
+                              {campaign.name}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              {campaign.isAiDm ? 
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200">
+                                  AI DM
+                                </Badge> : 
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200">
+                                  Human DM
+                                </Badge>
+                              }
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge>{campaign.playerCount || 0}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={
+                                campaign.status === "active" ? "default" : 
+                                campaign.status === "paused" ? "secondary" : 
+                                "outline"
+                              }
+                              className={
+                                campaign.status === "active" ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" : 
+                                campaign.status === "paused" ? "bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200" : 
+                                "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200"
+                              }
+                            >
+                              {campaign.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString() : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {campaign.hasWorldMap ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <Map className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>World map available</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <Map className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>No world map</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -308,56 +453,143 @@ const AdminDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col gap-6">
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
-                  <div className="flex items-start">
-                    <Globe className="h-6 w-6 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-medium text-amber-900">The World of Everdice</h4>
-                      <p className="text-amber-800 mt-1">
-                        Every campaign exists within the shared Everdice superworld. This unified geography connects all player adventures into a coherent universe.
-                      </p>
+              {isLoadingEverdiceWorld || isLoadingCampaignRegions ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : !everdiceWorld ? (
+                <div className="text-center py-8">
+                  <h3 className="text-lg font-semibold mb-2">No Everdice World Data</h3>
+                  <p className="text-muted-foreground mb-4">
+                    The Everdice superworld hasn't been initialized yet.
+                  </p>
+                  <Button variant="outline">
+                    <Globe className="h-4 w-4 mr-2" />
+                    Initialize Everdice World
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                    <div className="flex items-start">
+                      <Globe className="h-6 w-6 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-medium text-amber-900">The World of {everdiceWorld.name}</h4>
+                        <p className="text-amber-800 mt-1">
+                          {everdiceWorld.description || "Every campaign exists within this shared superworld. This unified geography connects all player adventures into a coherent universe."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">World Statistics</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <dl className="space-y-2">
+                          <div className="flex justify-between">
+                            <dt className="text-muted-foreground">Age:</dt>
+                            <dd className="font-medium">{everdiceWorld.age || "Unknown"} years</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-muted-foreground">Continents:</dt>
+                            <dd className="font-medium">{everdiceWorld.continents?.length || 0}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-muted-foreground">Major Regions:</dt>
+                            <dd className="font-medium">{(everdiceWorld.continents?.reduce((sum, continent) => 
+                              sum + (continent.regions?.length || 0), 0)) || 0}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-muted-foreground">Known Species:</dt>
+                            <dd className="font-medium">{everdiceWorld.species?.length || 0}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-muted-foreground">Major Deities:</dt>
+                            <dd className="font-medium">{everdiceWorld.deities?.length || 0}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-muted-foreground">Campaign Coverage:</dt>
+                            <dd className="font-medium">
+                              {campaignRegions ? 
+                                `${(campaignRegions.campaigns?.length || 0)} campaigns in ${Math.min((campaignRegions.uniqueRegions?.length || 0), 
+                                (everdiceWorld.continents?.reduce((sum, continent) => 
+                                sum + (continent.regions?.length || 0), 0)) || 1)} regions` :
+                                '0 campaigns'}
+                            </dd>
+                          </div>
+                        </dl>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="bg-muted">
+                      <CardContent className="p-0">
+                        <div className="p-8 rounded-md flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <Globe className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                            <p className="text-muted-foreground">World map visualization available soon</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-bold text-lg mb-3">Continental Regions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {everdiceWorld.continents?.map((continent: any, index: number) => (
+                        <Card key={index}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base">{continent.name}</CardTitle>
+                            <CardDescription>{continent.climate || "Varied climate"}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <p className="text-sm text-muted-foreground">
+                              {campaignRegions && continent.regions ? 
+                                `${campaignRegions.campaigns?.filter((c: any) => 
+                                  continent.regions.some((r: any) => r.name === c.region)).length || 0} active campaigns` :
+                                "0 active campaigns"}
+                            </p>
+                            {continent.regions && continent.regions.length > 0 && (
+                              <div className="mt-2">
+                                <Collapsible>
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="p-0 h-auto text-xs text-muted-foreground flex items-center">
+                                      <ChevronsUpDown className="h-3 w-3 mr-1" />
+                                      {continent.regions.length} regions
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <ul className="text-xs space-y-1 mt-1 text-muted-foreground">
+                                      {continent.regions.map((region: any, i: number) => (
+                                        <li key={i} className="flex items-center">
+                                          <span className={campaignRegions && 
+                                            campaignRegions.campaigns?.some((c: any) => c.region === region.name) ? 
+                                            "text-amber-700 font-medium" : ""}>
+                                            {region.name}
+                                          </span>
+                                          {campaignRegions && 
+                                            campaignRegions.campaigns?.some((c: any) => c.region === region.name) && (
+                                            <Badge variant="outline" className="ml-2 h-5 text-[10px]">
+                                              Active
+                                            </Badge>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   </div>
                 </div>
-                
-                <div className="bg-muted p-8 rounded-md flex items-center justify-center">
-                  <div className="text-center">
-                    <Globe className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">World map visualization loading...</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="font-bold text-lg mb-3">Continental Regions</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">Northern Kingdoms</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-sm text-muted-foreground">12 active campaigns</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">Verdant Wilds</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-sm text-muted-foreground">8 active campaigns</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">Arcane Deserts</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-sm text-muted-foreground">5 active campaigns</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -371,9 +603,117 @@ const AdminDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
+              {isLoadingLoginActivity ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : loginActivity?.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">
+                  No login activity recorded yet.
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Active Today</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="text-3xl font-bold">
+                          {loginActivity?.filter((login: any) => {
+                            const loginDate = new Date(login.timestamp);
+                            const today = new Date();
+                            return loginDate.getDate() === today.getDate() &&
+                                   loginDate.getMonth() === today.getMonth() &&
+                                   loginDate.getFullYear() === today.getFullYear();
+                          }).length || 0}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Users logged in today</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Weekly Users</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="text-3xl font-bold">
+                          {loginActivity?.filter((login: any) => {
+                            const loginDate = new Date(login.timestamp);
+                            const weekAgo = new Date();
+                            weekAgo.setDate(weekAgo.getDate() - 7);
+                            return loginDate >= weekAgo;
+                          }).length || 0}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Users active this week</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Total Sessions</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="text-3xl font-bold">
+                          {loginActivity?.length || 0}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Total login sessions</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Login Time</TableHead>
+                        <TableHead>Session Duration</TableHead>
+                        <TableHead>IP Address</TableHead>
+                        <TableHead>Platform</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loginActivity?.slice(0, 10).map((login: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">
+                            {login.username || `User ${login.userId}`}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(login.timestamp).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            {login.duration ? `${Math.round(login.duration / 60)} minutes` : 'Active'}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-mono">
+                              {login.ipAddress?.replace(/(\d+\.\d+)\.\d+\.\d+/, '$1.**.***') || 'Unknown'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {login.platform || 'Unknown'}
+                          </TableCell>
+                          <TableCell>
+                            {login.active ? (
+                              <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-slate-500">
+                                Logged Out
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {loginActivity && loginActivity.length > 10 && (
+                    <div className="text-center text-sm text-muted-foreground">
+                      Showing 10 of {loginActivity.length} login records
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
