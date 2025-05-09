@@ -1280,6 +1280,147 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
   }
+
+  // Implement admin methods
+  async getAllUsers(): Promise<User[]> {
+    try {
+      return db.select().from(users);
+    } catch (error) {
+      console.error("Error getting all users:", error);
+      return [];
+    }
+  }
+  
+  async getSystemStats(): Promise<any[]> {
+    try {
+      return db.select().from(systemStats).orderBy(desc(systemStats.timestamp));
+    } catch (error) {
+      console.error("Error getting system stats:", error);
+      return [];
+    }
+  }
+  
+  async createSystemStat(stat: any): Promise<any> {
+    try {
+      const [newStat] = await db.insert(systemStats).values(stat).returning();
+      return newStat;
+    } catch (error) {
+      console.error("Error creating system stat:", error);
+      throw error;
+    }
+  }
+  
+  async getUserMessages(userId: number): Promise<any[]> {
+    try {
+      return db.select().from(userMessages)
+        .where(eq(userMessages.recipientId, userId))
+        .orderBy(desc(userMessages.sentAt));
+    } catch (error) {
+      console.error("Error getting user messages:", error);
+      return [];
+    }
+  }
+  
+  async createUserMessage(message: any): Promise<any> {
+    try {
+      const [newMessage] = await db.insert(userMessages).values(message).returning();
+      return newMessage;
+    } catch (error) {
+      console.error("Error creating user message:", error);
+      throw error;
+    }
+  }
+  
+  // Implement Tavern Notice Board methods
+  async getTavernNotices(): Promise<any[]> {
+    try {
+      return db.select().from(tavernNotices)
+        .where(
+          sql`${tavernNotices.expiresAt} IS NULL OR ${tavernNotices.expiresAt} > NOW()`
+        )
+        .orderBy(desc(tavernNotices.createdAt));
+    } catch (error) {
+      console.error("Error getting tavern notices:", error);
+      return [];
+    }
+  }
+  
+  async getTavernNoticeById(id: number): Promise<any | undefined> {
+    try {
+      const [notice] = await db.select().from(tavernNotices).where(eq(tavernNotices.id, id));
+      return notice;
+    } catch (error) {
+      console.error("Error getting tavern notice:", error);
+      return undefined;
+    }
+  }
+  
+  async createTavernNotice(notice: any): Promise<any> {
+    try {
+      const [newNotice] = await db.insert(tavernNotices).values(notice).returning();
+      return newNotice;
+    } catch (error) {
+      console.error("Error creating tavern notice:", error);
+      throw error;
+    }
+  }
+  
+  async updateTavernNotice(id: number, notice: any): Promise<any | undefined> {
+    try {
+      const [updatedNotice] = await db
+        .update(tavernNotices)
+        .set(notice)
+        .where(eq(tavernNotices.id, id))
+        .returning();
+      return updatedNotice;
+    } catch (error) {
+      console.error("Error updating tavern notice:", error);
+      return undefined;
+    }
+  }
+  
+  async deleteTavernNotice(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(tavernNotices).where(eq(tavernNotices.id, id)).returning();
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting tavern notice:", error);
+      return false;
+    }
+  }
+  
+  async getTavernNoticeReplies(noticeId: number): Promise<any[]> {
+    try {
+      return db.select().from(tavernNoticeReplies)
+        .where(eq(tavernNoticeReplies.noticeId, noticeId))
+        .orderBy(tavernNoticeReplies.createdAt);
+    } catch (error) {
+      console.error("Error getting tavern notice replies:", error);
+      return [];
+    }
+  }
+  
+  async createTavernNoticeReply(reply: any): Promise<any> {
+    try {
+      const [newReply] = await db.insert(tavernNoticeReplies).values(reply).returning();
+      return newReply;
+    } catch (error) {
+      console.error("Error creating tavern notice reply:", error);
+      throw error;
+    }
+  }
+  
+  // Implement chat message methods
+  async getChatMessages(campaignId: number): Promise<ChatMessage[]> {
+    try {
+      return db.select().from(chatMessages)
+        .where(eq(chatMessages.campaignId, campaignId))
+        .orderBy(chatMessages.timestamp);
+    } catch (error) {
+      console.error("Error getting chat messages:", error);
+      return [];
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
