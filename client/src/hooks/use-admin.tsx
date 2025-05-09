@@ -37,6 +37,66 @@ export function useAdmin() {
     },
     enabled: !!isSuperuser,
   });
+  
+  // Get all campaigns
+  const {
+    data: campaigns = [],
+    isLoading: isLoadingCampaigns,
+    error: campaignsError,
+  } = useQuery({
+    queryKey: ["/api/admin/campaigns"],
+    queryFn: async () => {
+      if (!isSuperuser) return [];
+      const res = await apiRequest("GET", "/api/admin/campaigns");
+      return await res.json();
+    },
+    enabled: !!isSuperuser,
+  });
+  
+  // Get unique login activity
+  const {
+    data: loginActivity = [],
+    isLoading: isLoadingLoginActivity,
+    error: loginActivityError,
+  } = useQuery({
+    queryKey: ["/api/admin/logins"],
+    queryFn: async () => {
+      if (!isSuperuser) return [];
+      const res = await apiRequest("GET", "/api/admin/logins");
+      return await res.json();
+    },
+    enabled: !!isSuperuser,
+  });
+  
+  // Get Everdice world map data
+  const {
+    data: everdiceWorld,
+    isLoading: isLoadingEverdiceWorld,
+    error: everdiceWorldError,
+  } = useQuery({
+    queryKey: ["/api/everdice"],
+    queryFn: async () => {
+      if (!isSuperuser) return null;
+      const res = await apiRequest("GET", "/api/everdice");
+      return await res.json();
+    },
+    enabled: !!isSuperuser,
+  });
+  
+  // Get all campaign regions within Everdice
+  const {
+    data: campaignRegions,
+    isLoading: isLoadingCampaignRegions,
+    error: campaignRegionsError,
+  } = useQuery({
+    queryKey: ["/api/everdice/campaigns"],
+    queryFn: async () => {
+      if (!isSuperuser) return { campaigns: [], everdiceWorld: null };
+      const res = await apiRequest("GET", "/api/everdice/campaigns");
+      return await res.json();
+    },
+    enabled: !!isSuperuser,
+  });
 
   // Send admin message
   const sendMessageMutation = useMutation({
@@ -110,6 +170,18 @@ export function useAdmin() {
     stats,
     isLoadingStats,
     statsError,
+    campaigns,
+    isLoadingCampaigns,
+    campaignsError,
+    loginActivity,
+    isLoadingLoginActivity,
+    loginActivityError,
+    everdiceWorld,
+    isLoadingEverdiceWorld,
+    everdiceWorldError,
+    campaignRegions,
+    isLoadingCampaignRegions,
+    campaignRegionsError,
     sendMessage: sendMessageMutation.mutate,
     sendMessageLoading: sendMessageMutation.isPending,
     promoteUser: promoteUserMutation.mutate,

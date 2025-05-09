@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -20,9 +20,16 @@ import TavernBoard from "@/pages/tavern-board";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AboutPage from "@/pages/about-page";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 
 function Router() {
+  const { user } = useAuth();
+  
+  // For superuser, redirect to admin dashboard as landing page
+  if (user?.role === "superuser" && window.location.pathname === "/") {
+    return <Redirect to="/admin" />;
+  }
+  
   return (
     <Switch>
       <Route path="/auth" component={SimplifiedAuthPage} />

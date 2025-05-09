@@ -2042,6 +2042,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.get("/api/admin/campaigns", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is a superuser
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      // Get all campaigns with extra information
+      const campaigns = await storage.getAllCampaigns();
+      
+      // Get additional data for each campaign
+      const campaignsWithDetails = await Promise.all(
+        campaigns.map(async (campaign) => {
+          const players = await storage.getCampaignPlayers(campaign.id);
+          const sessionCount = await storage.getSessionCount(campaign.id);
+          const worldMap = await storage.getCampaignWorldMap(campaign.id);
+          
+          return {
+            ...campaign,
+            playerCount: players.length,
+            players,
+            sessionCount,
+            hasWorldMap: !!worldMap,
+            worldMap: worldMap || null
+          };
+        })
+      );
+      
+      res.json(campaignsWithDetails);
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+      res.status(500).json({ message: "Failed to get campaigns" });
+    }
+  });
+  
+  app.get("/api/admin/logins", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is a superuser
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      // Get login statistics from the system_stats table
+      const query = `
+        SELECT 
+          users.id, 
+          users.username, 
+          users.role,
+          COUNT(system_stats.id) as login_count,
+          MAX(system_stats.timestamp) as last_login
+        FROM 
+          users
+        LEFT JOIN 
+          system_stats ON users.id = system_stats.user_id AND system_stats.action = 'user_login'
+        GROUP BY 
+          users.id, users.username, users.role
+        ORDER BY 
+          login_count DESC, last_login DESC
+      `;
+      
+      const result = await storage.executeRawQuery(query);
+      
+      // Format the result with more details
+      const logins = result.rows.map((row: any) => ({
+        userId: row.id,
+        username: row.username,
+        role: row.role,
+        loginCount: parseInt(row.login_count) || 0,
+        lastLogin: row.last_login ? new Date(row.last_login) : null,
+        isActive: !!row.last_login && ((new Date().getTime() - new Date(row.last_login).getTime()) < (30 * 24 * 60 * 60 * 1000)) // Active in last 30 days
+      }));
+      
+      res.json(logins);
+    } catch (error) {
+      console.error("Error fetching login activity:", error);
+      res.status(500).json({ message: "Failed to get login activity" });
+    }
+  });
+  
   app.post("/api/admin/messages", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
