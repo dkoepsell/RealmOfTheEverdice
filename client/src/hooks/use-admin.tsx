@@ -73,11 +73,12 @@ export function useAdmin() {
     data: everdiceWorld,
     isLoading: isLoadingEverdiceWorld,
     error: everdiceWorldError,
+    refetch: refetchEverdiceWorld
   } = useQuery({
-    queryKey: ["/api/everdice"],
+    queryKey: ["/api/admin/everdice"],
     queryFn: async () => {
       if (!isSuperuser) return null;
-      const res = await apiRequest("GET", "/api/everdice");
+      const res = await apiRequest("GET", "/api/admin/everdice");
       return await res.json();
     },
     enabled: !!isSuperuser,
@@ -88,11 +89,12 @@ export function useAdmin() {
     data: campaignRegions,
     isLoading: isLoadingCampaignRegions,
     error: campaignRegionsError,
+    refetch: refetchCampaignRegions
   } = useQuery({
-    queryKey: ["/api/everdice/campaigns"],
+    queryKey: ["/api/admin/campaign-regions"],
     queryFn: async () => {
-      if (!isSuperuser) return { campaigns: [], everdiceWorld: null };
-      const res = await apiRequest("GET", "/api/everdice/campaigns");
+      if (!isSuperuser) return { campaigns: [], uniqueRegions: [] };
+      const res = await apiRequest("GET", "/api/admin/campaign-regions");
       return await res.json();
     },
     enabled: !!isSuperuser,

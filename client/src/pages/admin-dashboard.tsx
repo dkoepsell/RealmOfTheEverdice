@@ -58,6 +58,7 @@ import {
   Book, 
   BookOpenCheck,
   Map, 
+  MapPin,
   Users, 
   Clock, 
   Globe, 
@@ -66,6 +67,7 @@ import {
   LogIn,
   ChevronsUpDown
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -93,6 +95,7 @@ const AdminDashboard = () => {
   const [messageContent, setMessageContent] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
+  const [isInitializingWorld, setIsInitializingWorld] = useState(false);
   
   // Redirect if not a superuser
   if (!user) {
@@ -579,10 +582,61 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="p-8 rounded-md flex items-center justify-center h-full">
+                          <div className="p-8 rounded-md flex flex-col items-center justify-center h-full">
                             <div className="text-center">
                               <Globe className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                              <p className="text-muted-foreground">World map not available</p>
+                              <p className="text-muted-foreground mb-4">World map not available</p>
+                              
+                              <Button 
+                                onClick={() => {
+                                  setIsInitializingWorld(true);
+                                  
+                                  fetch('/api/admin/initialize-everdice', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json'
+                                    }
+                                  })
+                                  .then(response => {
+                                    if (!response.ok) {
+                                      throw new Error('Failed to initialize Everdice world');
+                                    }
+                                    return response.json();
+                                  })
+                                  .then(data => {
+                                    toast({
+                                      title: 'Success!',
+                                      description: 'Everdice world initialized successfully.',
+                                    });
+                                    // Refresh the data
+                                    refetchEverdiceWorld();
+                                    refetchCampaignRegions();
+                                    setIsInitializingWorld(false);
+                                  })
+                                  .catch(error => {
+                                    console.error('Error initializing Everdice world:', error);
+                                    toast({
+                                      title: 'Error',
+                                      description: error.message,
+                                      variant: 'destructive',
+                                    });
+                                    setIsInitializingWorld(false);
+                                  });
+                                }}
+                                disabled={isInitializingWorld}
+                              >
+                                {isInitializingWorld ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Initializing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <MapPin className="mr-2 h-4 w-4" />
+                                    Create Everdice World
+                                  </>
+                                )}
+                              </Button>
                             </div>
                           </div>
                         )}
