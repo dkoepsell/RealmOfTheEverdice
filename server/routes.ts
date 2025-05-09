@@ -569,6 +569,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue even if map generation fails - we'll just not have a map initially
       }
       
+      // Generate and save campaign introduction narrative
+      try {
+        console.log("Generating campaign introduction narrative for campaign:", campaign.id);
+        
+        // Get campaign data with the newly generated campaign
+        const campaignData = await generateCampaign({
+          genre: campaign.setting || undefined
+        });
+        
+        // If the campaign has an introduction narrative, save it as a game log
+        if (campaignData && campaignData.introNarrative) {
+          console.log("Saving introduction narrative as game log for campaign:", campaign.id);
+          await storage.createGameLog({
+            campaignId: campaign.id,
+            content: campaignData.introNarrative,
+            type: "narrative_introduction" // Special type for intro narrative
+          });
+          console.log("Introduction narrative saved successfully for campaign:", campaign.id);
+        }
+      } catch (narrativeError) {
+        console.error("Failed to generate introduction narrative for new campaign:", narrativeError);
+        // Continue even if narrative generation fails
+      }
+      
       res.status(201).json(campaign);
     } catch (error) {
       console.error("Error creating campaign:", error);
