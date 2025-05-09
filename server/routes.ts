@@ -31,6 +31,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);
   
+  // Admin routes for Everdice world management
+  app.post("/api/admin/initialize-everdice", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is superuser or admin
+    if (req.user.role !== "superuser" && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden. Only superusers or admins can initialize Everdice." });
+    }
+    
+    try {
+      // Check if Everdice world already exists
+      const existingWorld = await storage.getEverdiceWorld();
+      if (existingWorld) {
+        return res.status(400).json({ message: "Everdice world already initialized" });
+      }
+      
+      // Generate the Everdice world
+      const everdiceWorld = await generateWorldMap(0, {});
+      
+      // Save the Everdice world
+      await storage.saveEverdiceWorld(everdiceWorld);
+      
+      res.status(201).json({ message: "Everdice world initialized successfully", world: everdiceWorld });
+    } catch (error) {
+      console.error("Error initializing Everdice world:", error);
+      res.status(500).json({ message: "Failed to initialize Everdice world" });
+    }
+  });
+  
+  app.get("/api/admin/everdice", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const everdiceWorld = await storage.getEverdiceWorld();
+      res.json(everdiceWorld || null);
+    } catch (error) {
+      console.error("Error getting Everdice world:", error);
+      res.status(500).json({ message: "Failed to get Everdice world" });
+    }
+  });
+  
+  app.get("/api/admin/campaign-regions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignRegions = await storage.getCampaignRegions();
+      res.json(campaignRegions || { campaigns: [], uniqueRegions: [] });
+    } catch (error) {
+      console.error("Error getting campaign regions:", error);
+      res.status(500).json({ message: "Failed to get campaign regions" });
+    }
+  });
+  
   // Item related routes (add, remove, trade, equip)
   app.post("/api/characters/:id/items", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });

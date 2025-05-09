@@ -21,10 +21,11 @@ import {
   TavernNoticeReply, InsertTavernNoticeReply,
   SystemStat, InsertSystemStat,
   UserMessage, InsertUserMessage,
+  EverdiceWorld, InsertEverdiceWorld,
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
   friendships, userSessions, chatMessages, campaignInvitations, mapLocations, journeyPaths,
   campaignWorldMaps, partyPlans, partyPlanItems, partyPlanComments, tavernNotices, tavernNoticeReplies,
-  systemStats, userMessages
+  systemStats, userMessages, everdiceWorld
 } from "@shared/schema";
 
 // Define our own Campaign type without partyName since it's not in the DB yet
@@ -141,6 +142,13 @@ export interface IStorage {
   // World map methods
   getCampaignWorldMap(campaignId: number): Promise<CampaignWorldMap | undefined>;
   createOrUpdateCampaignWorldMap(worldMap: InsertCampaignWorldMap): Promise<CampaignWorldMap>;
+  
+  // Everdice World methods
+  getEverdiceWorld(): Promise<EverdiceWorld | undefined>;
+  saveEverdiceWorld(worldData: any): Promise<EverdiceWorld>;
+  createOrUpdateEverdiceWorld(world: Partial<InsertEverdiceWorld>): Promise<EverdiceWorld>;
+  addContinentToEverdiceWorld(continent: { id: string; name: string; description: string; position: [number, number]; bounds: [[number, number], [number, number]]; }): Promise<EverdiceWorld>;
+  getCampaignRegions(): Promise<{ campaigns: any[], uniqueRegions: string[] }>;
   
   // Campaign permissions
   isPlayerInCampaign(userId: number, campaignId: number): Promise<boolean>;
@@ -372,6 +380,15 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async saveEverdiceWorld(worldData: any): Promise<EverdiceWorld> {
+    try {
+      return this.createOrUpdateEverdiceWorld(worldData);
+    } catch (error) {
+      console.error("Error saving Everdice world:", error);
+      throw error;
+    }
+  }
+  
   async createOrUpdateEverdiceWorld(world: Partial<InsertEverdiceWorld>): Promise<EverdiceWorld> {
     try {
       const existing = await this.getEverdiceWorld();
@@ -404,6 +421,34 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error creating/updating Everdice world:", error);
       throw error;
+    }
+  }
+  
+  async getCampaignRegions(): Promise<{ campaigns: any[], uniqueRegions: string[] }> {
+    try {
+      // Get all campaigns that have an assigned region
+      const campaignsWithRegions = await db
+        .select({
+          id: campaigns.id,
+          name: campaigns.name,
+          dmId: campaigns.dmId,
+          isAiDm: campaigns.isAiDm,
+          region: campaignWorldMaps.regionName
+        })
+        .from(campaigns)
+        .innerJoin(campaignWorldMaps, eq(campaigns.id, campaignWorldMaps.campaignId))
+        .where(sql`${campaignWorldMaps.regionName} IS NOT NULL`);
+      
+      // Extract unique regions
+      const uniqueRegions = [...new Set(campaignsWithRegions.map(c => c.region))];
+      
+      return {
+        campaigns: campaignsWithRegions,
+        uniqueRegions
+      };
+    } catch (error) {
+      console.error("Error getting campaign regions:", error);
+      return { campaigns: [], uniqueRegions: [] };
     }
   }
   
