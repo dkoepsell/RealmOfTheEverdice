@@ -189,7 +189,7 @@ export function InventoryManagement({
   // Get all characters in the campaign that aren't the current character
   const otherCharacters = campaignCharacters.filter(c => c.id !== characterId);
   
-  // Random item generation
+  // DM item creation
   const generateRandomItemMutation = useMutation({
     mutationFn: async (params: { 
       itemType?: string, 
@@ -202,13 +202,13 @@ export function InventoryManagement({
     },
     onSuccess: (data) => {
       toast({
-        title: "Item discovered!",
-        description: `You found: ${data.name}`,
+        title: "Item created!",
+        description: `Created: ${data.name}`,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to generate item",
+        title: "Failed to create item",
         description: error.message,
         variant: "destructive",
       });
@@ -310,8 +310,8 @@ export function InventoryManagement({
     }
   });
   
-  // Random item discovery handler
-  const handleRandomItemDiscovery = async () => {
+  // Create item handler for DMs
+  const handleCreateItem = async () => {
     try {
       const item = await generateRandomItemMutation.mutateAsync({
         rarity: filterRarity === 'all' ? undefined : filterRarity,
@@ -322,7 +322,7 @@ export function InventoryManagement({
       // Add the item to the character's inventory
       addItemMutation.mutate(item);
     } catch (error) {
-      console.error("Error discovering item:", error);
+      console.error("Error creating item:", error);
     }
   };
   
@@ -486,7 +486,7 @@ export function InventoryManagement({
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={handleRandomItemDiscovery}
+                    onClick={handleCreateItem}
                     className="flex items-center space-x-1"
                   >
                     <Sparkles className="h-4 w-4 mr-1" />
