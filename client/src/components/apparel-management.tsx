@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Character } from "@shared/schema";
+import { Character, CharacterEquipment } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { Separator } from "@/components/ui/separator";
@@ -21,8 +21,13 @@ import {
   Hand
 } from "lucide-react";
 
+// Define a proper type to ensure compatibility
+type CharacterWithStats = Omit<Character, 'stats'> & {
+  stats?: CharacterStats;
+};
+
 type ApparelManagementProps = {
-  character: Character;
+  character: CharacterWithStats;
   isOpen: boolean;
   onClose: () => void;
 };
@@ -35,6 +40,14 @@ interface ApparelItem {
   apparelSlot: ApparelSlot;
   rarity: string;
   slot: number;
+}
+
+// Type guard to check if equipment exists with correct structure
+function hasValidEquipment(equipment: any): equipment is CharacterEquipment {
+  return equipment && 
+         typeof equipment === 'object' && 
+         Array.isArray(equipment.inventory) &&
+         typeof equipment.apparel === 'object';
 }
 
 const slotIcons = {
@@ -64,30 +77,41 @@ export function ApparelManagement({ character, isOpen, onClose }: ApparelManagem
 
   // Extract apparel items from inventory
   const apparelItems = useMemo(() => {
-    return (character.equipment?.inventory || [])
-      .filter(item => item.type === "apparel" && item.apparelSlot)
-      .map(item => ({
+    if (!hasValidEquipment(character.equipment)) {
+      return [] as ApparelItem[];
+    }
+    
+    return character.equipment.inventory
+      .filter((item: any) => item.type === "apparel" && item.apparelSlot)
+      .map((item: any) => ({
         ...item,
         apparelSlot: item.apparelSlot as ApparelSlot
       })) as ApparelItem[];
-  }, [character.equipment?.inventory]);
+  }, [character.equipment]);
 
   // Get currently equipped items
   const equippedApparel = useMemo(() => {
-    return character.equipment?.apparel || {};
-  }, [character.equipment?.apparel]);
+    if (!hasValidEquipment(character.equipment)) {
+      return {} as Record<ApparelSlot, string | undefined>;
+    }
+    return character.equipment.apparel;
+  }, [character.equipment]);
 
   // Mutation to equip/unequip apparel
   const updateApparelMutation = useMutation({
     mutationFn: async (data: { slotName: ApparelSlot; itemName: string | null }) => {
       const { slotName, itemName } = data;
       
+      if (!hasValidEquipment(character.equipment)) {
+        throw new Error("Invalid equipment data");
+      }
+      
       // If itemName is null, we're unequipping the slot
       const payload = {
         equipment: {
           ...character.equipment,
           apparel: {
-            ...character.equipment?.apparel,
+            ...character.equipment.apparel,
             [slotName]: itemName
           }
         }

@@ -389,48 +389,96 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
 
 export async function generateWorldMap(campaignId: number, campaignInfo: any) {
   try {
-    // First, let's generate more detailed world information to inform our map
-    const worldDetails = await openai.chat.completions.create({
+    // First, extract key geographical features from the campaign description
+    const geographyAnalysis = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
-          content: `You are an expert fantasy cartographer and worldbuilder specializing in D&D campaign worlds.
-          Generate rich geographical and cultural details for a unique campaign world that will be used to create a detailed map.`
+          content: `You are an expert geographical analyzer specializing in extracting landforms, terrain features, and spatial relationships from fantasy world descriptions. 
+          Your task is to carefully analyze campaign descriptions and identify ALL explicit and implied geographical features that should be represented on a map.`
         },
         {
           role: "user",
-          content: `Create a unique, detailed fantasy world for this D&D campaign:
+          content: `Analyze this D&D campaign description and extract all geographical features that should be reflected on a map:
           
           Campaign Name: "${campaignInfo.name}"
           Setting Type: ${campaignInfo.setting || "fantasy world"}
           Campaign Description: ${campaignInfo.description || "An epic adventure in a fantasy realm."}
           
           Format your response as a JSON object with these fields:
-          - geographicalFeatures: Array of unique landforms, bodies of water, and natural landmarks
-          - majorKingdoms: Array of 3-5 realms/nations with their characteristics
+          - primaryLandforms: Array of the dominant geographical features explicitly mentioned (e.g., "peninsula", "mountain range", "archipelago", "desert", etc.)
+          - secondaryFeatures: Array of additional geographical elements mentioned or implied
+          - terrainDistribution: Object describing roughly what percentage of the map should be different terrain types
+          - coastalFeatures: Any specific coastal elements mentioned (bays, gulfs, etc.)
+          - waterBodies: Any oceans, seas, lakes, or rivers mentioned
+          - settlements: Major cities, towns, or other settlements mentioned
+          - regionLayout: Brief description of how regions are arranged relative to each other`
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1000,
+      temperature: 0.3, // Lower temperature for more precise analysis
+    });
+    
+    const geographyData = safeJsonParse(geographyAnalysis.choices[0].message.content);
+    
+    // Now, generate more detailed world information informed by the geographical analysis
+    const worldDetails = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert fantasy cartographer and worldbuilder specializing in D&D campaign worlds.
+          Generate rich geographical and cultural details for a unique campaign world that will be used to create a detailed map.
+          You MUST ensure the world you create accurately reflects ALL geographical features identified in the analysis.`
+        },
+        {
+          role: "user",
+          content: `Create a detailed fantasy world for this D&D campaign, ensuring it precisely matches the geographical analysis:
+          
+          Campaign Name: "${campaignInfo.name}"
+          Setting Type: ${campaignInfo.setting || "fantasy world"}
+          Campaign Description: ${campaignInfo.description || "An epic adventure in a fantasy realm."}
+          
+          Geographical Analysis:
+          ${JSON.stringify(geographyData, null, 2)}
+          
+          Format your response as a JSON object with these fields:
+          - geographicalFeatures: Array of unique landforms, bodies of water, and natural landmarks THAT MATCH the geography analysis
+          - majorKingdoms: Array of 3-5 realms/nations with their characteristics and geographical positions
           - pointsOfInterest: Array of 6-8 specific notable locations (cities, dungeons, ruins, magical sites)
           - magicalElements: Unique magical aspects of this world that might appear on a map
           - aestheticTheme: The visual style/theme that should inform the map's appearance`
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1000,
+      max_tokens: 1200,
       temperature: 0.7,
     });
     
     const worldData = safeJsonParse(worldDetails.choices[0].message.content);
     
-    // Use the generated world details to create a more detailed prompt for DALL-E
-    const mapPrompt = `Create a highly detailed, unique fantasy map for a D&D campaign called "${campaignInfo.name}" set in ${campaignInfo.setting || "a fantasy world"}. 
+    // Use the combined geographical analysis and world details to create a precise prompt for DALL-E
+    const mapPrompt = `Create a highly detailed, accurate fantasy map for a D&D campaign called "${campaignInfo.name}" set in ${campaignInfo.setting || "a fantasy world"}. 
 
-This map should include these specific geographical features: ${worldData.geographicalFeatures.join(', ')}.
+This map MUST accurately represent the following geographical features exactly as described:
+${geographyData.primaryLandforms.map((feature: string) => `- ${feature}`).join('\n')}
 
-The map should highlight these major kingdoms and realms: ${worldData.majorKingdoms.map((k: any) => typeof k === 'string' ? k : k.name).join(', ')}.
+The terrain distribution should be: 
+${Object.entries(geographyData.terrainDistribution).map(([terrain, percentage]) => `- ${terrain}: ${percentage}`).join('\n')}
 
-Include these specific points of interest, clearly labeled: ${worldData.pointsOfInterest.map((p: any) => typeof p === 'string' ? p : p.name).join(', ')}.
+The map should include these specific bodies of water:
+${geographyData.waterBodies.map((water: string) => `- ${water}`).join('\n')}
 
-The map should incorporate these unique magical elements: ${worldData.magicalElements.join(', ')}.
+The map should show these major kingdoms and realms in their proper geographical positions:
+${worldData.majorKingdoms.map((k: any) => `- ${typeof k === 'string' ? k : k.name}`).join('\n')}
+
+Include these specific points of interest, clearly labeled:
+${worldData.pointsOfInterest.map((p: any) => `- ${typeof p === 'string' ? p : p.name}`).join('\n')}
+
+The map should incorporate these unique magical elements:
+${worldData.magicalElements.join(', ')}
 
 Style the map with this aesthetic: ${worldData.aestheticTheme}. Design it as an old-style hand-drawn map on aged parchment with ornate borders, a compass rose, and decorative elements. Create a high-contrast style with a color palette of rich browns, deep blues, and vibrant greens for good readability as a game reference.
 

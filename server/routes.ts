@@ -440,9 +440,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      const updatedCharacter = await storage.updateCharacter(characterId, req.body);
+      const updateData = req.body;
+      
+      // Special handling for equipment updates to ensure proper structure
+      if (updateData.equipment) {
+        // Ensure equipment structure is maintained
+        const currentEquipment = character.equipment || {} as any;
+        
+        // Initialize empty apparel object if it doesn't exist yet
+        if (updateData.equipment.apparel && !currentEquipment.apparel) {
+          currentEquipment.apparel = {};
+        }
+        
+        // Make sure all required equipment fields are preserved
+        updateData.equipment = {
+          weapons: (updateData.equipment as any).weapons ?? currentEquipment.weapons ?? [],
+          armor: (updateData.equipment as any).armor ?? currentEquipment.armor ?? "",
+          apparel: (updateData.equipment as any).apparel ? 
+            { ...(currentEquipment.apparel || {}), ...(updateData.equipment as any).apparel } : 
+            (currentEquipment.apparel || {}),
+          items: (updateData.equipment as any).items ?? currentEquipment.items ?? [],
+          inventory: (updateData.equipment as any).inventory ?? currentEquipment.inventory ?? []
+        };
+      }
+      
+      const updatedCharacter = await storage.updateCharacter(characterId, updateData);
       res.json(updatedCharacter);
     } catch (error) {
+      console.error("Error updating character:", error);
       res.status(500).json({ message: "Failed to update character" });
     }
   });
