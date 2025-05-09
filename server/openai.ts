@@ -361,7 +361,8 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
           
           Format your response as a JSON object with these fields:
           - name: A distinctive name for the item
-          - description: A detailed description that includes how/why this item is found here
+          - description: A concise description of the item's appearance and function
+          - backstory: A detailed narrative history of the item's origin, previous owners, and how it came to be in this location (8-10 sentences)
           - type: One of "weapon", "armor", "apparel", "potion", "scroll", "tool", "trinket", "quest", or "miscellaneous"
           - apparelSlot: If type is "apparel", include one of "head", "chest", "legs", "feet", "hands", "back", "neck", "finger", "waist"
           - rarity: One of "common", "uncommon", "rare", "very rare", "legendary", "artifact"

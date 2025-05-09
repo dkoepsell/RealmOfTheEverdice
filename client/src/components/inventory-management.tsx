@@ -506,7 +506,26 @@ export function InventoryManagement({
                               {getItemIcon(item.type)}
                             </div>
                             <div>
-                              <CardTitle className="text-base">{item.name}</CardTitle>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <CardTitle className="text-base cursor-pointer hover:text-primary transition-colors flex items-center">
+                                      {item.name}
+                                      {item.backstory && (
+                                        <Scroll className="h-3 w-3 ml-1 text-muted-foreground" />
+                                      )}
+                                    </CardTitle>
+                                  </TooltipTrigger>
+                                  {item.backstory && (
+                                    <TooltipContent side="right" align="start" className="max-w-[300px] p-4 z-50">
+                                      <div className="space-y-2">
+                                        <h4 className="font-bold text-sm">Item Backstory</h4>
+                                        <p className="text-xs leading-normal">{item.backstory}</p>
+                                      </div>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </TooltipProvider>
                               <CardDescription className="text-xs">
                                 {item.type} • {item.weight} lbs • {item.value} gp
                               </CardDescription>
@@ -612,7 +631,26 @@ export function InventoryManagement({
                           <div className="flex justify-between">
                             <div className="font-medium flex items-center">
                               {getItemIcon(item.type)}
-                              <span className="ml-2">{item.name}</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="ml-2 cursor-pointer hover:text-primary transition-colors flex items-center">
+                                      {item.name}
+                                      {item.backstory && (
+                                        <Scroll className="h-3 w-3 ml-1 text-muted-foreground" />
+                                      )}
+                                    </span>
+                                  </TooltipTrigger>
+                                  {item.backstory && (
+                                    <TooltipContent side="right" align="start" className="max-w-[300px] p-4 z-50">
+                                      <div className="space-y-2">
+                                        <h4 className="font-bold text-sm">Item Backstory</h4>
+                                        <p className="text-xs leading-normal">{item.backstory}</p>
+                                      </div>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </TooltipProvider>
                               <Badge variant="outline" className="ml-2">
                                 {item.quantity}x
                               </Badge>
