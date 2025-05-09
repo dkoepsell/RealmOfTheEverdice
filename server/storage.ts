@@ -49,6 +49,9 @@ export interface IStorage {
   // Session store
   sessionStore: any;
   
+  // Database utility methods
+  executeRawQuery(query: string, params?: any[]): Promise<any>;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -1379,6 +1382,76 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Execute raw SQL query
+  async executeRawQuery(query: string, params?: any[]): Promise<any> {
+    try {
+      return pool.query(query, params);
+    } catch (error) {
+      console.error("Error executing raw query:", error);
+      throw error;
+    }
+  }
+  
+  // Get all campaigns for admin dashboard
+  async getAllCampaigns(): Promise<Campaign[]> {
+    try {
+      return db.select().from(campaigns);
+    } catch (error) {
+      console.error("Error getting all campaigns:", error);
+      return [];
+    }
+  }
+  
+  // Get all players in a campaign
+  async getCampaignPlayers(campaignId: number): Promise<any[]> {
+    try {
+      const campaignChars = await this.getCampaignCharacters(campaignId);
+      
+      if (campaignChars.length === 0) {
+        return [];
+      }
+      
+      // Extract unique user IDs
+      const characterIds = campaignChars.map(cc => cc.characterId);
+      
+      // Get the characters
+      const characters = await db
+        .select()
+        .from(characters)
+        .where(sql`${characters.id} IN (${characterIds.join(',')})`);
+      
+      // Get unique user IDs
+      const userIds = [...new Set(characters.map(c => c.userId))];
+      
+      // Get the users
+      const campaignUsers = await db
+        .select()
+        .from(users)
+        .where(sql`${users.id} IN (${userIds.join(',')})`);
+      
+      return campaignUsers;
+    } catch (error) {
+      console.error("Error getting campaign players:", error);
+      return [];
+    }
+  }
+  
+  // Get session count for a campaign
+  async getSessionCount(campaignId: number): Promise<number> {
+    try {
+      const sessionCount = await db
+        .select({ count: sql`COUNT(*)` })
+        .from(gameLogs)
+        .where(eq(gameLogs.campaignId, campaignId))
+        .groupBy(gameLogs.campaignId);
+      
+      return sessionCount.length > 0 ? parseInt(sessionCount[0].count as string) : 0;
+    } catch (error) {
+      console.error("Error getting session count:", error);
+      return 0;
+    }
+  }
+  
   // Implement admin methods
   async getAllUsers(): Promise<User[]> {
     try {

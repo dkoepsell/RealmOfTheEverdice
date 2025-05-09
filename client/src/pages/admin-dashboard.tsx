@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAdmin } from "@/hooks/use-admin";
-import { Redirect } from "wouter";
+import { Redirect, Link } from "wouter";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Tabs,
@@ -36,7 +37,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, UserIcon, MessageSquare, BarChart, Shield } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { 
+  Loader2, 
+  UserIcon, 
+  MessageSquare, 
+  BarChart, 
+  Shield, 
+  Book, 
+  Map, 
+  Users, 
+  Clock, 
+  Globe, 
+  CheckCircle, 
+  XCircle,
+  LogIn 
+} from "lucide-react";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -104,18 +126,26 @@ const AdminDashboard = () => {
       </p>
       
       <Tabs defaultValue="users">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
+        <TabsList className="grid w-full grid-cols-5 mb-8">
           <TabsTrigger value="users" className="flex items-center">
             <UserIcon className="h-4 w-4 mr-2" />
             Users
           </TabsTrigger>
+          <TabsTrigger value="campaigns" className="flex items-center">
+            <Book className="h-4 w-4 mr-2" />
+            Campaigns
+          </TabsTrigger>
+          <TabsTrigger value="everdice" className="flex items-center">
+            <Globe className="h-4 w-4 mr-2" />
+            Everdice World
+          </TabsTrigger>
+          <TabsTrigger value="logins" className="flex items-center">
+            <LogIn className="h-4 w-4 mr-2" />
+            Login Activity
+          </TabsTrigger>
           <TabsTrigger value="stats" className="flex items-center">
             <BarChart className="h-4 w-4 mr-2" />
             System Stats
-          </TabsTrigger>
-          <TabsTrigger value="messages" className="flex items-center">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Message Center
           </TabsTrigger>
         </TabsList>
         
@@ -249,6 +279,101 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="campaigns">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Campaigns</CardTitle>
+              <CardDescription>
+                View all ongoing campaigns in the Everdice realm.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="everdice">
+          <Card>
+            <CardHeader>
+              <CardTitle>Everdice Superworld</CardTitle>
+              <CardDescription>
+                Monitor the interconnected superworld where all campaigns exist.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-6">
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                  <div className="flex items-start">
+                    <Globe className="h-6 w-6 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-medium text-amber-900">The World of Everdice</h4>
+                      <p className="text-amber-800 mt-1">
+                        Every campaign exists within the shared Everdice superworld. This unified geography connects all player adventures into a coherent universe.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-muted p-8 rounded-md flex items-center justify-center">
+                  <div className="text-center">
+                    <Globe className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">World map visualization loading...</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-bold text-lg mb-3">Continental Regions</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Northern Kingdoms</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-sm text-muted-foreground">12 active campaigns</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Verdant Wilds</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-sm text-muted-foreground">8 active campaigns</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Arcane Deserts</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-sm text-muted-foreground">5 active campaigns</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="logins">
+          <Card>
+            <CardHeader>
+              <CardTitle>Login Activity</CardTitle>
+              <CardDescription>
+                Track user login patterns and activity across the realm.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
