@@ -1028,6 +1028,151 @@ export default function CampaignPage() {
                       />
                     </div>
                   )}
+
+                  {rightPanelTab === "spells" && (
+                    <div className="space-y-4">
+                      <div className="absolute top-0 right-0 z-10">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setRightPanelTab(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      {currentCharacter?.spells && Object.keys(currentCharacter.spells).length > 0 ? (
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">Spells</h4>
+                          <div className="space-y-2">
+                            {Object.entries(currentCharacter.spells).map(([level, spellList]) => (
+                              <div key={level} className="border border-border rounded-md p-3">
+                                <h5 className="font-medieval text-sm mb-2">Level {level}</h5>
+                                <div className="space-y-1">
+                                  {Array.isArray(spellList) && spellList.map((spell: any, idx: number) => (
+                                    <div 
+                                      key={`${spell.name}-${idx}`} 
+                                      className="p-2 bg-background hover:bg-secondary/10 rounded-sm cursor-pointer"
+                                      onClick={() => {
+                                        toast({
+                                          title: spell.name,
+                                          description: spell.description || "A mysterious spell with unknown effects.",
+                                        });
+                                      }}
+                                    >
+                                      <div className="flex justify-between items-center">
+                                        <span className="font-medium">{spell.name}</span>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPlayerInput(`I cast ${spell.name}!`);
+                                          }}
+                                        >
+                                          Cast
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center p-6">
+                          <Wand2 className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-3" />
+                          <h4 className="text-lg font-medieval mb-2">No Spells Available</h4>
+                          <p className="text-muted-foreground">
+                            {currentCharacter?.class === "Wizard" || currentCharacter?.class === "Sorcerer" || currentCharacter?.class === "Warlock" || currentCharacter?.class === "Bard" || currentCharacter?.class === "Cleric" || currentCharacter?.class === "Druid" ? 
+                              "You haven't learned any spells yet. Spells can be acquired through level advancement, finding scrolls, or receiving them as rewards." :
+                              "This character class doesn't have spellcasting abilities. Consider multiclassing or finding magical items to gain spells."}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="mt-6">
+                        <h4 className="text-sm font-semibold mb-2">Abilities & Skills</h4>
+                        {currentCharacter?.abilities && Object.keys(currentCharacter.abilities).length > 0 ? (
+                          <div className="space-y-2">
+                            {Object.entries(currentCharacter.abilities).map(([category, abilityList]) => (
+                              <div key={category} className="border border-border rounded-md p-3">
+                                <h5 className="font-medieval text-sm mb-2">{category}</h5>
+                                <div className="space-y-1">
+                                  {Array.isArray(abilityList) && abilityList.map((ability: any, idx: number) => (
+                                    <div 
+                                      key={`${ability.name}-${idx}`} 
+                                      className="p-2 bg-background hover:bg-secondary/10 rounded-sm cursor-pointer"
+                                      onClick={() => {
+                                        toast({
+                                          title: ability.name,
+                                          description: ability.description || "A mysterious ability with unknown effects.",
+                                        });
+                                      }}
+                                    >
+                                      <div className="flex justify-between items-center">
+                                        <span className="font-medium">{ability.name}</span>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPlayerInput(`I use my ${ability.name} ability!`);
+                                          }}
+                                        >
+                                          Use
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center p-6">
+                            <Shield className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-3" />
+                            <h4 className="text-lg font-medieval mb-2">No Abilities Listed</h4>
+                            <p className="text-muted-foreground">
+                              Your character's special abilities and skills will appear here as you gain them through leveling up and adventures.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {rightPanelTab === "battle" && (
+                    <div className="space-y-4">
+                      <div className="absolute top-0 right-0 z-10">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setRightPanelTab(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      <BattleTracker
+                        inCombat={inCombat}
+                        round={combatRound}
+                        participants={combatParticipants}
+                        onNextTurn={onNextTurn}
+                        onEndCombat={onEndCombat}
+                        onAddParticipant={onAddParticipant}
+                        onApplyDamage={onApplyDamage}
+                        onApplyHealing={onApplyHealing}
+                        onAddCondition={onAddCondition}
+                        onRemoveCondition={onRemoveCondition}
+                        onDiceRoll={onDiceRoll}
+                        characters={campaignCharacters || []}
+                      />
+                    </div>
+                  )}
                   
                   {rightPanelTab === "companion" && (
                     <BotCompanion 

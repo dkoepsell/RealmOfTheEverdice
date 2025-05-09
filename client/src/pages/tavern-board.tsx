@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTavern } from "@/hooks/use-tavern";
-import { Redirect } from "wouter";
+import { Redirect, Link } from "wouter";
+import { Beer } from "lucide-react";
 import {
   Card,
   CardContent,
