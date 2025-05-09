@@ -8,8 +8,7 @@ import {
   CheckCircle, XCircle, AlertCircle 
 } from "lucide-react";
 import { Character, GameLog } from "@shared/schema";
-import { DiceType } from "./dice-roll";
-import { useDice, DiceRoll, DiceRequest } from "@/hooks/use-dice";
+import { useDice, DiceType, DiceRoll, DiceRequest } from "@/hooks/use-dice";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 interface InteractiveDiceSuggestionsProps {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useDice, DiceType } from '@/hooks/use-dice';
+import { useDice, DiceType, DiceRoll, DiceRequest, rollDice } from '@/hooks/use-dice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -10,6 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Dice5, Dice2, Dice1, Dice3, Dice4, Dice6, Info, Target, PlusCircle, MinusCircle, AlertCircle, HelpCircle } from 'lucide-react';
 
+// No need to re-export these anymore as we're importing directly from the source
+
 interface DiceProps {
   diceType: DiceType;
   onRoll?: (result: number) => void;
@@ -17,15 +19,20 @@ interface DiceProps {
 
 // Individual die component with rolling animation
 const Die = ({ diceType, onRoll }: DiceProps) => {
-  const { rollDice, isRolling } = useDice();
+  const { roll } = useDice();
   const [animating, setAnimating] = useState(false);
   
   const handleClick = () => {
     setAnimating(true);
-    const result = rollDice(diceType);
+    
+    // Roll using our new dice hook
+    const diceRoll = roll({
+      type: diceType,
+      count: 1
+    });
     
     // Pass the result immediately to the parent component
-    if (onRoll) onRoll(result);
+    if (onRoll) onRoll(diceRoll.result);
     
     // Reset animation when it completes
     setTimeout(() => {
@@ -57,7 +64,7 @@ const Die = ({ diceType, onRoll }: DiceProps) => {
       variant="outline" 
       onClick={handleClick}
       className={`dice p-2 rounded bg-parchment border border-accent hover:bg-accent/20 flex items-center justify-center ${animating ? 'dice-rolling' : ''}`}
-      disabled={isRolling || animating}
+      disabled={animating}
     >
       {getIcon()}
     </Button>
@@ -100,7 +107,7 @@ export const DiceRoller = ({
   
   const diceTypes: DiceType[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
   
-  const { rollDice } = useDice();
+  const { roll } = useDice();
   
   // Function to handle auto-rolling based on requested roll
   const handleRequestedRoll = () => {
@@ -108,33 +115,33 @@ export const DiceRoller = ({
     
     // Handle multi-dice rolls
     if ((requestedRoll.count || 1) > 1) {
-      let totalResult = 0;
-      const results: number[] = [];
+      // Use our new dice hook
+      const diceRoll = roll({
+        type: requestedRoll.type,
+        count: requestedRoll.count || 1,
+        purpose: getPurposeLabel(requestedRoll.purpose),
+        dc: requestedRoll.dc
+      });
       
-      for (let i = 0; i < (requestedRoll.count || 1); i++) {
-        const result = rollDice(requestedRoll.type);
-        results.push(result);
-        totalResult += result;
-      }
+      // Get the last individual roll result
+      const lastResult = diceRoll.rolls ? diceRoll.rolls[diceRoll.rolls.length - 1] : diceRoll.result;
       
       // Create context for multi-dice rolls
-      const lastResult = results[results.length - 1];
-      
       let modifier = 0;
       let context = '';
       let purpose = getPurposeLabel(requestedRoll.purpose);
       
       if (requestedRoll.purpose === "damage") {
-        context = `Damage Roll: ${results.join(' + ')} = ${totalResult}`;
+        context = `Damage Roll: ${diceRoll.rolls?.join(' + ')} = ${diceRoll.result}`;
       } else {
-        context = `${purpose} with ${requestedRoll.count || 1} dice: ${results.join(', ')} (Total: ${totalResult})`;
+        context = `${purpose} with ${requestedRoll.count || 1} dice: ${diceRoll.rolls?.join(', ')} (Total: ${diceRoll.result})`;
       }
       
       const newRoll = {
         type: requestedRoll.type,
         result: lastResult,
-        total: totalResult,
-        modifier,
+        total: diceRoll.result,
+        modifier: diceRoll.modifier || 0,
         context
       };
       
@@ -144,15 +151,20 @@ export const DiceRoller = ({
         onRollResult(
           requestedRoll.type, 
           lastResult, 
-          modifier, 
+          diceRoll.modifier || 0, 
           `${purpose} (${requestedRoll.count || 1} dice)`, 
           requestedRoll.dc
         );
       }
     } else {
       // Single dice roll
-      const result = rollDice(requestedRoll.type);
-      handleRoll(requestedRoll.type, result);
+      const diceRoll = roll({
+        type: requestedRoll.type,
+        purpose: getPurposeLabel(requestedRoll.purpose),
+        dc: requestedRoll.dc
+      });
+      
+      handleRoll(requestedRoll.type, diceRoll.rolls ? diceRoll.rolls[0] : diceRoll.result);
     }
   };
   
@@ -189,39 +201,47 @@ export const DiceRoller = ({
   };
   
   const handleRoll = (type: DiceType, result: number) => {
-    let modifier = 0;
+    // Use our roll hook directly for single dice rolls with proper modifiers
+    const diceRoll = roll({
+      type,
+      purpose: getPurposeLabel(rollPurpose),
+      dc: rollDC,
+      modifier: characterModifiers && 
+        (type === 'd20' as DiceType || rollPurpose === "damage") ? 
+        getModifierForRoll(type, rollPurpose) : 
+        undefined
+    });
+    
+    let modifier = diceRoll.modifier || 0;
     let context = '';
     let purpose = getPurposeLabel(rollPurpose);
     
-    if (type === 'd20' && characterModifiers) {
-      // For ability checks, apply relevant modifier
+    // Build context based on roll purpose and type
+    if (type === 'd20' as DiceType) {
       if (rollPurpose === "ability" || rollPurpose === "skill") {
         const modName = 'STR'; // This would be dynamic based on the selected skill
-        modifier = characterModifiers[modName] || 0;
-        context = `${purpose} (DC ${rollDC || 'N/A'}) + ${modifier} (${modName}) = ${result + modifier}`;
+        context = `${purpose} (DC ${rollDC || 'N/A'}) + ${modifier} (${modName}) = ${diceRoll.result}`;
       } else if (rollPurpose === "attack") {
-        modifier = characterModifiers["STR"] || 0; // Or DEX for ranged
-        context = `${purpose} + ${modifier} = ${result + modifier}`;
+        context = `${purpose} + ${modifier} = ${diceRoll.result}`;
       } else if (rollPurpose === "saving") {
         const saveName = "DEX"; // This would be dynamic based on the save type
-        modifier = characterModifiers[saveName] || 0;
-        context = `${purpose} (DC ${rollDC || 'N/A'}) + ${modifier} (${saveName}) = ${result + modifier}`;
+        context = `${purpose} (DC ${rollDC || 'N/A'}) + ${modifier} (${saveName}) = ${diceRoll.result}`;
       } else if (rollPurpose === "initiative") {
-        modifier = characterModifiers["DEX"] || 0;
-        context = `${purpose} + ${modifier} = ${result + modifier}`;
+        context = `${purpose} + ${modifier} = ${diceRoll.result}`;
       } else {
         context = `${purpose}`;
       }
-    } else if (type !== 'd20' && rollPurpose === "damage") {
+    } else if (rollPurpose === "damage") {
       context = 'Damage Roll';
     } else {
       context = `${purpose}`;
     }
     
+    // Create a custom roll object to display in the UI
     const newRoll = {
       type,
-      result,
-      total: result + (modifier || 0),
+      result: diceRoll.rolls ? diceRoll.rolls[0] : diceRoll.result,
+      total: diceRoll.result,
       modifier,
       context
     };
@@ -229,7 +249,7 @@ export const DiceRoller = ({
     setLastRoll(newRoll);
     
     if (onRollResult) {
-      onRollResult(type, result, modifier, purpose, rollDC);
+      onRollResult(type, newRoll.result, modifier, purpose, rollDC);
     }
   };
   
@@ -241,33 +261,36 @@ export const DiceRoller = ({
   
   // Handle multiple dice rolls
   const handleMultipleRolls = (type: DiceType) => {
-    let totalResult = 0;
-    const results: number[] = [];
-    
-    for (let i = 0; i < diceCount; i++) {
-      const result = rollDice(type);
-      results.push(result);
-      totalResult += result;
-    }
+    // Use our new dice hook for multiple dice
+    const diceRoll = roll({
+      type,
+      count: diceCount,
+      purpose: getPurposeLabel(rollPurpose),
+      dc: rollDC,
+      modifier: characterModifiers && 
+        (type === 'd20' as DiceType || rollPurpose === "damage") ? 
+        getModifierForRoll(type, rollPurpose) : 
+        undefined
+    });
     
     // Use the last result as the "main" result, but track the total
-    const lastResult = results[results.length - 1];
+    const lastResult = diceRoll.rolls ? diceRoll.rolls[diceRoll.rolls.length - 1] : diceRoll.result;
     
-    let modifier = 0;
+    let modifier = diceRoll.modifier || 0;
     let context = '';
     let purpose = getPurposeLabel(rollPurpose);
     
     // Create context specific to multiple dice
     if (rollPurpose === "damage") {
-      context = `Damage Roll: ${results.join(' + ')} = ${totalResult}`;
+      context = `Damage Roll: ${diceRoll.rolls?.join(' + ')} = ${diceRoll.result}`;
     } else {
-      context = `${purpose} with ${diceCount} dice: ${results.join(', ')} (Total: ${totalResult})`;
+      context = `${purpose} with ${diceCount} dice: ${diceRoll.rolls?.join(', ')} (Total: ${diceRoll.result})`;
     }
     
     const newRoll = {
       type,
       result: lastResult,
-      total: totalResult,
+      total: diceRoll.result,
       modifier,
       context
     };
@@ -277,6 +300,27 @@ export const DiceRoller = ({
     if (onRollResult) {
       onRollResult(type, lastResult, modifier, `${purpose} (${diceCount} dice)`, rollDC);
     }
+  };
+  
+  // Helper function to get the appropriate modifier based on roll type and purpose
+  const getModifierForRoll = (type: DiceType, purpose: string): number => {
+    if (!characterModifiers) return 0;
+    
+    if (type === 'd20' as DiceType) {
+      if (purpose === "ability" || purpose === "skill") {
+        // This would be dynamic based on the selected skill
+        return characterModifiers["STR"] || 0;
+      } else if (purpose === "attack") {
+        return characterModifiers["STR"] || 0; // Or DEX for ranged
+      } else if (purpose === "saving") {
+        // This would be dynamic based on the save type
+        return characterModifiers["DEX"] || 0;
+      } else if (purpose === "initiative") {
+        return characterModifiers["DEX"] || 0;
+      }
+    }
+    
+    return 0;
   };
   
   return (
