@@ -509,49 +509,108 @@ Do not include any text that says "Dungeons and Dragons", "D&D", or any trademar
 }
 
 export async function generateCampaign(options: CampaignGenerationOptions = {}) {
+  // Randomize genre, theme and tone for more variety if not specifically provided
+  const getRandomElement = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+  
+  // Define diverse genre options
+  const genreOptions = [
+    "high fantasy", "dark fantasy", "sword and sorcery", "epic fantasy", 
+    "steampunk fantasy", "urban fantasy", "gothic horror", "cosmic horror", 
+    "swashbuckling adventure", "political intrigue", "frontier fantasy",
+    "magical realism", "mythic fantasy", "planar adventure", "prehistoric fantasy"
+  ];
+  
+  // Define diverse theme options
+  const themeOptions = [
+    "redemption", "corruption", "survival", "discovery", "revolution", 
+    "justice", "vengeance", "ascension", "fall from grace", "rebirth",
+    "ancient awakening", "eldritch mystery", "planar convergence", "prophecy", 
+    "invasion", "conspiracy", "exploration", "colonization", "technological revolution"
+  ];
+  
+  // Define diverse tone options
+  const toneOptions = [
+    "heroic", "grim", "whimsical", "mysterious", "tragic", "hopeful", 
+    "comical", "suspenseful", "horrific", "morally ambiguous", "epic",
+    "intimate", "philosophical", "gritty", "dreamlike", "surreal"
+  ];
+
   const {
-    genre = "fantasy",
-    theme = "adventure",
-    tone = "heroic"
+    genre = getRandomElement(genreOptions),
+    theme = getRandomElement(themeOptions),
+    tone = getRandomElement(toneOptions)
   } = options;
 
   try {
+    // Generate a random world archetype as a starting point
+    const worldArchetypes = [
+      "shattered world of floating islands", "archipelago of island nations", 
+      "underground civilization beneath a wasteland", "isolated valley surrounded by impassable mountains",
+      "massive ancient forest with tree cities", "sprawling desert with oasis city-states",
+      "frozen tundra with nomadic tribes", "volcanic island chain with diverse microclimates",
+      "planar crossroads where multiple dimensions overlap", "coastal region with many peninsulas and bays",
+      "endless steppes roamed by mounted clans", "jungle-covered ruins of an ancient empire",
+      "massive city-state that spans an entire mountain", "foggy wetlands with isolated settlements",
+      "frozen north with warring jarldoms", "dual world with mirrored light and shadow realms"
+    ];
+    
+    const worldArchetype = getRandomElement(worldArchetypes);
+    
+    // Generate some unique magical elements for variety
+    const magicalElementIdeas = [
+      "sentient storms that can be bargained with", "crystallized memories that can be traded and experienced",
+      "magical metals that respond to emotions", "dream-harvesting as a primary industry",
+      "wild magic zones that constantly shift location", "ancient machines powered by starlight",
+      "magical tattoos that grant temporary powers", "song-based magic that causes physical changes",
+      "living architecture that grows and responds", "ancestral spirits bound to bloodlines",
+      "color-based magic where pigments determine power", "runic language where written words manifest physically",
+      "weather controlled by ritual dancing", "magical beasts that bond with compatible humans",
+      "spellcasting that requires synchronized group effort", "enchantments bound to constellations"
+    ];
+    
+    const magicalElement = getRandomElement(magicalElementIdeas);
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
-          content: `You are an expert Dungeons & Dragons Dungeon Master specializing in creating open-world sandbox campaigns. 
+          content: `You are an innovative Dungeons & Dragons Dungeon Master renowned for creating imaginative, unconventional campaign worlds that break from standard fantasy tropes. You excel at worldbuilding that surprises and inspires both new and veteran players.
           
-Your campaigns should:
-1. Provide rich, explorable worlds with multiple paths and possibilities
-2. Allow for true player agency and unpredictable choices
-3. Include diverse encounter types (combat, exploration, social, puzzles, moral dilemmas)
-4. Present interesting factions with complex motivations and relationships
-5. Feature opportunities for character growth and alignment evolution
-6. Balance structure with freedom to improvise
+Your campaigns must:
+1. Provide truly original concepts not commonly seen in typical D&D settings
+2. Feature genuinely creative societies, magic systems, and ecological elements
+3. Present complex, morally nuanced factions with unexpected motivations
+4. Include distinctive geographical features that affect gameplay and story
+5. Offer multiple paths, mysteries, and interconnected plot threads
+6. Challenge standard fantasy assumptions with fresh takes on classic elements
 
-Create a detailed and unique D&D campaign setting that supports this open-world play style.`
+IMPORTANT: Avoid generic medieval European fantasy tropes and standard Tolkien-inspired worlds. Create something that will genuinely surprise and delight experienced players.`
         },
         {
           role: "user",
-          content: `Create a D&D campaign setting with the following parameters:
+          content: `Create a highly original D&D campaign setting with these parameters:
           - Genre: ${genre}
           - Theme: ${theme}
           - Tone: ${tone}
+          - World Archetype: Consider a world that involves a "${worldArchetype}"
+          - Unique Magical Element: Consider incorporating "${magicalElement}"
           
           Format your response as a JSON object with these fields:
-          - name: A distinctive campaign name that evokes the world and its themes
-          - description: A detailed description (300-400 words) covering geography, notable locations, major factions or kingdoms, current political situation or conflicts, unique magical elements, and potential adventure hooks.
-          - setting: The official D&D setting this is most similar to (Forgotten Realms, Eberron, etc.) or "Homebrew" if it's totally unique
-          - openWorldElements: Array of 5-7 elements that make this campaign suitable for open-world play (faction conflicts, mysterious locations, rumors, etc.)
-          - moralDilemmas: Array of 3-5 potential moral choices players might face that could affect their character alignments
-          - adaptabilityNotes: Brief notes on how the campaign can adapt to unexpected player choices`
+          - name: A truly distinctive and evocative campaign name
+          - description: A detailed description (300-400 words) of this unique world, emphasizing its most original elements. Include geography, societies, conflicts, magical systems, and potential adventure hooks.
+          - setting: Indicate "Homebrew" and add some brief notes on what makes this setting distinctive from standard D&D worlds
+          - worldQuirks: Array of 4-6 unusual features of this world that make it memorable and different
+          - factions: Array of 4-5 groups with unconventional motivations and methods
+          - keyLocations: Array of 5-7 distinctive locations that showcase the world's uniqueness
+          - moralDilemmas: Array of 3-5 ethically complex situations players might face
+          - secretThreats: Array of 2-4 hidden dangers or long-term threats players might gradually discover
+          - introNarrative: A compelling campaign introduction narrative (300-400 words) that sets the scene and mood for players starting their adventure in this world. Written in second person ("you") perspective.`
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1500,
-      temperature: 0.8,
+      max_tokens: 2000,
+      temperature: 0.9,
     });
 
     return safeJsonParse(response.choices[0].message.content);
