@@ -113,6 +113,10 @@ const LOCATION_TYPES = [
   { value: 'library', label: 'Library', icon: <BookOpen className="h-4 w-4" /> },
   { value: 'point_of_interest', label: 'Point of Interest', icon: <MapPin className="h-4 w-4" /> },
   { value: 'quest', label: 'Quest Location', icon: <Flag className="h-4 w-4" /> },
+  { value: 'story_marker', label: 'Story Marker', icon: <Sparkles className="h-4 w-4" /> },
+  { value: 'encounter', label: 'Encounter', icon: <Swords className="h-4 w-4" /> },
+  { value: 'treasure', label: 'Treasure', icon: <Gem className="h-4 w-4" /> },
+  { value: 'npc', label: 'NPC', icon: <UserCircle className="h-4 w-4" /> },
 ];
 
 // Get location icon based on type
@@ -140,6 +144,10 @@ const createMarkerIcon = (type: string, discovered: boolean, completed: boolean)
   if (type === 'forest' || type === 'mountain' || type === 'water') backgroundColor = '#166534';
   if (type === 'market' || type === 'library') backgroundColor = '#7e22ce';
   if (type === 'quest') backgroundColor = '#ca8a04';
+  if (type === 'story_marker') backgroundColor = '#9333ea'; // Purple for story markers
+  if (type === 'encounter') backgroundColor = '#be123c'; // Rich red for encounters
+  if (type === 'treasure') backgroundColor = '#f59e0b'; // Gold for treasure
+  if (type === 'npc') backgroundColor = '#1d4ed8'; // Blue for NPCs
   
   // Modify for status
   if (!discovered) {

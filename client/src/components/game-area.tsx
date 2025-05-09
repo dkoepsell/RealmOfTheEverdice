@@ -243,9 +243,22 @@ export const GameArea = ({
             {currentAdventure?.title || "The Adventure Begins"}
           </h2>
           
-          {/* Game Logs - DM Narration and Player Actions */}
+          {/* Game Logs - DM Narration and Player Actions - Displayed in chronological order */}
           <div className="space-y-6">
-            {gameLogs.map((log, index) => {
+            {/* First show intro narrative if present */}
+            {gameLogs.filter(log => log.type === "narrative_introduction").map((log, index) => (
+              <div key={`intro-${index}`} className="mb-8 leading-relaxed">
+                <div className="border-4 border-double border-amber-800/60 bg-amber-50/30 p-6 rounded-lg shadow-inner">
+                  <h3 className="text-xl font-medieval text-primary-800 mb-4">The Story Begins...</h3>
+                  <p className="mb-3 font-serif italic first-letter:text-3xl first-letter:font-bold first-letter:mr-1 first-letter:float-left first-letter:text-primary-900">
+                    {log.content}
+                  </p>
+                </div>
+              </div>
+            ))}
+            
+            {/* Then show all logs except intro in chronological order */}
+            {gameLogs.filter(log => log.type !== "narrative_introduction").map((log, index) => {
               if (log.type === "narrative" || log.type === "narrative_introduction") {
                 // Special styling for the introduction narrative
                 if (log.type === "narrative_introduction") {

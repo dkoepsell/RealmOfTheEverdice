@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -87,48 +87,102 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentSuggestion, setCurrentSuggestion] = useState<DiceSuggestion | null>(null);
   const [rollResult, setRollResult] = useState<DiceRollResult | null>(null);
+  const [autoRolled, setAutoRolled] = useState(false);
   
   const { roll } = useDice();
   
   // Parse narrative for dice suggestions
-  // This is a simple parser - in a real implementation you would use a more robust solution
+  // This is a more robust parser to catch different phrasings of dice roll requests
   const diceSuggestions = React.useMemo(() => {
     const suggestions: DiceSuggestion[] = [];
     
-    // Pattern for skill checks: "make a DC 15 Strength check"
-    const skillCheckPattern = /make a (DC (\d+) )?([A-Za-z]+) check/gi;
-    let match;
+    // Enhanced pattern for skill checks that catches more variations
+    const skillCheckPatterns = [
+      /make a (DC (\d+) )?([A-Za-z]+) check/gi,
+      /roll a (DC (\d+) )?([A-Za-z]+) check/gi,
+      /([A-Za-z]+) \(([A-Za-z]+)\) check( \(DC (\d+)\))?/gi,
+      /(DC (\d+)) ([A-Za-z]+) \(([A-Za-z]+)\) check/gi,
+      /please roll a ([A-Za-z]+) \(([A-Za-z]+)\) check \(DC (\d+)\)/gi
+    ];
     
-    while ((match = skillCheckPattern.exec(narrative)) !== null) {
-      suggestions.push({
-        type: 'skill',
-        skill: match[3].toLowerCase(),
-        dc: match[2] ? parseInt(match[2]) : undefined,
-        description: match[0]
-      });
-    }
+    skillCheckPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(narrative)) !== null) {
+        // Handle different pattern matches
+        if (pattern.source.includes('please roll')) {
+          // Pattern: please roll a Dexterity (Acrobatics) check (DC 10)
+          suggestions.push({
+            type: 'skill',
+            skill: match[2].toLowerCase(), // Acrobatics
+            dc: match[3] ? parseInt(match[3]) : undefined,
+            description: match[0]
+          });
+        } else if (pattern.source.includes('\\(([A-Za-z]+)\\) check \\(DC')) {
+          // Pattern: Strength (Athletics) check (DC 15)
+          suggestions.push({
+            type: 'skill',
+            skill: match[2].toLowerCase(), // Athletics
+            dc: match[4] ? parseInt(match[4]) : undefined,
+            description: match[0]
+          });
+        } else if (pattern.source.includes('\\(DC \\(\\d+\\)\\)')) {
+          // Pattern: DC 15 Dexterity (Acrobatics) check
+          suggestions.push({
+            type: 'skill',
+            skill: match[4].toLowerCase(), // Acrobatics  
+            dc: match[2] ? parseInt(match[2]) : undefined,
+            description: match[0]
+          });
+        } else {
+          // Standard patterns: make a DC 15 Strength check
+          suggestions.push({
+            type: 'skill',
+            skill: match[3].toLowerCase(),
+            dc: match[2] ? parseInt(match[2]) : undefined,
+            description: match[0]
+          });
+        }
+      }
+    });
     
-    // Pattern for saving throws: "make a DC 12 Dexterity saving throw"
-    const savePattern = /make a (DC (\d+) )?([A-Za-z]+) saving throw/gi;
-    while ((match = savePattern.exec(narrative)) !== null) {
-      suggestions.push({
-        type: 'save',
-        skill: match[3].toLowerCase(),
-        dc: match[2] ? parseInt(match[2]) : undefined,
-        description: match[0]
-      });
-    }
+    // Enhanced pattern for saving throws
+    const savePatterns = [
+      /make a (DC (\d+) )?([A-Za-z]+) saving throw/gi,
+      /roll a (DC (\d+) )?([A-Za-z]+) saving throw/gi,
+      /(DC (\d+)) ([A-Za-z]+) saving throw/gi
+    ];
     
-    // Pattern for attack rolls: "make an attack roll"
-    const attackPattern = /make an attack roll( against AC (\d+))?/gi;
-    while ((match = attackPattern.exec(narrative)) !== null) {
-      suggestions.push({
-        type: 'attack',
-        targetAC: match[2] ? parseInt(match[2]) : undefined,
-        damage: '1d8+3', // Default damage formula, would be based on character's weapon
-        description: match[0]
-      });
-    }
+    savePatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(narrative)) !== null) {
+        suggestions.push({
+          type: 'save',
+          skill: match[3].toLowerCase(),
+          dc: match[2] ? parseInt(match[2]) : undefined,
+          description: match[0]
+        });
+      }
+    });
+    
+    // Enhanced pattern for attack rolls
+    const attackPatterns = [
+      /make an attack roll( against AC (\d+))?/gi,
+      /roll an attack roll( against AC (\d+))?/gi,
+      /make a (melee|ranged) attack roll( against AC (\d+))?/gi
+    ];
+    
+    attackPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(narrative)) !== null) {
+        const acIndex = pattern.source.includes('melee|ranged') ? 3 : 2;
+        suggestions.push({
+          type: 'attack',
+          targetAC: match[acIndex] ? parseInt(match[acIndex]) : undefined,
+          damage: '1d8+3', // Default damage formula, would be based on character's weapon
+          description: match[0]
+        });
+      }
+    });
     
     return suggestions;
   }, [narrative]);
@@ -245,6 +299,31 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
     setRollResult(null);
   };
   
+  // Auto-roll feature
+  useEffect(() => {
+    // Only auto-roll if there's a dice suggestion and it hasn't been auto-rolled yet
+    if (diceSuggestions.length > 0 && !autoRolled) {
+      // Get the first dice suggestion
+      const suggestion = diceSuggestions[0];
+      
+      // Set the current suggestion
+      setCurrentSuggestion(suggestion);
+      
+      // Automatically open the modal to show the roll
+      setIsModalOpen(true);
+      
+      // Mark as auto-rolled to prevent infinite loop
+      setAutoRolled(true);
+      
+      // Call the performRoll function after a short delay
+      const timer = setTimeout(() => {
+        performRoll();
+      }, 800);  // Delay for 800ms to allow the modal to render first
+      
+      return () => clearTimeout(timer);
+    }
+  }, [diceSuggestions, autoRolled]);
+
   if (diceSuggestions.length === 0) {
     return null;
   }
