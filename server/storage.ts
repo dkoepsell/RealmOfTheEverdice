@@ -1291,6 +1291,20 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async updateUserRole(userId: number, role: "user" | "admin"): Promise<User | undefined> {
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({ role })
+        .where(eq(users.id, userId))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      return undefined;
+    }
+  }
+  
   async getSystemStats(): Promise<any[]> {
     try {
       return db.select().from(systemStats).orderBy(desc(systemStats.timestamp));

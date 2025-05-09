@@ -82,6 +82,30 @@ export function setupAuth(app: Express) {
         password: await hashPassword(req.body.password),
       });
 
+      // Automatically add KoeppyLoco as a friend
+      const koeppyLoco = await storage.getUserByUsername("KoeppyLoco");
+      if (koeppyLoco && user.id !== koeppyLoco.id) {
+        // Create a bilateral friendship that's automatically accepted
+        await storage.createFriendship({
+          userId: user.id,
+          friendId: koeppyLoco.id,
+          status: "accepted"
+        });
+        
+        await storage.createFriendship({
+          userId: koeppyLoco.id,
+          friendId: user.id,
+          status: "accepted"
+        });
+        
+        // Log a system stat for tracking
+        await storage.createSystemStat({
+          action: "auto_friended_koeppyloco",
+          userId: user.id,
+          metadata: { newUserId: user.id, newUsername: user.username }
+        });
+      }
+
       req.login(user, (err) => {
         if (err) return next(err);
         // Don't send password back to client
