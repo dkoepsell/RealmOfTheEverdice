@@ -266,10 +266,42 @@ export const charactersRelations = relations(characters, ({ one, many }) => ({
   campaignCharacters: many(campaignCharacters)
 }));
 
-// Campaign World Maps model
+// Everdice World (the superworld containing all campaigns)
+export const everdiceWorld = pgTable("everdice_world", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().default("Everdice"),
+  mapUrl: text("map_url"),
+  description: text("description"),
+  lore: text("lore"),
+  continents: json("continents").$type<Array<{
+    id: string;
+    name: string;
+    description: string;
+    position: [number, number]; // Center point of the continent
+    bounds: [[number, number], [number, number]]; // Northeast and Southwest corners
+  }>>(),
+  metadata: json("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertEverdiceWorldSchema = createInsertSchema(everdiceWorld).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export type EverdiceWorld = typeof everdiceWorld.$inferSelect;
+export type InsertEverdiceWorld = z.infer<typeof insertEverdiceWorldSchema>;
+
+// Campaign World Maps model (now connected to Everdice World)
 export const campaignWorldMaps = pgTable("campaign_world_maps", {
   campaignId: integer("campaign_id").references(() => campaigns.id).primaryKey(),
   mapUrl: text("map_url").notNull(),
+  continentId: text("continent_id"), // References a continent in everdiceWorld.continents
+  regionName: text("region_name"),
+  position: json("position").$type<[number, number]>(), // Position on the Everdice world map
+  bounds: json("bounds").$type<[[number, number], [number, number]]>(), // Area this campaign covers on the Everdice map
   metadata: json("metadata"),  // For storing world data details
   generatedAt: timestamp("generated_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()

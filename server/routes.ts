@@ -1927,6 +1927,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint for superadmin to promote users to admin (but never to superadmin)
+  app.patch("/api/admin/users/:userId/role", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Only superusers can change roles
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    const { role } = req.body;
+    const userId = parseInt(req.params.userId);
+    
+    // Prevent anyone from becoming a superuser - only 'user' or 'admin' roles allowed
+    if (role !== "user" && role !== "admin") {
+      return res.status(400).json({ message: "Invalid role. Only 'user' or 'admin' roles are allowed." });
+    }
+    
+    try {
+      const updatedUser = await storage.updateUserRole(userId, role);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Log the role change
+      await storage.createSystemStat({
+        action: "role_change",
+        userId: req.user.id,
+        metadata: { 
+          targetUserId: userId, 
+          oldRole: updatedUser.role, 
+          newRole: role 
+        }
+      });
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+  
   // Tavern Notice Board routes
   app.get("/api/tavern/notices", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });

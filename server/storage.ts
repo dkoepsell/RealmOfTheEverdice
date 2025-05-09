@@ -322,12 +322,22 @@ export class DatabaseStorage implements IStorage {
       // Check if a world map already exists for this campaign
       const existingMap = await this.getCampaignWorldMap(worldMap.campaignId);
       
+      // Make sure Everdice world exists
+      const everdiceWorld = await this.getEverdiceWorld();
+      if (!everdiceWorld) {
+        await this.createOrUpdateEverdiceWorld({});
+      }
+      
       if (existingMap) {
         // Update the existing map
         const [updatedMap] = await db
           .update(campaignWorldMaps)
           .set({ 
             mapUrl: worldMap.mapUrl,
+            continentId: worldMap.continentId,
+            regionName: worldMap.regionName,
+            position: worldMap.position,
+            bounds: worldMap.bounds,
             updatedAt: new Date()
           })
           .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
@@ -343,6 +353,93 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error("Error creating/updating campaign world map:", error);
+      throw error;
+    }
+  }
+  
+  // Everdice World methods
+  async getEverdiceWorld(): Promise<EverdiceWorld | undefined> {
+    try {
+      const [world] = await db.select().from(everdiceWorld).limit(1);
+      return world;
+    } catch (error) {
+      console.error("Error getting Everdice world:", error);
+      return undefined;
+    }
+  }
+  
+  async createOrUpdateEverdiceWorld(world: Partial<InsertEverdiceWorld>): Promise<EverdiceWorld> {
+    try {
+      const existing = await this.getEverdiceWorld();
+      
+      if (existing) {
+        const [updated] = await db
+          .update(everdiceWorld)
+          .set({
+            ...world,
+            updatedAt: new Date()
+          })
+          .where(eq(everdiceWorld.id, existing.id))
+          .returning();
+          
+        return updated;
+      } else {
+        // Create a new Everdice world
+        const [created] = await db
+          .insert(everdiceWorld)
+          .values({
+            name: "Everdice",
+            description: "The mystical realm of Everdice, where all adventures take place.",
+            lore: "Everdice is a realm of magic and wonder, where countless adventures unfold across its varied landscapes. From the mist-shrouded peaks of the Dragonspine Mountains to the sun-dappled shores of the Sapphire Coast, every corner of this vast world holds untold stories waiting to be discovered.",
+            ...world
+          })
+          .returning();
+          
+        return created;
+      }
+    } catch (error) {
+      console.error("Error creating/updating Everdice world:", error);
+      throw error;
+    }
+  }
+  
+  async addContinentToEverdiceWorld(
+    continent: {
+      id: string;
+      name: string;
+      description: string;
+      position: [number, number];
+      bounds: [[number, number], [number, number]];
+    }
+  ): Promise<EverdiceWorld> {
+    try {
+      const world = await this.getEverdiceWorld();
+      
+      if (!world) {
+        // Create world first if it doesn't exist
+        return this.createOrUpdateEverdiceWorld({
+          continents: [continent]
+        });
+      }
+      
+      // Add the continent to the existing list
+      const continents = world.continents || [];
+      const continentIndex = continents.findIndex(c => c.id === continent.id);
+      
+      if (continentIndex >= 0) {
+        // Update existing continent
+        continents[continentIndex] = continent;
+      } else {
+        // Add new continent
+        continents.push(continent);
+      }
+      
+      // Update the world with the new continent list
+      return this.createOrUpdateEverdiceWorld({
+        continents
+      });
+    } catch (error) {
+      console.error("Error adding continent to Everdice world:", error);
       throw error;
     }
   }
