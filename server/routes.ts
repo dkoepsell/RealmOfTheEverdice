@@ -1869,6 +1869,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin routes - only accessible to superusers
+  app.get("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is a superuser
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to get users" });
+    }
+  });
+  
+  app.get("/api/admin/stats", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is a superuser
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const stats = await storage.getSystemStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching system stats:", error);
+      res.status(500).json({ message: "Failed to get system stats" });
+    }
+  });
+  
+  app.post("/api/admin/messages", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is a superuser
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const message = await storage.createUserMessage({
+        senderId: req.user.id,
+        recipientId: req.body.recipientId,
+        subject: req.body.subject,
+        content: req.body.content
+      });
+      
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+  
+  // Tavern Notice Board routes
+  app.get("/api/tavern/notices", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const notices = await storage.getTavernNotices();
+      res.json(notices);
+    } catch (error) {
+      console.error("Error fetching tavern notices:", error);
+      res.status(500).json({ message: "Failed to get tavern notices" });
+    }
+  });
+  
+  app.post("/api/tavern/notices", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const notice = await storage.createTavernNotice({
+        userId: req.user.id,
+        title: req.body.title,
+        content: req.body.content,
+        type: req.body.type || "quest",
+        expiresAt: req.body.expiresAt
+      });
+      
+      res.status(201).json(notice);
+    } catch (error) {
+      console.error("Error creating tavern notice:", error);
+      res.status(500).json({ message: "Failed to create tavern notice" });
+    }
+  });
+  
+  app.get("/api/tavern/notices/:id/replies", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const replies = await storage.getTavernNoticeReplies(parseInt(req.params.id));
+      res.json(replies);
+    } catch (error) {
+      console.error("Error fetching tavern notice replies:", error);
+      res.status(500).json({ message: "Failed to get tavern notice replies" });
+    }
+  });
+  
+  app.post("/api/tavern/notices/:id/replies", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const reply = await storage.createTavernNoticeReply({
+        noticeId: parseInt(req.params.id),
+        userId: req.user.id,
+        content: req.body.content
+      });
+      
+      res.status(201).json(reply);
+    } catch (error) {
+      console.error("Error creating tavern notice reply:", error);
+      res.status(500).json({ message: "Failed to create tavern notice reply" });
+    }
+  });
+  
+  // Chat messages routes
+  app.get("/api/campaigns/:id/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      const messages = await storage.getChatMessages(campaign.id);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching chat messages:", error);
+      res.status(500).json({ message: "Failed to get chat messages" });
+    }
+  });
+  
+  app.post("/api/campaigns/:id/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      const validatedData = insertChatMessageSchema.parse({
+        campaignId: campaign.id,
+        userId: req.user.id,
+        content: req.body.content
+      });
+      
+      const message = await storage.createChatMessage(validatedData);
+      
+      // If WebSocket is set up, broadcast the message to all connected clients
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN && client.campaignId === campaign.id) {
+          client.send(JSON.stringify({
+            type: 'chat',
+            message
+          }));
+        }
+      });
+      
+      res.status(201).json(message);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid chat message data", errors: error.errors });
+      }
+      console.error("Error creating chat message:", error);
+      res.status(500).json({ message: "Failed to create chat message" });
+    }
+  });
+
+  // System stats logging
+  app.post("/api/stats", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const stat = await storage.createSystemStat({
+        userId: req.user.id,
+        action: req.body.action,
+        metadata: req.body.metadata
+      });
+      
+      res.status(201).json(stat);
+    } catch (error) {
+      console.error("Error logging system stat:", error);
+      res.status(500).json({ message: "Failed to log system stat" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Setup WebSocket server for real-time chat

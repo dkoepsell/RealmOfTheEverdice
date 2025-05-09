@@ -17,9 +17,14 @@ import {
   PartyPlan, InsertPartyPlan,
   PartyPlanItem, InsertPartyPlanItem,
   PartyPlanComment, InsertPartyPlanComment,
+  TavernNotice, InsertTavernNotice,
+  TavernNoticeReply, InsertTavernNoticeReply,
+  SystemStat, InsertSystemStat,
+  UserMessage, InsertUserMessage,
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
   friendships, userSessions, chatMessages, campaignInvitations, mapLocations, journeyPaths,
-  campaignWorldMaps, partyPlans, partyPlanItems, partyPlanComments
+  campaignWorldMaps, partyPlans, partyPlanItems, partyPlanComments, tavernNotices, tavernNoticeReplies,
+  systemStats, userMessages
 } from "@shared/schema";
 
 // Define our own Campaign type without partyName since it's not in the DB yet
@@ -164,6 +169,23 @@ export interface IStorage {
   
   // Permissions method
   isPlayerInCampaign(userId: number, campaignId: number): Promise<boolean>;
+  
+  // Tavern Notice Board methods
+  getTavernNotices(): Promise<any[]>;
+  getTavernNoticeById(id: number): Promise<any | undefined>;
+  createTavernNotice(notice: any): Promise<any>;
+  updateTavernNotice(id: number, notice: any): Promise<any | undefined>;
+  deleteTavernNotice(id: number): Promise<boolean>;
+  getTavernNoticeReplies(noticeId: number): Promise<any[]>;
+  createTavernNoticeReply(reply: any): Promise<any>;
+  
+  // Admin methods
+  getAllUsers(): Promise<User[]>;
+  getSystemStats(): Promise<any[]>;
+  createSystemStat(stat: any): Promise<any>;
+  getUserMessages(userId: number): Promise<any[]>;
+  createUserMessage(message: any): Promise<any>;
+  getChatMessages(campaignId: number): Promise<ChatMessage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
