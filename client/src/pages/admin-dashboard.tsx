@@ -71,6 +71,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { 
     isSuperuser, 
     users, 
@@ -83,8 +84,10 @@ const AdminDashboard = () => {
     isLoadingLoginActivity,
     everdiceWorld,
     isLoadingEverdiceWorld,
+    refetchEverdiceWorld,
     campaignRegions,
     isLoadingCampaignRegions,
+    refetchCampaignRegions,
     sendMessage,
     promoteUser,
     promoteUserLoading
@@ -609,8 +612,8 @@ const AdminDashboard = () => {
                                       description: 'Everdice world initialized successfully.',
                                     });
                                     // Refresh the data
-                                    refetchEverdiceWorld();
-                                    refetchCampaignRegions();
+                                    if (refetchEverdiceWorld) refetchEverdiceWorld();
+                                    if (refetchCampaignRegions) refetchCampaignRegions();
                                     setIsInitializingWorld(false);
                                   })
                                   .catch(error => {
