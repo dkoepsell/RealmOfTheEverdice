@@ -1,499 +1,348 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Card } from "@/components/ui/card";
-import { 
-  DicesIcon, Info, Award, Shield, Brain, Heart, 
-  CheckCircle, XCircle, AlertCircle 
-} from "lucide-react";
-import { Character, GameLog } from "@shared/schema";
-import { useDice, DiceType, DiceRoll, DiceRequest } from "@/hooks/use-dice";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useDice, rollDice as diceRoll, DiceType } from '@/hooks/use-dice';
+import { Dice1, Dice3, Dice5, Dice6 } from 'lucide-react';
+import { Character, CharacterStats } from '@shared/schema';
 
-interface InteractiveDiceSuggestionsProps {
-  content: string;
-  character: Character;
-  onRollComplete: (
-    type: DiceType,
-    result: number,
-    modifier: number,
-    purpose: string,
-    threshold?: number,
-    effects?: {
-      stats?: Partial<Record<string, number>>;
-      alignment?: string;
-      description: string;
-    }
-  ) => void;
+interface DiceSuggestion {
+  type: string;      // "skill", "attack", "save", etc.
+  skill?: string;    // For skill checks: "strength", "dexterity", etc.
+  dc?: number;       // Difficulty class for checks/saves
+  bonus?: number;    // Additional bonus to apply
+  targetAC?: number; // For attack rolls
+  damage?: string;   // Damage formula for attack rolls
+  description: string; // What this roll is for
 }
 
-// Regex patterns for detecting dice roll suggestions
-const ROLL_PATTERNS = [
-  // Pattern for skill checks: Roll a [Skill] check
-  {
-    regex: /Roll (?:an?\s+)?(\w+)(?:\s+)(?:skill\s+)?check(?: DC (\d+))?/gi,
-    type: "skill",
-    diceType: "d20" as DiceType
-  },
-  // Pattern for ability checks: Roll a [Ability] check
-  {
-    regex: /Roll (?:an?\s+)?(\w+)(?:\s+)(?:ability\s+)?check(?: DC (\d+))?/gi,
-    type: "ability",
-    diceType: "d20" as DiceType
-  },
-  // Pattern for saving throws: Make a [Ability] saving throw
-  {
-    regex: /(?:Make|Roll) (?:an?\s+)?(\w+) saving throw(?: DC (\d+))?/gi,
-    type: "save",
-    diceType: "d20" as DiceType
-  },
-  // Pattern for attack rolls: Make an attack roll
-  {
-    regex: /(?:Make|Roll) (?:an?\s+)?(?:(\w+)\s+)?attack roll/gi,
-    type: "attack",
-    diceType: "d20" as DiceType
-  },
-  // Pattern for generic dice rolls: Roll a dX
-  {
-    regex: /Roll (?:a|an|\d+)\s+(d4|d6|d8|d10|d12|d20|d100)(?:\s+(?:for|to)\s+(\w+))?/gi,
-    type: "generic",
-    diceType: null
-  },
-  // Pattern for damage rolls: Roll XdY damage
-  {
-    regex: /Roll (?:(\d+)?(?:d\d+))(?:\s+(\w+))?\s+damage/gi,
-    type: "damage",
-    diceType: null
-  },
-  // Pattern for initiative
-  {
-    regex: /Roll (?:for )?initiative/gi,
-    type: "initiative",
-    diceType: "d20" as DiceType
-  }
-];
+interface InteractiveDiceSuggestionsProps {
+  narrative: string;
+  character?: Character;
+  onRollComplete?: (result: DiceRollResult) => void;
+}
 
-// Map abilities to their standard abbreviations
-const ABILITY_ABBR: Record<string, string> = {
-  "strength": "STR",
-  "dexterity": "DEX",
-  "constitution": "CON", 
-  "intelligence": "INT",
-  "wisdom": "WIS",
-  "charisma": "CHA"
-};
+interface DiceRollResult {
+  suggestion: DiceSuggestion;
+  roll: number;
+  total: number;
+  success: boolean;
+  critical?: 'success' | 'failure';
+  damage?: number;
+}
 
-// Map abbreviated abilities to full names
-const ABILITY_FULL: Record<string, string> = {
-  "STR": "Strength",
-  "DEX": "Dexterity",
-  "CON": "Constitution",
-  "INT": "Intelligence", 
-  "WIS": "Wisdom",
-  "CHA": "Charisma"
-};
-
-// Common skills and their ability associations
-const SKILL_ABILITY: Record<string, string> = {
-  "athletics": "STR",
-  "acrobatics": "DEX", 
-  "sleight of hand": "DEX",
-  "stealth": "DEX",
-  "arcana": "INT",
-  "history": "INT",
-  "investigation": "INT",
-  "nature": "INT",
-  "religion": "INT",
-  "animal handling": "WIS",
-  "insight": "WIS",
-  "medicine": "WIS",
-  "perception": "WIS",
-  "survival": "WIS",
-  "deception": "CHA",
-  "intimidation": "CHA",
-  "performance": "CHA",
-  "persuasion": "CHA"
-};
-
-// Effects based on roll results
-const getAlignmentEffect = (
-  rollType: string, 
-  skillName: string, 
-  isSuccess: boolean,
-  rollResult: number
-) => {
-  // Only major successes or failures affect alignment
-  if (rollResult === 20 || rollResult === 1) {
-    if (skillName.toLowerCase() === "deception" || skillName.toLowerCase() === "stealth") {
-      return isSuccess ? "shift-chaotic" : null;
-    }
-    
-    if (skillName.toLowerCase() === "intimidation") {
-      return isSuccess ? "shift-evil" : null;
-    }
-    
-    if (skillName.toLowerCase() === "persuasion" || skillName.toLowerCase() === "diplomacy") {
-      return isSuccess ? "shift-good" : null;
-    }
-    
-    if (skillName.toLowerCase() === "religion" || skillName.toLowerCase() === "insight") {
-      return isSuccess ? "shift-lawful" : null;
-    }
+// Helper to extract ability modifier from character stats
+const getAbilityModifier = (stats: CharacterStats | undefined, ability: string): number => {
+  if (!stats) return 0;
+  
+  let score = 0;
+  switch (ability.toLowerCase()) {
+    case 'strength': score = stats.strength; break;
+    case 'dexterity': score = stats.dexterity; break;
+    case 'constitution': score = stats.constitution; break;
+    case 'intelligence': score = stats.intelligence; break;
+    case 'wisdom': score = stats.wisdom; break;
+    case 'charisma': score = stats.charisma; break;
+    default: return 0;
   }
   
-  return null;
+  // D&D 5e ability modifier formula: (score - 10) / 2, rounded down
+  return Math.floor((score - 10) / 2);
 };
 
-// Interactive dice roll suggestion component
-export default function InteractiveDiceSuggestions({ 
-  content,
-  character,
-  onRollComplete
-}: InteractiveDiceSuggestionsProps) {
-  const [suggestions, setSuggestions] = useState<Array<{
-    type: string;
-    diceType: DiceType;
-    text: string;
-    ability?: string;
-    dc?: number;
-    purpose?: string;
-    rollComplete: boolean;
-  }>>([]);
+// Helper to process damage dice expressions like "2d6+3"
+const rollDamage = (damageFormula: string): number => {
+  if (!damageFormula) return 0;
+  
+  try {
+    // Parse the formula (format like "2d6+3")
+    const match = damageFormula.match(/(\d+)d(\d+)(?:([+-])(\d+))?/);
+    if (!match) return 0;
+    
+    const [_, numDice, dieSize, operator, modifier] = match;
+    let total = 0;
+    
+    // Roll the dice
+    for (let i = 0; i < parseInt(numDice); i++) {
+      total += Math.floor(Math.random() * parseInt(dieSize)) + 1;
+    }
+    
+    // Apply modifier if present
+    if (modifier) {
+      if (operator === '+') {
+        total += parseInt(modifier);
+      } else if (operator === '-') {
+        total -= parseInt(modifier);
+      }
+    }
+    
+    return total;
+  } catch (error) {
+    console.error('Error parsing damage formula:', error);
+    return 0;
+  }
+};
+
+
+
+export function InteractiveDiceSuggestions({ narrative, character, onRollComplete }: InteractiveDiceSuggestionsProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentSuggestion, setCurrentSuggestion] = useState<DiceSuggestion | null>(null);
+  const [rollResult, setRollResult] = useState<DiceRollResult | null>(null);
   
   const { roll } = useDice();
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [pendingSuggestion, setPendingSuggestion] = useState<typeof suggestions[0] | null>(null);
-  const [lastRollResult, setLastRollResult] = useState<DiceRoll | null>(null);
-  const narrativeEndRef = useRef<HTMLDivElement>(null);
   
-  // Parse content for dice roll suggestions
-  useEffect(() => {
-    const found: Array<{
-      type: string;
-      diceType: DiceType;
-      text: string;
-      ability?: string;
-      dc?: number;
-      purpose?: string;
-      rollComplete: boolean;
-    }> = [];
+  // Parse narrative for dice suggestions
+  // This is a simple parser - in a real implementation you would use a more robust solution
+  const diceSuggestions = React.useMemo(() => {
+    const suggestions: DiceSuggestion[] = [];
     
-    ROLL_PATTERNS.forEach(pattern => {
-      const regex = new RegExp(pattern.regex);
-      let match;
-      
-      while ((match = regex.exec(content)) !== null) {
-        let ability = match[1]?.toLowerCase() || "";
-        const dc = match[2] ? parseInt(match[2]) : undefined;
-        let diceType = pattern.diceType as DiceType;
-        
-        // For generic die rolls, the dice type is in the first capture group
-        if (pattern.type === "generic" && match[1]?.toLowerCase().match(/^d\d+$/)) {
-          diceType = match[1].toLowerCase() as DiceType;
-          ability = match[2] || "";
-        }
-        
-        // For damage rolls, parse the dice expression
-        if (pattern.type === "damage") {
-          const dicePart = match[0].match(/\d*d\d+/i);
-          if (dicePart) {
-            // Extract just the dX part
-            const dieType = dicePart[0].match(/d\d+/i);
-            if (dieType) {
-              diceType = dieType[0].toLowerCase() as DiceType;
-            }
-          }
-        }
-        
-        // Handle skill checks by mapping to their corresponding ability
-        if (pattern.type === "skill" && ability) {
-          const abilityForSkill = SKILL_ABILITY[ability.toLowerCase()];
-          if (abilityForSkill) {
-            ability = abilityForSkill;
-          }
-        }
-        
-        // Normalize ability names
-        if (ABILITY_ABBR[ability.toLowerCase()]) {
-          ability = ABILITY_ABBR[ability.toLowerCase()];
-        }
-        
-        found.push({
-          type: pattern.type,
-          diceType: diceType || "d20" as DiceType,
-          text: match[0],
-          ability: ability || undefined,
-          dc,
-          purpose: match[2] || undefined,
-          rollComplete: false
-        });
-      }
-    });
+    // Pattern for skill checks: "make a DC 15 Strength check"
+    const skillCheckPattern = /make a (DC (\d+) )?([A-Za-z]+) check/gi;
+    let match;
     
-    setSuggestions(found);
-  }, [content]);
-  
-  // Scroll to the bottom of the narrative when new content is added
-  useEffect(() => {
-    if (narrativeEndRef.current) {
-      narrativeEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [lastRollResult]);
-  
-  // Function to get stat modifier from character stats
-  const getModifier = (abilityName: string): number => {
-    if (!character.stats) return 0;
-    
-    const stats = character.stats as any;
-    let score: number = 10; // Default
-    
-    if (abilityName in stats) {
-      score = stats[abilityName];
-    } else if (ABILITY_ABBR[abilityName.toLowerCase()]) {
-      score = stats[ABILITY_ABBR[abilityName.toLowerCase()]];
-    } else if (abilityName.toUpperCase() in stats) {
-      score = stats[abilityName.toUpperCase()];
+    while ((match = skillCheckPattern.exec(narrative)) !== null) {
+      suggestions.push({
+        type: 'skill',
+        skill: match[3].toLowerCase(),
+        dc: match[2] ? parseInt(match[2]) : undefined,
+        description: match[0]
+      });
     }
     
-    // Calculate modifier: (score - 10) / 2, rounded down
-    return Math.floor((score - 10) / 2);
+    // Pattern for saving throws: "make a DC 12 Dexterity saving throw"
+    const savePattern = /make a (DC (\d+) )?([A-Za-z]+) saving throw/gi;
+    while ((match = savePattern.exec(narrative)) !== null) {
+      suggestions.push({
+        type: 'save',
+        skill: match[3].toLowerCase(),
+        dc: match[2] ? parseInt(match[2]) : undefined,
+        description: match[0]
+      });
+    }
+    
+    // Pattern for attack rolls: "make an attack roll"
+    const attackPattern = /make an attack roll( against AC (\d+))?/gi;
+    while ((match = attackPattern.exec(narrative)) !== null) {
+      suggestions.push({
+        type: 'attack',
+        targetAC: match[2] ? parseInt(match[2]) : undefined,
+        damage: '1d8+3', // Default damage formula, would be based on character's weapon
+        description: match[0]
+      });
+    }
+    
+    return suggestions;
+  }, [narrative]);
+  
+  const handleRollClick = (suggestion: DiceSuggestion) => {
+    setCurrentSuggestion(suggestion);
+    setIsModalOpen(true);
   };
   
-  // Open dialog for roll confirmation
-  const openConfirmDialog = (suggestion: typeof suggestions[0]) => {
-    setPendingSuggestion(suggestion);
-    setConfirmDialogOpen(true);
-  };
-  
-  // Process the roll after confirmation
   const performRoll = () => {
-    if (!pendingSuggestion) return;
+    if (!currentSuggestion) return;
     
-    const suggestion = pendingSuggestion;
+    // Roll d20
+    const d20Result = rollDice(20);
+    let total = d20Result;
+    let success = false;
+    let critical: 'success' | 'failure' | undefined = undefined;
+    let damageRoll: number | undefined = undefined;
     
-    // Get modifier
-    let modifier = 0;
-    
-    if (suggestion.ability) {
-      modifier = getModifier(suggestion.ability);
-    } else if (suggestion.type === "initiative") {
-      modifier = getModifier("DEX");
+    // Critical hit/failure
+    if (d20Result === 20) {
+      critical = 'success';
+    } else if (d20Result === 1) {
+      critical = 'failure';
     }
     
-    // Create a purpose string
-    const purpose = `${suggestion.type.charAt(0).toUpperCase()}${suggestion.type.slice(1)} ${
-      suggestion.ability 
-        ? `(${suggestion.ability})` 
-        : suggestion.purpose 
-          ? `for ${suggestion.purpose}` 
-          : ""
-    }`;
-    
-    // Use the useDice hook for consistent dice rolling
-    const rollRequest: DiceRequest = {
-      type: suggestion.diceType,
-      modifier,
-      purpose,
-      dc: suggestion.dc
-    };
-    
-    // Perform the roll
-    const rollResult = roll(rollRequest);
-    setLastRollResult(rollResult);
-    
-    // Determine any effects on character stats or alignment
-    const effects: {
-      stats?: Partial<Record<string, number>>;
-      alignment?: string;
-      description: string;
-    } = {
-      description: rollResult.success ? "Success" : "Failure"
-    };
-    
-    // Check for stat or alignment effects based on the roll
-    const alignmentEffect = getAlignmentEffect(
-      suggestion.type,
-      suggestion.ability || "",
-      rollResult.success || false,
-      rollResult.rolls ? rollResult.rolls[0] : 0
-    );
-    
-    if (alignmentEffect) {
-      effects.alignment = alignmentEffect;
+    // Add relevant modifiers
+    if (currentSuggestion.type === 'skill' || currentSuggestion.type === 'save') {
+      const abilityMod = currentSuggestion.skill ? 
+        getAbilityModifier(character?.stats, currentSuggestion.skill) : 0;
       
-      if (alignmentEffect === "shift-good") {
-        effects.description = "Your good deeds are shifting your alignment toward Good";
-      } else if (alignmentEffect === "shift-evil") {
-        effects.description = "Your intimidating actions are shifting your alignment toward Evil";
-      } else if (alignmentEffect === "shift-lawful") {
-        effects.description = "Your respect for tradition shifts your alignment toward Lawful";
-      } else if (alignmentEffect === "shift-chaotic") {
-        effects.description = "Your deceptive ways shift your alignment toward Chaotic";
+      total += abilityMod;
+      
+      // Add any additional bonus
+      if (currentSuggestion.bonus) {
+        total += currentSuggestion.bonus;
+      }
+      
+      // Check for success against DC
+      if (currentSuggestion.dc) {
+        success = total >= currentSuggestion.dc;
+      }
+    } else if (currentSuggestion.type === 'attack') {
+      // For attacks, add relevant ability modifier (assuming strength for melee)
+      const abilityMod = getAbilityModifier(character?.stats, 'strength');
+      total += abilityMod;
+      
+      // Add any additional bonus (like proficiency)
+      if (currentSuggestion.bonus) {
+        total += currentSuggestion.bonus;
+      }
+      
+      // Check for hit against AC
+      if (currentSuggestion.targetAC) {
+        success = total >= currentSuggestion.targetAC;
+      }
+      
+      // Roll damage if hit or critical
+      if (success || critical === 'success') {
+        if (currentSuggestion.damage) {
+          damageRoll = rollDamage(currentSuggestion.damage);
+          
+          // Double damage on critical hit
+          if (critical === 'success') {
+            damageRoll *= 2;
+          }
+        }
       }
     }
     
-    // Update the suggestion as complete
-    setSuggestions(prev => 
-      prev.map(s => 
-        s === suggestion 
-          ? { ...s, rollComplete: true } 
-          : s
-      )
-    );
+    const result: DiceRollResult = {
+      suggestion: currentSuggestion,
+      roll: d20Result,
+      total,
+      success,
+      critical,
+      damage: damageRoll
+    };
     
-    // Close the dialog
-    setConfirmDialogOpen(false);
+    setRollResult(result);
     
-    // Call the callback with the roll results
-    onRollComplete(
-      suggestion.diceType,
-      rollResult.rolls ? rollResult.rolls[0] : rollResult.result,
-      modifier,
-      suggestion.type,
-      suggestion.dc,
-      effects
-    );
+    // Notify parent
+    if (onRollComplete) {
+      onRollComplete(result);
+    }
   };
   
-  // If no suggestions, don't render anything
-  if (suggestions.length === 0) {
+  const getSkillIcon = () => {
+    return <Dice5 className="h-4 w-4" />;
+  };
+  
+  const getSaveIcon = () => {
+    return <Dice3 className="h-4 w-4" />;
+  };
+  
+  const getAttackIcon = () => {
+    return <Dice6 className="h-4 w-4" />;
+  };
+  
+  const getIconForSuggestion = (suggestion: DiceSuggestion) => {
+    switch (suggestion.type) {
+      case 'skill': return getSkillIcon();
+      case 'save': return getSaveIcon();
+      case 'attack': return getAttackIcon();
+      default: return <Dice1 className="h-4 w-4" />;
+    }
+  };
+  
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setRollResult(null);
+  };
+  
+  if (diceSuggestions.length === 0) {
     return null;
   }
   
   return (
     <>
-      <div className="dice-suggestions mt-4 space-y-2" ref={narrativeEndRef}>
-        {suggestions.filter(s => !s.rollComplete).map((suggestion, idx) => (
-          <div key={idx} className="flex items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2 bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
-              onClick={() => openConfirmDialog(suggestion)}
-            >
-              <DicesIcon className="h-4 w-4" />
-              <span>
-                {suggestion.type === "ability" ? "Ability Check: " : 
-                 suggestion.type === "skill" ? "Skill Check: " : 
-                 suggestion.type === "save" ? "Saving Throw: " : 
-                 suggestion.type === "attack" ? "Attack Roll: " : 
-                 suggestion.type === "damage" ? "Damage Roll: " : 
-                 suggestion.type === "initiative" ? "Initiative: " : 
-                 "Roll: "}
-                 
-                {suggestion.ability && ABILITY_FULL[suggestion.ability.toUpperCase()] 
-                  ? ABILITY_FULL[suggestion.ability.toUpperCase()] 
-                  : suggestion.ability
-                  ? suggestion.ability.charAt(0).toUpperCase() + suggestion.ability.slice(1)
-                  : suggestion.diceType
-                }
-                
-                {suggestion.dc ? ` (DC ${suggestion.dc})` : ""}
-              </span>
-            </Button>
-            
-            <TooltipProvider>
+      <div className="my-3 p-3 border rounded-md bg-muted">
+        <h3 className="text-sm font-semibold mb-2">Suggested Dice Rolls</h3>
+        <div className="flex flex-wrap gap-2">
+          {diceSuggestions.map((suggestion, index) => (
+            <TooltipProvider key={index}>
               <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="flex items-center gap-1"
+                    onClick={() => handleRollClick(suggestion)}
+                  >
+                    {getIconForSuggestion(suggestion)}
+                    <span className="text-xs">
+                      {suggestion.type === 'skill' ? 'Skill Check' : 
+                        suggestion.type === 'save' ? 'Saving Throw' : 
+                          suggestion.type === 'attack' ? 'Attack Roll' : 
+                            'Roll'
+                      }
+                    </span>
+                  </Button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-sm">
-                  <p>
-                    Roll a {suggestion.diceType} for {suggestion.type}
-                    {suggestion.ability
-                      ? ` (${suggestion.ability}) with modifier: ${getModifier(suggestion.ability)}`
-                      : ""
-                    }
-                    {suggestion.dc
-                      ? `. You need to meet or exceed ${suggestion.dc} to succeed.`
-                      : ""
-                    }
-                  </p>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-sm">{suggestion.description}</p>
+                  {suggestion.dc && <p className="text-xs">DC {suggestion.dc}</p>}
+                  {suggestion.targetAC && <p className="text-xs">Target AC {suggestion.targetAC}</p>}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
       
-      {/* Roll confirmation dialog */}
-      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Dice Roll</DialogTitle>
-            <DialogDescription>
-              {pendingSuggestion && (
-                <div className="py-2">
-                  <p>You are about to roll a {pendingSuggestion.diceType} for {pendingSuggestion.type}.</p>
-                  
-                  {pendingSuggestion.ability && (
-                    <div className="mt-2">
-                      <p>
-                        <span className="font-medium">Ability:</span> {
-                          ABILITY_FULL[pendingSuggestion.ability.toUpperCase()] || 
-                          pendingSuggestion.ability
-                        }
-                      </p>
-                      <p>
-                        <span className="font-medium">Modifier:</span> {
-                          getModifier(pendingSuggestion.ability) >= 0 ? 
-                          `+${getModifier(pendingSuggestion.ability)}` : 
-                          getModifier(pendingSuggestion.ability)
-                        }
-                      </p>
-                    </div>
-                  )}
-                  
-                  {pendingSuggestion.dc && (
-                    <p className="mt-2">
-                      <span className="font-medium">DC:</span> {pendingSuggestion.dc}
-                    </p>
-                  )}
-                </div>
-              )}
-            </DialogDescription>
+            <DialogTitle>
+              {currentSuggestion?.type === 'skill' ? `${currentSuggestion.skill} Check` : 
+                currentSuggestion?.type === 'save' ? `${currentSuggestion.skill} Saving Throw` : 
+                  currentSuggestion?.type === 'attack' ? 'Attack Roll' : 
+                    'Dice Roll'}
+            </DialogTitle>
           </DialogHeader>
           
-          <div className="flex justify-center py-4">
-            <div className="text-6xl font-bold text-amber-600">
-              {pendingSuggestion && pendingSuggestion.diceType}
-            </div>
+          <div className="py-4">
+            <p className="mb-3">{currentSuggestion?.description}</p>
+            
+            {rollResult ? (
+              <div className="space-y-2">
+                <div className="p-3 bg-muted rounded-md text-center">
+                  <div className="text-3xl font-bold mb-1">
+                    {rollResult.roll}
+                  </div>
+                  <p className="text-sm">on d20</p>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm">Total: <span className="font-semibold">{rollResult.total}</span></p>
+                    {(currentSuggestion?.dc || currentSuggestion?.targetAC) && (
+                      <p className="text-sm">
+                        Result: <span className={`font-bold ${rollResult.success ? 'text-green-500' : 'text-red-500'}`}>
+                          {rollResult.success ? 'Success!' : 'Failure!'}
+                        </span>
+                      </p>
+                    )}
+                    {rollResult.critical && (
+                      <p className={`text-sm font-semibold ${rollResult.critical === 'success' ? 'text-amber-500' : 'text-red-600'}`}>
+                        {rollResult.critical === 'success' ? 'Critical Success!' : 'Critical Failure!'}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {rollResult.damage !== undefined && (
+                    <div className="p-3 bg-muted rounded-md text-center">
+                      <div className="text-2xl font-bold mb-1">
+                        {rollResult.damage}
+                      </div>
+                      <p className="text-sm">damage</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center my-4">
+                <Button onClick={performRoll}>Roll d20</Button>
+              </div>
+            )}
           </div>
           
-          {lastRollResult && (
-            <div className="flex items-center justify-center gap-2 text-center">
-              <div className={`text-lg font-medium ${
-                lastRollResult.criticalSuccess ? "text-green-600" : 
-                lastRollResult.criticalFailure ? "text-red-600" : 
-                lastRollResult.success ? "text-green-500" : "text-red-500"
-              }`}>
-                {lastRollResult.criticalSuccess ? (
-                  <><CheckCircle className="inline-block mr-1 h-5 w-5" /> Critical Success!</>
-                ) : lastRollResult.criticalFailure ? (
-                  <><XCircle className="inline-block mr-1 h-5 w-5" /> Critical Failure!</>
-                ) : lastRollResult.success ? (
-                  <><CheckCircle className="inline-block mr-1 h-5 w-5" /> Success</>
-                ) : (
-                  <><AlertCircle className="inline-block mr-1 h-5 w-5" /> Failure</>
-                )}
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setConfirmDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={performRoll}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              Proceed with Roll
-            </Button>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeModal}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
