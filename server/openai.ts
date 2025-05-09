@@ -317,6 +317,8 @@ export interface ItemGenerationOptions {
   rarity?: string;
   category?: string;
   characterLevel?: number;
+  context?: string;
+  enemyType?: string;
 }
 
 export async function generateRandomItem(options: ItemGenerationOptions = {}) {
@@ -387,18 +389,59 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
 
 export async function generateWorldMap(campaignId: number, campaignInfo: any) {
   try {
+    // First, let's generate more detailed world information to inform our map
+    const worldDetails = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert fantasy cartographer and worldbuilder specializing in D&D campaign worlds.
+          Generate rich geographical and cultural details for a unique campaign world that will be used to create a detailed map.`
+        },
+        {
+          role: "user",
+          content: `Create a unique, detailed fantasy world for this D&D campaign:
+          
+          Campaign Name: "${campaignInfo.name}"
+          Setting Type: ${campaignInfo.setting || "fantasy world"}
+          Campaign Description: ${campaignInfo.description || "An epic adventure in a fantasy realm."}
+          
+          Format your response as a JSON object with these fields:
+          - geographicalFeatures: Array of unique landforms, bodies of water, and natural landmarks
+          - majorKingdoms: Array of 3-5 realms/nations with their characteristics
+          - pointsOfInterest: Array of 6-8 specific notable locations (cities, dungeons, ruins, magical sites)
+          - magicalElements: Unique magical aspects of this world that might appear on a map
+          - aestheticTheme: The visual style/theme that should inform the map's appearance`
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1000,
+      temperature: 0.7,
+    });
+    
+    const worldData = safeJsonParse(worldDetails.choices[0].message.content);
+    
+    // Use the generated world details to create a more detailed prompt for DALL-E
+    const mapPrompt = `Create a highly detailed, unique fantasy map for a D&D campaign called "${campaignInfo.name}" set in ${campaignInfo.setting || "a fantasy world"}. 
+
+This map should include these specific geographical features: ${worldData.geographicalFeatures.join(', ')}.
+
+The map should highlight these major kingdoms and realms: ${worldData.majorKingdoms.map((k: any) => typeof k === 'string' ? k : k.name).join(', ')}.
+
+Include these specific points of interest, clearly labeled: ${worldData.pointsOfInterest.map((p: any) => typeof p === 'string' ? p : p.name).join(', ')}.
+
+The map should incorporate these unique magical elements: ${worldData.magicalElements.join(', ')}.
+
+Style the map with this aesthetic: ${worldData.aestheticTheme}. Design it as an old-style hand-drawn map on aged parchment with ornate borders, a compass rose, and decorative elements. Create a high-contrast style with a color palette of rich browns, deep blues, and vibrant greens for good readability as a game reference.
+
+Do not include any text that says "Dungeons and Dragons", "D&D", or any trademarked terms. Make sure all map features have clear fantasy names that are unique to this world.`;
+
     const response = await openai.images.generate({
       model: "dall-e-3", 
-      prompt: `Create a stylized fantasy map for a D&D campaign called "${campaignInfo.name}" set in a ${campaignInfo.setting || "fantasy world"}. 
-      This should look like an old-style hand-drawn map on aged parchment with labeled regions, mountains, forests, cities, and bodies of water. 
-      Include decorative elements like a compass rose, sea monsters in water areas, and ornate borders. 
-      The map should have a high contrast style that works well as a game reference. 
-      Design it in a top-down view with a color palette of browns, faded blues, and muted greens to mimic an antique map.
-      Do not include any text that labels this as "Dungeons and Dragons", "D&D" or any trademarked terms.
-      Make sure map features are clearly labeled with invented fantasy place names.`,
+      prompt: mapPrompt,
       n: 1,
       size: "1024x1024",
-      quality: "standard",
+      quality: "hd",
       response_format: "url"
     });
 
@@ -406,7 +449,11 @@ export async function generateWorldMap(campaignId: number, campaignInfo: any) {
       throw new Error("No image URL returned from OpenAI");
     }
 
-    return { url: response.data[0].url, campaignId };
+    return { 
+      url: response.data[0].url, 
+      campaignId,
+      worldData: worldData 
+    };
   } catch (error: any) {
     console.error("Error generating world map:", error);
     throw new Error(`Failed to generate world map: ${error.message || "Unknown error"}`);

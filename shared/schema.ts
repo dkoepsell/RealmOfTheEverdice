@@ -264,6 +264,7 @@ export const charactersRelations = relations(characters, ({ one, many }) => ({
 export const campaignWorldMaps = pgTable("campaign_world_maps", {
   campaignId: integer("campaign_id").references(() => campaigns.id).primaryKey(),
   mapUrl: text("map_url").notNull(),
+  metadata: json("metadata"),  // For storing world data details
   generatedAt: timestamp("generated_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });

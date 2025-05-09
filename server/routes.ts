@@ -1517,19 +1517,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Generate the world map using OpenAI
+      // Generate the enhanced world map with detailed world data
       const mapData = await generateWorldMap(campaign.id, campaign);
       
-      // Save the world map to the database
-      const worldMap = await storage.createOrUpdateCampaignWorldMap({
+      // Store the generated world details as metadata with the map
+      const worldMapData = {
         campaignId: campaign.id,
-        mapUrl: mapData.url
-      });
+        mapUrl: mapData.url,
+        metadata: JSON.stringify({
+          worldData: mapData.worldData
+        })
+      };
       
-      // Return in the format the client expects
+      // Save the world map to the database with the metadata
+      const worldMap = await storage.createOrUpdateCampaignWorldMap(worldMapData);
+      
+      // Return in the format the client expects, now with world data
       res.status(201).json({
         campaignId: worldMap.campaignId,
         mapUrl: worldMap.mapUrl,
+        worldData: mapData.worldData,
         generatedAt: worldMap.generatedAt,
         updatedAt: worldMap.updatedAt
       });
