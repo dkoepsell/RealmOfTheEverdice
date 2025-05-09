@@ -13,6 +13,7 @@ import {
   generateRandomItem,
   generateWorldMap
 } from "./openai";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { 
   insertCharacterSchema, 
@@ -48,7 +49,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate the Everdice world
-      const everdiceWorld = await generateWorldMap(0, {});
+      // Use a placeholder campaign for initialization
+      const placeholderCampaign = {
+        name: "Everdice Global",
+        setting: "fantasy realm",
+        description: "The global superworld where all campaigns exist. This vast realm contains diverse continents, oceans, and magical phenomena that bind all adventures together into a unified, living world."
+      };
+      
+      const worldMapData = await generateWorldMap(0, placeholderCampaign);
+      
+      // Extract the core data for Everdice
+      const everdiceWorld = {
+        name: "Everdice",
+        description: "The mystical realm of Everdice, where all adventures take place.",
+        lore: "Everdice is a realm of magic and wonder, where countless adventures unfold across its varied landscapes. From the mist-shrouded peaks of the Dragonspine Mountains to the sun-dappled shores of the Sapphire Coast, every corner of this vast world holds untold stories waiting to be discovered.",
+        mapUrl: worldMapData.url,
+        continents: [
+          {
+            id: uuidv4(),
+            name: worldMapData.everdiceData.continent,
+            description: `The continent of ${worldMapData.everdiceData.continent}, a vast landmass with diverse regions and kingdoms.`,
+            position: [0, 0],
+            bounds: [[-50, -50], [50, 50]],
+            regions: [
+              { 
+                name: worldMapData.everdiceData.regionName, 
+                climate: "varied", 
+                description: worldMapData.everdiceData.connectionToEverdice
+              }
+            ]
+          }
+        ],
+        age: Math.floor(Math.random() * 10000) + 5000, // Age in years
+        species: [
+          "Humans", "Elves", "Dwarves", "Halflings", "Gnomes", 
+          "Half-Elves", "Half-Orcs", "Dragonborn", "Tieflings"
+        ],
+        deities: [
+          "Solaris, God of Light", 
+          "Lunara, Goddess of Night", 
+          "Terravus, God of Earth", 
+          "Aquarion, God of Water", 
+          "Pyria, Goddess of Fire",
+          "Aereth, Goddess of Air",
+          "Sylvanor, God of Nature"
+        ]
+      };
       
       // Save the Everdice world
       await storage.saveEverdiceWorld(everdiceWorld);

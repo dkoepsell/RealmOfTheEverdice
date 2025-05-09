@@ -567,12 +567,25 @@ const AdminDashboard = () => {
                     
                     <Card className="bg-muted">
                       <CardContent className="p-0">
-                        <div className="p-8 rounded-md flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <Globe className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                            <p className="text-muted-foreground">World map visualization available soon</p>
+                        {everdiceWorld?.mapUrl ? (
+                          <div className="relative">
+                            <img 
+                              src={everdiceWorld.mapUrl} 
+                              alt="Everdice World Map" 
+                              className="w-full h-auto rounded-md"
+                            />
+                            <div className="absolute bottom-2 right-2 bg-background/80 p-1 px-2 rounded text-xs">
+                              The World of Everdice
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="p-8 rounded-md flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <Globe className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                              <p className="text-muted-foreground">World map not available</p>
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
