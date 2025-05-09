@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useDice, rollDice as diceRoll, DiceType } from '@/hooks/use-dice';
+import { useDice, rollDice, DiceType } from '@/hooks/use-dice';
 import { Dice1, Dice3, Dice5, Dice6 } from 'lucide-react';
 import { Character, CharacterStats } from '@shared/schema';
 
@@ -83,8 +83,6 @@ const rollDamage = (damageFormula: string): number => {
   }
 };
 
-
-
 export function InteractiveDiceSuggestions({ narrative, character, onRollComplete }: InteractiveDiceSuggestionsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentSuggestion, setCurrentSuggestion] = useState<DiceSuggestion | null>(null);
@@ -143,8 +141,9 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
   const performRoll = () => {
     if (!currentSuggestion) return;
     
-    // Roll d20
-    const d20Result = rollDice(20);
+    // Roll d20 using the roll function from useDice
+    const diceResult = roll({ type: 'd20' });
+    const d20Result = diceResult.result;
     let total = d20Result;
     let success = false;
     let critical: 'success' | 'failure' | undefined = undefined;
@@ -159,8 +158,9 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
     
     // Add relevant modifiers
     if (currentSuggestion.type === 'skill' || currentSuggestion.type === 'save') {
+      const characterStats = character?.stats as CharacterStats | undefined;
       const abilityMod = currentSuggestion.skill ? 
-        getAbilityModifier(character?.stats, currentSuggestion.skill) : 0;
+        getAbilityModifier(characterStats, currentSuggestion.skill) : 0;
       
       total += abilityMod;
       
@@ -175,7 +175,8 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
       }
     } else if (currentSuggestion.type === 'attack') {
       // For attacks, add relevant ability modifier (assuming strength for melee)
-      const abilityMod = getAbilityModifier(character?.stats, 'strength');
+      const characterStats = character?.stats as CharacterStats | undefined;
+      const abilityMod = getAbilityModifier(characterStats, 'strength');
       total += abilityMod;
       
       // Add any additional bonus (like proficiency)

@@ -24,6 +24,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { DiceRoller, DiceType } from "@/components/dice-roll";
 import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results";
+import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
 
 interface GameAreaProps {
   campaign: Campaign;
@@ -297,6 +298,37 @@ export const GameArea = ({
               </div>
             )}
           </div>
+          
+          {/* Interactive Dice Suggestions based on the latest narrative */}
+          {gameLogs.length > 0 && gameLogs[gameLogs.length - 1].type === "narrative" && (
+            <InteractiveDiceSuggestions 
+              narrative={gameLogs[gameLogs.length - 1].content} 
+              character={currentCharacter}
+              onRollComplete={(result) => {
+                // Create a roll log entry
+                const rollLog: Partial<GameLog> = {
+                  campaignId: campaign.id,
+                  content: `${currentCharacter.name} rolled a ${result.roll} (total: ${result.total}) for a ${result.suggestion.type} ${result.suggestion.skill ? `(${result.suggestion.skill})` : ""} - ${result.success ? "Success!" : "Failure!"}${result.damage ? ` Damage: ${result.damage}` : ""}`,
+                  type: "roll"
+                };
+                
+                // Create log in database
+                createLogMutation.mutate(rollLog);
+                
+                // Also call the parent onDiceRoll handler if provided
+                if (onDiceRoll) {
+                  const diceType = result.suggestion.type === "attack" ? "d20" : "d20";
+                  onDiceRoll(
+                    diceType as DiceType,
+                    result.roll,
+                    result.total - result.roll,
+                    result.suggestion.description,
+                    result.suggestion.dc || result.suggestion.targetAC
+                  );
+                }
+              }}
+            />
+          )}
           
           {/* Dice Roll Results */}
           {diceRollResults.length > 0 && (
