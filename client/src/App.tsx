@@ -35,7 +35,7 @@ function Router() {
       <Route path="/auth" component={SimplifiedAuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/tavern" component={TavernLobby} />
-      <ProtectedRoute path="/tavern/board" component={TavernBoard} />
+      <ProtectedRoute path="/tavern-board" component={TavernBoard} />
       <ProtectedRoute path="/admin" component={AdminDashboard} />
       <ProtectedRoute path="/characters" component={CharactersPage} />
       <ProtectedRoute path="/characters/create" component={CharacterCreation} />

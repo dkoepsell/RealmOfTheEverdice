@@ -139,6 +139,12 @@ const TavernBoard = () => {
           <Sword className="h-8 w-8 mr-2 text-amber-600" />
           <h1 className="text-3xl font-bold">Tavern Notice Board</h1>
         </div>
+        <Button variant="outline" asChild className="mr-2">
+          <Link to="/tavern">
+            <Beer className="h-4 w-4 mr-2" />
+            Back to Tavern
+          </Link>
+        </Button>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>

@@ -612,10 +612,18 @@ export default function TavernLobby() {
           <TabsContent value="notice-board" className="space-y-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-medieval">Tavern Notice Board</h2>
-              <Button onClick={() => setShowNewNoticeDialog(true)}>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Post Notice
-              </Button>
+              <div className="space-x-2">
+                <Button variant="outline" asChild>
+                  <Link to="/tavern-board">
+                    <Map className="h-4 w-4 mr-2" />
+                    View Full Board
+                  </Link>
+                </Button>
+                <Button onClick={() => setShowNewNoticeDialog(true)}>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Post Notice
+                </Button>
+              </div>
             </div>
             
             <div className="grid md:grid-cols-2 gap-6">
