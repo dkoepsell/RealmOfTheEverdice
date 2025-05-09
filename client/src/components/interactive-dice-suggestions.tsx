@@ -1,11 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Card } from "@/components/ui/card";
-import { DicesIcon, Info, Award, Shield, Brain, Heart } from "lucide-react";
+import { 
+  DicesIcon, Info, Award, Shield, Brain, Heart, 
+  CheckCircle, XCircle, AlertCircle 
+} from "lucide-react";
 import { Character, GameLog } from "@shared/schema";
 import { DiceType } from "./dice-roll";
+import { useDice, DiceRoll, DiceRequest } from "@/hooks/use-dice";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 interface InteractiveDiceSuggestionsProps {
   content: string;
@@ -157,6 +162,12 @@ export default function InteractiveDiceSuggestions({
     rollComplete: boolean;
   }>>([]);
   
+  const { roll } = useDice();
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingSuggestion, setPendingSuggestion] = useState<typeof suggestions[0] | null>(null);
+  const [lastRollResult, setLastRollResult] = useState<DiceRoll | null>(null);
+  const narrativeEndRef = useRef<HTMLDivElement>(null);
+  
   // Parse content for dice roll suggestions
   useEffect(() => {
     const found: Array<{
@@ -224,6 +235,13 @@ export default function InteractiveDiceSuggestions({
     setSuggestions(found);
   }, [content]);
   
+  // Scroll to the bottom of the narrative when new content is added
+  useEffect(() => {
+    if (narrativeEndRef.current) {
+      narrativeEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [lastRollResult]);
+  
   // Function to get stat modifier from character stats
   const getModifier = (abilityName: string): number => {
     if (!character.stats) return 0;
@@ -243,11 +261,17 @@ export default function InteractiveDiceSuggestions({
     return Math.floor((score - 10) / 2);
   };
   
-  // Roll the dice and process results
-  const handleRoll = (suggestion: typeof suggestions[0]) => {
-    // Roll the dice
-    const diceMax = parseInt(suggestion.diceType.substring(1));
-    const result = Math.floor(Math.random() * diceMax) + 1;
+  // Open dialog for roll confirmation
+  const openConfirmDialog = (suggestion: typeof suggestions[0]) => {
+    setPendingSuggestion(suggestion);
+    setConfirmDialogOpen(true);
+  };
+  
+  // Process the roll after confirmation
+  const performRoll = () => {
+    if (!pendingSuggestion) return;
+    
+    const suggestion = pendingSuggestion;
     
     // Get modifier
     let modifier = 0;
@@ -258,8 +282,26 @@ export default function InteractiveDiceSuggestions({
       modifier = getModifier("DEX");
     }
     
-    // Determine if roll is a success
-    const isSuccess = suggestion.dc ? (result + modifier >= suggestion.dc) : true;
+    // Create a purpose string
+    const purpose = `${suggestion.type.charAt(0).toUpperCase()}${suggestion.type.slice(1)} ${
+      suggestion.ability 
+        ? `(${suggestion.ability})` 
+        : suggestion.purpose 
+          ? `for ${suggestion.purpose}` 
+          : ""
+    }`;
+    
+    // Use the useDice hook for consistent dice rolling
+    const rollRequest: DiceRequest = {
+      type: suggestion.diceType,
+      modifier,
+      purpose,
+      dc: suggestion.dc
+    };
+    
+    // Perform the roll
+    const rollResult = roll(rollRequest);
+    setLastRollResult(rollResult);
     
     // Determine any effects on character stats or alignment
     const effects: {
@@ -267,15 +309,15 @@ export default function InteractiveDiceSuggestions({
       alignment?: string;
       description: string;
     } = {
-      description: isSuccess ? "Success" : "Failure"
+      description: rollResult.success ? "Success" : "Failure"
     };
     
     // Check for stat or alignment effects based on the roll
     const alignmentEffect = getAlignmentEffect(
       suggestion.type,
       suggestion.ability || "",
-      isSuccess,
-      result
+      rollResult.success || false,
+      rollResult.rolls ? rollResult.rolls[0] : 0
     );
     
     if (alignmentEffect) {
@@ -292,13 +334,6 @@ export default function InteractiveDiceSuggestions({
       }
     }
     
-    // Check for critical success/failure (natural 20/1)
-    if (result === 20) {
-      effects.description = "Critical Success! " + effects.description;
-    } else if (result === 1) {
-      effects.description = "Critical Failure! " + effects.description;
-    }
-    
     // Update the suggestion as complete
     setSuggestions(prev => 
       prev.map(s => 
@@ -308,10 +343,13 @@ export default function InteractiveDiceSuggestions({
       )
     );
     
+    // Close the dialog
+    setConfirmDialogOpen(false);
+    
     // Call the callback with the roll results
     onRollComplete(
       suggestion.diceType,
-      result,
+      rollResult.rolls ? rollResult.rolls[0] : rollResult.result,
       modifier,
       suggestion.type,
       suggestion.dc,
@@ -325,58 +363,141 @@ export default function InteractiveDiceSuggestions({
   }
   
   return (
-    <div className="dice-suggestions mt-4 space-y-2">
-      {suggestions.filter(s => !s.rollComplete).map((suggestion, idx) => (
-        <div key={idx} className="flex items-center">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2 bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
-            onClick={() => handleRoll(suggestion)}
-          >
-            <DicesIcon className="h-4 w-4" />
-            <span>
-              {suggestion.type === "ability" ? "Ability Check: " : 
-               suggestion.type === "skill" ? "Skill Check: " : 
-               suggestion.type === "save" ? "Saving Throw: " : 
-               suggestion.type === "attack" ? "Attack Roll: " : 
-               suggestion.type === "damage" ? "Damage Roll: " : 
-               suggestion.type === "initiative" ? "Initiative: " : 
-               "Roll: "}
-               
-              {suggestion.ability && ABILITY_FULL[suggestion.ability.toUpperCase()] 
-                ? ABILITY_FULL[suggestion.ability.toUpperCase()] 
-                : suggestion.ability
-                ? suggestion.ability.charAt(0).toUpperCase() + suggestion.ability.slice(1)
-                : suggestion.diceType
-              }
-              
-              {suggestion.dc ? ` (DC ${suggestion.dc})` : ""}
-            </span>
-          </Button>
+    <>
+      <div className="dice-suggestions mt-4 space-y-2" ref={narrativeEndRef}>
+        {suggestions.filter(s => !s.rollComplete).map((suggestion, idx) => (
+          <div key={idx} className="flex items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
+              onClick={() => openConfirmDialog(suggestion)}
+            >
+              <DicesIcon className="h-4 w-4" />
+              <span>
+                {suggestion.type === "ability" ? "Ability Check: " : 
+                 suggestion.type === "skill" ? "Skill Check: " : 
+                 suggestion.type === "save" ? "Saving Throw: " : 
+                 suggestion.type === "attack" ? "Attack Roll: " : 
+                 suggestion.type === "damage" ? "Damage Roll: " : 
+                 suggestion.type === "initiative" ? "Initiative: " : 
+                 "Roll: "}
+                 
+                {suggestion.ability && ABILITY_FULL[suggestion.ability.toUpperCase()] 
+                  ? ABILITY_FULL[suggestion.ability.toUpperCase()] 
+                  : suggestion.ability
+                  ? suggestion.ability.charAt(0).toUpperCase() + suggestion.ability.slice(1)
+                  : suggestion.diceType
+                }
+                
+                {suggestion.dc ? ` (DC ${suggestion.dc})` : ""}
+              </span>
+            </Button>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  <p>
+                    Roll a {suggestion.diceType} for {suggestion.type}
+                    {suggestion.ability
+                      ? ` (${suggestion.ability}) with modifier: ${getModifier(suggestion.ability)}`
+                      : ""
+                    }
+                    {suggestion.dc
+                      ? `. You need to meet or exceed ${suggestion.dc} to succeed.`
+                      : ""
+                    }
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        ))}
+      </div>
+      
+      {/* Roll confirmation dialog */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Dice Roll</DialogTitle>
+            <DialogDescription>
+              {pendingSuggestion && (
+                <div className="py-2">
+                  <p>You are about to roll a {pendingSuggestion.diceType} for {pendingSuggestion.type}.</p>
+                  
+                  {pendingSuggestion.ability && (
+                    <div className="mt-2">
+                      <p>
+                        <span className="font-medium">Ability:</span> {
+                          ABILITY_FULL[pendingSuggestion.ability.toUpperCase()] || 
+                          pendingSuggestion.ability
+                        }
+                      </p>
+                      <p>
+                        <span className="font-medium">Modifier:</span> {
+                          getModifier(pendingSuggestion.ability) >= 0 ? 
+                          `+${getModifier(pendingSuggestion.ability)}` : 
+                          getModifier(pendingSuggestion.ability)
+                        }
+                      </p>
+                    </div>
+                  )}
+                  
+                  {pendingSuggestion.dc && (
+                    <p className="mt-2">
+                      <span className="font-medium">DC:</span> {pendingSuggestion.dc}
+                    </p>
+                  )}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
           
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="h-4 w-4 ml-2 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-sm">
-                <p>
-                  Roll a {suggestion.diceType} for {suggestion.type}
-                  {suggestion.ability
-                    ? ` (${suggestion.ability}) with modifier: ${getModifier(suggestion.ability)}`
-                    : ""
-                  }
-                  {suggestion.dc
-                    ? `. You need to meet or exceed ${suggestion.dc} to succeed.`
-                    : ""
-                  }
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      ))}
-    </div>
+          <div className="flex justify-center py-4">
+            <div className="text-6xl font-bold text-amber-600">
+              {pendingSuggestion && pendingSuggestion.diceType}
+            </div>
+          </div>
+          
+          {lastRollResult && (
+            <div className="flex items-center justify-center gap-2 text-center">
+              <div className={`text-lg font-medium ${
+                lastRollResult.criticalSuccess ? "text-green-600" : 
+                lastRollResult.criticalFailure ? "text-red-600" : 
+                lastRollResult.success ? "text-green-500" : "text-red-500"
+              }`}>
+                {lastRollResult.criticalSuccess ? (
+                  <><CheckCircle className="inline-block mr-1 h-5 w-5" /> Critical Success!</>
+                ) : lastRollResult.criticalFailure ? (
+                  <><XCircle className="inline-block mr-1 h-5 w-5" /> Critical Failure!</>
+                ) : lastRollResult.success ? (
+                  <><CheckCircle className="inline-block mr-1 h-5 w-5" /> Success</>
+                ) : (
+                  <><AlertCircle className="inline-block mr-1 h-5 w-5" /> Failure</>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={performRoll}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Proceed with Roll
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
