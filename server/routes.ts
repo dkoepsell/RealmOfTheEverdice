@@ -1550,6 +1550,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all campaign regions within Everdice
+  app.get("/api/everdice/campaigns", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      // Get all campaign world maps that have Everdice data
+      const query = `
+        SELECT 
+          cwm.campaign_id, 
+          cwm.continent_id, 
+          cwm.region_name, 
+          cwm.position, 
+          c.name as campaign_name,
+          u.username as dm_name
+        FROM 
+          campaign_world_maps cwm
+        JOIN 
+          campaigns c ON cwm.campaign_id = c.id
+        JOIN 
+          users u ON c.dm_id = u.id
+        WHERE 
+          cwm.continent_id IS NOT NULL
+      `;
+      
+      const result = await db.execute(query);
+      
+      // Get the Everdice world for reference
+      const everdiceWorld = await storage.getEverdiceWorld();
+      
+      res.json({
+        campaigns: result.rows,
+        everdiceWorld
+      });
+    } catch (error) {
+      console.error("Error fetching Everdice campaign regions:", error);
+      res.status(500).json({ message: "Failed to fetch Everdice campaign regions" });
+    }
+  });
+  
   app.post("/api/everdice/continents", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
@@ -1597,12 +1636,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "World map not found" });
       }
       
-      // Return in the format the client expects
+      // Get the Everdice world for context
+      const everdiceWorld = await storage.getEverdiceWorld();
+      
+      // Parse any JSON metadata
+      let worldData = {};
+      let everdiceData = {};
+      
+      if (worldMap.metadata) {
+        try {
+          const metadata = JSON.parse(worldMap.metadata);
+          worldData = metadata.worldData || {};
+          everdiceData = metadata.everdiceData || {};
+        } catch (e) {
+          console.error("Error parsing world map metadata:", e);
+        }
+      }
+      
+      // Return in the format the client expects, with Everdice context
       res.json({
         campaignId: worldMap.campaignId,
         mapUrl: worldMap.mapUrl,
+        continentId: worldMap.continentId,
+        regionName: worldMap.regionName,
+        worldData: worldData,
+        everdiceData: everdiceData,
         generatedAt: worldMap.generatedAt,
-        updatedAt: worldMap.updatedAt
+        updatedAt: worldMap.updatedAt,
+        everdiceWorld: everdiceWorld ? {
+          name: everdiceWorld.name,
+          continents: everdiceWorld.continents
+        } : null
       });
     } catch (error) {
       console.error("Error getting world map:", error);
@@ -1622,28 +1686,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Generate the enhanced world map with detailed world data
-      const mapData = await generateWorldMap(campaign.id, campaign);
+      // Get the Everdice world - if it doesn't exist, it will be created
+      let everdiceWorld = await storage.getEverdiceWorld();
+      if (!everdiceWorld) {
+        everdiceWorld = await storage.createOrUpdateEverdiceWorld({
+          name: "Everdice",
+          description: "The mystical realm of Everdice, where all adventures take place.",
+          lore: "Everdice is a realm of magic and wonder, where countless adventures unfold across its varied landscapes. From the mist-shrouded peaks of the Dragonspine Mountains to the sun-dappled shores of the Sapphire Coast, every corner of this vast world holds untold stories waiting to be discovered."
+        });
+      }
       
-      // Store the generated world details as metadata with the map
+      // Generate the enhanced world map with detailed world data and Everdice integration
+      const mapData = await generateWorldMap(campaign.id, campaign, everdiceWorld);
+      
+      // Create the world map data with Everdice integration
       const worldMapData = {
         campaignId: campaign.id,
         mapUrl: mapData.url,
+        regionName: mapData.everdiceData.regionName,
+        continentId: mapData.everdiceData.continent,
         metadata: JSON.stringify({
-          worldData: mapData.worldData
+          worldData: mapData.worldData,
+          everdiceData: mapData.everdiceData
         })
       };
       
       // Save the world map to the database with the metadata
       const worldMap = await storage.createOrUpdateCampaignWorldMap(worldMapData);
       
-      // Return in the format the client expects, now with world data
+      // Return the complete data with Everdice integration
       res.status(201).json({
         campaignId: worldMap.campaignId,
         mapUrl: worldMap.mapUrl,
         worldData: mapData.worldData,
+        everdiceData: mapData.everdiceData,
         generatedAt: worldMap.generatedAt,
-        updatedAt: worldMap.updatedAt
+        updatedAt: worldMap.updatedAt,
+        everdiceWorld: {
+          name: everdiceWorld.name,
+          continents: everdiceWorld.continents
+        }
       });
     } catch (error) {
       console.error("Error generating world map:", error);

@@ -181,6 +181,7 @@ export interface IStorage {
   
   // Admin methods
   getAllUsers(): Promise<User[]>;
+  updateUserRole(userId: number, role: "user" | "admin"): Promise<User | undefined>;
   getSystemStats(): Promise<any[]>;
   createSystemStat(stat: any): Promise<any>;
   getUserMessages(userId: number): Promise<any[]>;
