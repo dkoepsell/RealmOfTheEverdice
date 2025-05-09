@@ -48,6 +48,7 @@ import {
   Sword, 
   Scroll, 
   Sparkles,
+  Shirt,
   Truck,
   TrendingUp,
   AlertCircle,
@@ -118,6 +119,7 @@ interface InventoryManagementProps {
   character?: Character;
   campaignCharacters?: Character[];
   onItemUpdate?: () => void;
+  isDm?: boolean;
 }
 
 export function InventoryManagement({ 
@@ -125,7 +127,8 @@ export function InventoryManagement({
   campaignId, 
   character, 
   campaignCharacters = [],
-  onItemUpdate 
+  onItemUpdate,
+  isDm = false
 }: InventoryManagementProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState('inventory');
@@ -398,9 +401,8 @@ export function InventoryManagement({
           </DialogHeader>
           
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-            <TabsList className="grid grid-cols-3 mb-4">
+            <TabsList className="grid grid-cols-2 mb-4">
               <TabsTrigger value="inventory">Inventory</TabsTrigger>
-              <TabsTrigger value="discover">Discover Items</TabsTrigger>
               <TabsTrigger value="trade">Trade</TabsTrigger>
             </TabsList>
             
@@ -479,6 +481,20 @@ export function InventoryManagement({
                 </div>
               </div>
               
+              {isDm && (
+                <div className="flex justify-end mb-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleRandomItemDiscovery}
+                    className="flex items-center space-x-1"
+                  >
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    <span>Create Item (DM Only)</span>
+                  </Button>
+                </div>
+              )}
+              
               <div className="space-y-2">
                 {filteredInventory.length > 0 ? (
                   filteredInventory.map((item: any, index: number) => (
@@ -555,134 +571,10 @@ export function InventoryManagement({
                         ? "Try adjusting your search or filters" 
                         : "Your inventory is empty"}
                     </p>
-                    {character?.equipment?.inventory?.length === 0 && (
-                      <Button
-                        onClick={() => setSelectedTab('discover')}
-                        variant="outline"
-                      >
-                        Discover Items
-                      </Button>
-                    )}
+                    {/* Empty inventory message - No action button needed */}
                   </div>
                 )}
               </div>
-            </TabsContent>
-            
-            {/* Discover Items Tab */}
-            <TabsContent value="discover" className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Discover New Items</h3>
-                <p className="text-sm text-muted-foreground">
-                  Find random items during your adventure that match your preferences.
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="item-type">Item Type</Label>
-                  <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger id="item-type">
-                      <SelectValue placeholder="Select item type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Random Type</SelectItem>
-                      <SelectItem value="weapon">Weapon</SelectItem>
-                      <SelectItem value="armor">Armor</SelectItem>
-                      <SelectItem value="apparel">Apparel</SelectItem>
-                      <SelectItem value="potion">Potion</SelectItem>
-                      <SelectItem value="scroll">Scroll</SelectItem>
-                      <SelectItem value="tool">Tool</SelectItem>
-                      <SelectItem value="trinket">Trinket</SelectItem>
-                      <SelectItem value="miscellaneous">Miscellaneous</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="item-rarity">Item Rarity</Label>
-                  <Select value={filterRarity} onValueChange={setFilterRarity}>
-                    <SelectTrigger id="item-rarity">
-                      <SelectValue placeholder="Select item rarity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Random Rarity</SelectItem>
-                      <SelectItem value="common">Common</SelectItem>
-                      <SelectItem value="uncommon">Uncommon</SelectItem>
-                      <SelectItem value="rare">Rare</SelectItem>
-                      <SelectItem value="very rare">Very Rare</SelectItem>
-                      <SelectItem value="legendary">Legendary</SelectItem>
-                      <SelectItem value="artifact">Artifact</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="flex justify-center">
-                <Button
-                  size="lg"
-                  onClick={handleRandomItemDiscovery}
-                  disabled={generateRandomItemMutation.isPending || addItemMutation.isPending}
-                  className="w-full max-w-md"
-                >
-                  {generateRandomItemMutation.isPending || addItemMutation.isPending ? (
-                    <>Searching...</>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-5 w-5" />
-                      Discover Item
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              {generateRandomItemMutation.data && (
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle>{generateRandomItemMutation.data.name}</CardTitle>
-                    <CardDescription>
-                      {generateRandomItemMutation.data.type} • {generateRandomItemMutation.data.rarity}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p>{generateRandomItemMutation.data.description}</p>
-                    
-                    {generateRandomItemMutation.data.properties && generateRandomItemMutation.data.properties.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {generateRandomItemMutation.data.properties.map((prop: string, i: number) => (
-                          <Badge key={i} variant="secondary">
-                            {prop}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <div className="grid grid-cols-3 gap-2 mt-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Weight:</span> {generateRandomItemMutation.data.weight} lbs
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Value:</span> {generateRandomItemMutation.data.value} gp
-                      </div>
-                      <div>
-                        {generateRandomItemMutation.data.attunement && (
-                          <span className="text-warning">Requires attunement</span>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      onClick={() => addItemMutation.mutate(generateRandomItemMutation.data)}
-                      disabled={addItemMutation.isPending}
-                      className="w-full"
-                    >
-                      {addItemMutation.isPending ? "Adding..." : "Add to Inventory"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )}
             </TabsContent>
             
             {/* Trade Tab */}
