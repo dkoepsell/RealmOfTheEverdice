@@ -1,7 +1,16 @@
 import OpenAI from "openai";
 
+// Check for OpenAI API key on startup
+if (!process.env.OPENAI_API_KEY) {
+  console.warn("⚠️ WARNING: OPENAI_API_KEY environment variable is not set. AI features will be unavailable.");
+}
+
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "missing_key" });
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY || "missing_key",
+  timeout: 15000, // 15 second timeout for all requests
+  maxRetries: 2   // Allow up to 2 retries for transient errors
+});
 
 // Helper function to safely parse JSON from OpenAI response
 function safeJsonParse(content: string | null | undefined) {
@@ -290,35 +299,59 @@ export async function generateDialogue(npcInfo: string, context: string, playerP
     throw new Error("API key is missing. Please configure OpenAI API key.");
   }
 
+  // Create a unique ID for this request for tracking
+  const requestId = Date.now().toString().substring(6);
+  console.log(`[${requestId}] Generating dialogue for NPC with prompt:`, playerPrompt ? playerPrompt.substring(0, 50) + "..." : "[initial greeting]");
+  
   try {
-    console.log("Generating dialogue for NPC with prompt:", playerPrompt ? playerPrompt.substring(0, 50) + "..." : "[initial greeting]");
+    // Sanitize inputs to avoid undefined or null values
+    const sanitizedNpcInfo = npcInfo || "A helpful D&D companion";
+    const sanitizedContext = context || "A fantasy world";
+    const sanitizedPrompt = playerPrompt || "";
     
+    // Construct the messages array with proper error handling
+    const messages = [
+      {
+        role: "system" as const,
+        content: "You are an expert RPG dialogue writer creating authentic D&D NPC responses. Create dialogue that matches the NPC's personality and background while responding to the player's actions or questions. Keep responses concise (under 200 words) to make it feel like authentic dialogue."
+      },
+      {
+        role: "user" as const,
+        content: `NPC Information: ${sanitizedNpcInfo}\n\nContext: ${sanitizedContext}\n\n${sanitizedPrompt ? `Player says: ${sanitizedPrompt}` : "Generate an initial NPC greeting or reaction based on the context."}\n\nProvide only the NPC's dialogue response. Make it feel authentic to the character and setting.`
+      }
+    ];
+    
+    // Log essential parameters for debugging
+    console.log(`[${requestId}] Request parameters:`, {
+      model: "gpt-4o",
+      messagesCount: messages.length,
+      promptLength: sanitizedPrompt.length,
+      contextLength: sanitizedContext.length,
+      npcInfoLength: sanitizedNpcInfo.length
+    });
+    
+    // Make the API request with a timeout
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert RPG dialogue writer creating authentic D&D NPC responses. Create dialogue that matches the NPC's personality and background while responding to the player's actions or questions."
-        },
-        {
-          role: "user",
-          content: `NPC Information: ${npcInfo}\n\nContext: ${context}\n\n${playerPrompt ? `Player says: ${playerPrompt}` : "Generate an initial NPC greeting or reaction based on the context."}\n\nProvide only the NPC's dialogue response. Make it feel authentic to the character and setting.`
-        }
-      ],
+      messages: messages,
       max_tokens: 300, // Limit token output for faster responses
-      temperature: 0.7 // Slightly lower temperature for more consistent responses
+      temperature: 0.7, // Slightly lower temperature for more consistent responses
+      timeout: 10000 // 10-second timeout
     });
 
     // Verify we got a valid response
     if (!response.choices || !response.choices.length || !response.choices[0].message.content) {
-      console.error("Invalid or empty response from OpenAI", response);
+      console.error(`[${requestId}] Invalid or empty response from OpenAI`, response);
       throw new Error("AI generated an empty response. Please try again.");
     }
 
-    return response.choices[0].message.content;
+    const responseContent = response.choices[0].message.content.trim();
+    console.log(`[${requestId}] Received valid response from OpenAI (${responseContent.length} chars)`);
+    
+    return responseContent;
   } catch (error: any) {
     // Enhanced error logging with more details
-    console.error("Error generating dialogue:", {
+    console.error(`[${requestId}] Error generating dialogue:`, {
       errorMessage: error.message,
       errorName: error.name,
       errorCode: error.code,
@@ -328,14 +361,48 @@ export async function generateDialogue(npcInfo: string, context: string, playerP
       promptLength: playerPrompt?.length
     });
     
+    // Create a fallback response in case of severe API errors
+    const tryFallbackResponse = () => {
+      // Only use fallback in production environments to avoid masking errors during development
+      if (process.env.NODE_ENV === 'production') {
+        try {
+          // Very simple predefined responses as an absolute last resort
+          const fallbackResponses = [
+            "I'm sorry, I seem to be having trouble understanding right now. Could you try asking me again?",
+            "My apologies, adventurer. The magical connection seems unstable. Please try again in a moment.",
+            "Hmm, something is interfering with our conversation. Let's try again shortly."
+          ];
+          
+          // Choose a random fallback
+          const fallback = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+          console.log(`[${requestId}] Using fallback response`);
+          return fallback;
+        } catch (fallbackError) {
+          // Even the fallback failed, log and continue with the error
+          console.error(`[${requestId}] Fallback response generation failed:`, fallbackError);
+        }
+      }
+      return null;
+    };
+    
     // Provide more specific error messages based on type
     if (error.status === 401) {
       throw new Error("Authentication error: Invalid API key");
     } else if (error.status === 429) {
+      const fallback = tryFallbackResponse();
+      if (fallback) return fallback;
       throw new Error("Rate limit exceeded: Too many requests to AI service");
     } else if (error.status === 500) {
+      const fallback = tryFallbackResponse();
+      if (fallback) return fallback;
       throw new Error("AI service error: Please try again later");
+    } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      const fallback = tryFallbackResponse();
+      if (fallback) return fallback;
+      throw new Error("Request timed out: AI service is taking too long to respond");
     } else {
+      const fallback = tryFallbackResponse();
+      if (fallback) return fallback;
       throw new Error(`Failed to generate NPC dialogue: ${error.message}`);
     }
   }
