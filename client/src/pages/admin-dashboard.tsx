@@ -939,6 +939,112 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
+            
+            {/* World Users panel - only show when a world is selected */}
+            {selectedWorldId && (
+              <Card className="mt-8">
+                <CardHeader>
+                  <CardTitle>World Access</CardTitle>
+                  <CardDescription>
+                    Manage which users have access to the selected world
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {worldUsersLoading ? (
+                    <div className="flex justify-center py-6">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <div className="relative overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Username</TableHead>
+                            <TableHead>Access Level</TableHead>
+                            <TableHead>Granted On</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {worldUsers.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center">
+                                No users have access to this world yet.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            worldUsers.map((worldUser) => (
+                              <TableRow key={worldUser.id}>
+                                <TableCell>{worldUser.username}</TableCell>
+                                <TableCell>
+                                  <Select
+                                    defaultValue={worldUser.accessLevel}
+                                    disabled={!isSuperAdmin}
+                                    onValueChange={(value) => {
+                                      if (isSuperAdmin && selectedWorldId) {
+                                        updateWorldAccess({
+                                          worldId: selectedWorldId,
+                                          userId: worldUser.userId,
+                                          accessLevel: value
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="admin">Admin</SelectItem>
+                                      <SelectItem value="player">Player</SelectItem>
+                                      <SelectItem value="viewer">Viewer</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  {worldUser.createdAt ? new Date(worldUser.createdAt).toLocaleDateString() : 'Unknown'}
+                                </TableCell>
+                                <TableCell>
+                                  {isSuperAdmin && (
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to remove this user's access?")) {
+                                          removeWorldAccess({
+                                            worldId: selectedWorldId!,
+                                            userId: worldUser.userId
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Trash className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+                {isSuperAdmin && (
+                  <CardFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Implement dialog to grant access to new users
+                        // This would require a dialog similar to the create world dialog
+                        alert("Grant access functionality would be implemented here");
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Grant Access
+                    </Button>
+                  </CardFooter>
+                )}
+              </Card>
+            )}
           </div>
         </TabsContent>
 

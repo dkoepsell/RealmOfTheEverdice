@@ -396,12 +396,6 @@ export function useAdmin() {
     regenerateWorldMapLoading: regenerateWorldMapMutation.isPending,
     
     // World management
-    worlds,
-    worldsLoading,
-    worldsError,
-    refetchWorlds,
-    selectedWorldId,
-    setSelectedWorldId,
     worldUsers,
     worldUsersLoading,
     worldUsersError,
