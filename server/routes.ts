@@ -728,8 +728,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Validated campaign data:", validatedData);
       
-      const campaign = await storage.createCampaign(validatedData);
-      console.log("Campaign created successfully:", campaign);
+      // Create the campaign with better error handling
+      let campaign;
+      try {
+        campaign = await storage.createCampaign(validatedData);
+        console.log("Campaign created successfully:", JSON.stringify(campaign));
+        
+        if (!campaign || !campaign.id) {
+          throw new Error("Campaign created but returned invalid data: " + JSON.stringify(campaign));
+        }
+      } catch (createError) {
+        console.error("Error creating campaign:", createError);
+        throw createError; // Re-throw to be caught by the outer catch block
+      }
       
       // Generate a world map for the new campaign
       try {
