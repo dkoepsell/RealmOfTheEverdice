@@ -2548,15 +2548,345 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ message: "Campaign not found" });
       
-      // TODO: Check if user is a player in this campaign
+      // Check if user is in campaign
+      const isInCampaign = await storage.isPlayerInCampaign(req.user!.id, campaignId);
+      if (!isInCampaign && campaign.dmId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to view this campaign's plans" });
+      }
       
-      const plans = await storage.getPartyPlans(campaignId);
+      const plans = await storage.getPartyPlansByCampaignId(campaignId);
       res.json(plans);
     } catch (error) {
-      console.error("Error fetching party plans:", error);
-      res.status(500).json({ message: "Failed to fetch party plans" });
+      console.error("Error getting party plans:", error);
+      res.status(500).json({ message: "Failed to get party plans" });
     }
   });
+  
+  // Get a specific party plan with all its items
+  app.get("/api/party-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.id);
+      const plan = await storage.getPartyPlanWithItems(planId);
+      
+      if (!plan) {
+        return res.status(404).json({ message: "Party plan not found" });
+      }
+      
+      // Get the campaign to check access
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Check if user is in campaign
+      const isInCampaign = await storage.isPlayerInCampaign(req.user!.id, plan.campaignId);
+      if (!isInCampaign && campaign.dmId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to view this plan" });
+      }
+      
+      res.json(plan);
+    } catch (error) {
+      console.error("Error getting party plan:", error);
+      res.status(500).json({ message: "Failed to get party plan" });
+    }
+  });
+  
+  // Create a new party plan
+  app.post("/api/campaigns/:id/party-plans", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      
+      // Check if user has access to this campaign
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // Check if user is in campaign
+      const isInCampaign = await storage.isPlayerInCampaign(req.user!.id, campaignId);
+      if (!isInCampaign && campaign.dmId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to create plans in this campaign" });
+      }
+      
+      const planData = {
+        campaignId,
+        title: req.body.title,
+        description: req.body.description || '',
+        createdById: req.user!.id,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const newPlan = await storage.createPartyPlan(planData);
+      res.status(201).json(newPlan);
+    } catch (error) {
+      console.error("Error creating party plan:", error);
+      res.status(500).json({ message: "Failed to create party plan" });
+    }
+  });
+  
+  // Update a party plan
+  app.patch("/api/party-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.id);
+      const plan = await storage.getPartyPlan(planId);
+      
+      if (!plan) {
+        return res.status(404).json({ message: "Party plan not found" });
+      }
+      
+      // Get the campaign to check access
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Only allow the DM or plan creator to update the plan
+      if (campaign.dmId !== req.user!.id && plan.createdById !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to update this plan" });
+      }
+      
+      const updatedPlan = await storage.updatePartyPlan(planId, {
+        title: req.body.title,
+        description: req.body.description,
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedPlan);
+    } catch (error) {
+      console.error("Error updating party plan:", error);
+      res.status(500).json({ message: "Failed to update party plan" });
+    }
+  });
+  
+  // Delete a party plan
+  app.delete("/api/party-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.id);
+      const plan = await storage.getPartyPlan(planId);
+      
+      if (!plan) {
+        return res.status(404).json({ message: "Party plan not found" });
+      }
+      
+      // Get the campaign to check access
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Only allow the DM or plan creator to delete the plan
+      if (campaign.dmId !== req.user!.id && plan.createdById !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to delete this plan" });
+      }
+      
+      const success = await storage.deletePartyPlan(planId);
+      
+      if (success) {
+        res.status(204).end();
+      } else {
+        res.status(500).json({ message: "Failed to delete party plan" });
+      }
+    } catch (error) {
+      console.error("Error deleting party plan:", error);
+      res.status(500).json({ message: "Failed to delete party plan" });
+    }
+  });
+  
+  // Create a new party plan item
+  app.post("/api/party-plans/:id/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.id);
+      const plan = await storage.getPartyPlan(planId);
+      
+      if (!plan) {
+        return res.status(404).json({ message: "Party plan not found" });
+      }
+      
+      // Get the campaign to check access
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Check if user is in campaign
+      const isInCampaign = await storage.isPlayerInCampaign(req.user!.id, plan.campaignId);
+      if (!isInCampaign && campaign.dmId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to add items to this plan" });
+      }
+      
+      // Find the highest position value to place the new item at the end
+      const items = await storage.getPartyPlanItemsByPlanId(planId);
+      const highestPosition = items.length > 0 
+        ? Math.max(...items.map(item => item.position)) 
+        : -1;
+      
+      const itemData = {
+        planId,
+        content: req.body.content,
+        type: req.body.type || 'task',
+        status: req.body.status || 'pending',
+        position: highestPosition + 1,
+        createdById: req.user!.id,
+        assignedToId: req.body.assignedToId || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const newItem = await storage.createPartyPlanItem(itemData);
+      res.status(201).json(newItem);
+    } catch (error) {
+      console.error("Error creating party plan item:", error);
+      res.status(500).json({ message: "Failed to create party plan item" });
+    }
+  });
+  
+  // Update a party plan item
+  app.patch("/api/party-plan-items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const itemId = parseInt(req.params.id);
+      const item = await storage.getPartyPlanItem(itemId);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Party plan item not found" });
+      }
+      
+      // Get the plan and campaign to check access
+      const plan = await storage.getPartyPlan(item.planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Party plan not found" });
+      }
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Check if user is in campaign
+      const isInCampaign = await storage.isPlayerInCampaign(req.user!.id, plan.campaignId);
+      if (!isInCampaign && campaign.dmId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to update items in this plan" });
+      }
+      
+      const updates = {
+        content: req.body.content,
+        type: req.body.type,
+        status: req.body.status,
+        position: req.body.position,
+        assignedToId: req.body.assignedToId,
+        updatedAt: new Date()
+      };
+      
+      // Remove undefined values
+      Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
+      
+      const updatedItem = await storage.updatePartyPlanItem(itemId, updates);
+      
+      res.json(updatedItem);
+    } catch (error) {
+      console.error("Error updating party plan item:", error);
+      res.status(500).json({ message: "Failed to update party plan item" });
+    }
+  });
+  
+  // Delete a party plan item
+  app.delete("/api/party-plan-items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const itemId = parseInt(req.params.id);
+      const item = await storage.getPartyPlanItem(itemId);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Party plan item not found" });
+      }
+      
+      // Get the plan and campaign to check access
+      const plan = await storage.getPartyPlan(item.planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Party plan not found" });
+      }
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Only the DM, plan creator, or item creator can delete items
+      if (campaign.dmId !== req.user!.id && 
+          plan.createdById !== req.user!.id && 
+          item.createdById !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to delete this item" });
+      }
+      
+      const success = await storage.deletePartyPlanItem(itemId);
+      
+      if (success) {
+        res.status(204).end();
+      } else {
+        res.status(500).json({ message: "Failed to delete party plan item" });
+      }
+    } catch (error) {
+      console.error("Error deleting party plan item:", error);
+      res.status(500).json({ message: "Failed to delete party plan item" });
+    }
+  });
+  
+  // Add a comment to a party plan item
+  app.post("/api/party-plan-items/:id/comments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const itemId = parseInt(req.params.id);
+      const item = await storage.getPartyPlanItem(itemId);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Party plan item not found" });
+      }
+      
+      // Get the plan and campaign to check access
+      const plan = await storage.getPartyPlan(item.planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Party plan not found" });
+      }
+      
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Check if user is in campaign
+      const isInCampaign = await storage.isPlayerInCampaign(req.user!.id, plan.campaignId);
+      if (!isInCampaign && campaign.dmId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to comment on this item" });
+      }
+      
+      const commentData = {
+        itemId,
+        content: req.body.content,
+        userId: req.user!.id,
+        createdAt: new Date()
+      };
+      
+      const newComment = await storage.createPartyPlanComment(commentData);
+      res.status(201).json(newComment);
+    } catch (error) {
+      console.error("Error creating party plan comment:", error);
+      res.status(500).json({ message: "Failed to create party plan comment" });
+    }
+  });
+  
+  // Get all party plans for a campaign (implementation already exists with proper permissions above)
   
   // Create a new party plan
   app.post("/api/campaigns/:id/party-plans", async (req, res) => {
@@ -2926,22 +3256,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (data.type === 'planning' && data.campaignId) {
           const campaignId = parseInt(data.campaignId);
           
-          // Broadcast the update to all clients in the campaign
-          if (connections[campaignId]) {
-            connections[campaignId].forEach(client => {
-              if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({
-                  type: 'planning',
-                  action: data.action,
-                  planId: data.planId,
-                  itemId: data.itemId,
-                  userId: data.userId,
-                  username: data.username,
-                  timestamp: new Date()
-                }));
+          // Initial broadcast is handled in the specific action handlers below
+          
+          // Handle different party planning actions
+          try {
+            const action = data.action;
+            
+            if (action === 'create_plan') {
+              const newPlan = await storage.createPartyPlan(data.plan);
+              
+              // Broadcast plan creation to all connected clients
+              connections[campaignId]?.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'planning',
+                    action: 'plan_created',
+                    campaignId,
+                    plan: newPlan
+                  }));
+                }
+              });
+            }
+            
+            else if (action === 'update_plan') {
+              const updatedPlan = await storage.updatePartyPlan(data.planId, data.updates);
+              
+              if (updatedPlan) {
+                // Broadcast plan update to all connected clients
+                connections[campaignId]?.forEach(client => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                      type: 'planning',
+                      action: 'plan_updated',
+                      campaignId,
+                      plan: updatedPlan
+                    }));
+                  }
+                });
               }
-            });
+            }
+            
+            else if (action === 'delete_plan') {
+              const success = await storage.deletePartyPlan(data.planId);
+              
+              if (success) {
+                // Broadcast plan deletion to all connected clients
+                connections[campaignId]?.forEach(client => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                      type: 'planning',
+                      action: 'plan_deleted',
+                      campaignId,
+                      planId: data.planId
+                    }));
+                  }
+                });
+              }
+            }
+            
+            else if (action === 'create_item') {
+              const newItem = await storage.createPartyPlanItem(data.item);
+              
+              // Broadcast item creation to all connected clients
+              connections[campaignId]?.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'planning',
+                    action: 'item_created',
+                    campaignId,
+                    item: newItem
+                  }));
+                }
+              });
+            }
+            
+            else if (action === 'update_item') {
+              const updatedItem = await storage.updatePartyPlanItem(data.itemId, data.updates);
+              
+              if (updatedItem) {
+                // Broadcast item update to all connected clients
+                connections[campaignId]?.forEach(client => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                      type: 'planning',
+                      action: 'item_updated',
+                      campaignId,
+                      item: updatedItem
+                    }));
+                  }
+                });
+              }
+            }
+            
+            else if (action === 'delete_item') {
+              const success = await storage.deletePartyPlanItem(data.itemId);
+              
+              if (success) {
+                // Broadcast item deletion to all connected clients
+                connections[campaignId]?.forEach(client => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                      type: 'planning',
+                      action: 'item_deleted',
+                      campaignId,
+                      itemId: data.itemId
+                    }));
+                  }
+                });
+              }
+            }
+            
+            else if (action === 'add_comment') {
+              const newComment = await storage.createPartyPlanComment(data.comment);
+              
+              // Broadcast comment creation to all connected clients
+              connections[campaignId]?.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({
+                    type: 'planning',
+                    action: 'comment_added',
+                    campaignId,
+                    comment: newComment
+                  }));
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Error handling party planning action:', error);
+            
+            // Send error back to the client
+            ws.send(JSON.stringify({
+              type: 'planning',
+              action: 'error',
+              message: 'Failed to process party planning action'
+            }));
           }
+          
+          // All broadcasting is handled in the specific action handlers above
         }
         
         // Handle chat messages
@@ -2963,29 +3414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Handle party planning actions
-        if (data.type === 'planning' && clientCampaignId) {
-          const planningAction = data.action;
-          const campaignConnections = connections[clientCampaignId] || [];
-          
-          // Broadcast planning action to all connected clients for this campaign
-          campaignConnections.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({
-                type: 'planning',
-                action: planningAction,
-                userId: data.userId,
-                username: data.username,
-                planId: data.planId,
-                planData: data.planData,
-                timestamp: new Date()
-              }));
-            }
-          });
-          
-          // In a full implementation, we would store these planning items in the database
-          // For now, we'll just broadcast them in real-time
-        }
+        // Party planning is handled above with a more robust implementation
       } catch (err) {
         console.error('WebSocket message error:', err);
       }
