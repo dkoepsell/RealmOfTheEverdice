@@ -1199,6 +1199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const campaignId = parseInt(req.params.id);
+      if (isNaN(campaignId)) {
+        return res.status(400).json({ message: "Invalid campaign ID" });
+      }
       const campaign = await storage.getCampaign(campaignId);
       
       if (!campaign) return res.status(404).json({ message: "Campaign not found" });
@@ -1225,6 +1228,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const campaignId = parseInt(req.params.id);
+      if (isNaN(campaignId)) {
+        return res.status(400).json({ message: "Invalid campaign ID" });
+      }
       const characterId = req.body.characterId;
       
       const campaign = await storage.getCampaign(campaignId);
