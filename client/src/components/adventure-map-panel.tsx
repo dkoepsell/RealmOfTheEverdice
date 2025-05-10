@@ -500,9 +500,45 @@ export function AdventureMapPanel({
   
   // Extract campaign region metadata from the world map response
   const mapData = worldMapQuery.data || {};
-  const metadata = mapData.metadata ? (
-    typeof mapData.metadata === 'string' ? JSON.parse(mapData.metadata) : mapData.metadata
-  ) : {};
+  
+  // Improved error logging for debugging map issues
+  useEffect(() => {
+    if (worldMapQuery.error) {
+      console.error("Error fetching world map:", worldMapQuery.error);
+    }
+    if (everdiceWorldQuery.error) {
+      console.error("Error fetching Everdice world map:", everdiceWorldQuery.error);
+    }
+    
+    // Debug info to help diagnose map issues
+    console.log("World map query state:", {
+      isLoading: worldMapQuery.isLoading,
+      isFetching: worldMapQuery.isFetching,
+      isError: worldMapQuery.isError,
+      isSuccess: worldMapQuery.isSuccess,
+      dataReceived: !!worldMapQuery.data
+    });
+    
+    if (worldMapQuery.data) {
+      console.log("World map data received:", {
+        hasMapUrl: !!worldMapQuery.data.mapUrl,
+        hasUrl: !!worldMapQuery.data.url,
+        hasMetadata: !!worldMapQuery.data.metadata
+      });
+    }
+  }, [worldMapQuery.data, worldMapQuery.error, everdiceWorldQuery.error]);
+  
+  // Parse metadata with better error handling
+  let metadata = {};
+  try {
+    if (mapData.metadata) {
+      metadata = typeof mapData.metadata === 'string' 
+        ? JSON.parse(mapData.metadata) 
+        : mapData.metadata;
+    }
+  } catch (err) {
+    console.error("Error parsing map metadata:", err);
+  }
   
   // Extract world and Everdice data from metadata
   const worldData = metadata?.worldData || {};
@@ -512,14 +548,23 @@ export function AdventureMapPanel({
   const regionName = everdiceData?.regionName || worldData?.regionName || mapData.regionName || "Unknown Region";
   const continentName = everdiceData?.continent || worldData?.continent || mapData.continentName || "Everdice World";
   
-  // Update worldMap state when the query data changes
+  // Update worldMap state when the query data changes - with better fallback strategy
   useEffect(() => {
     if (worldMapQuery.data?.mapUrl) {
+      console.log("Using campaign-specific map URL");
       setWorldMap(worldMapQuery.data.mapUrl);
     } else if (worldMapQuery.data?.url) {
+      console.log("Using campaign URL");
       setWorldMap(worldMapQuery.data.url);
+    } else if (everdiceWorldQuery.data?.mapUrl) {
+      // If the campaign doesn't have a map but the world does, use that
+      console.log("Using Everdice world map as fallback");
+      // Don't set worldMap directly - we'll use the everdiceWorldQuery.data.mapUrl in the render
+      // This approach shows the worldMap in the secondary position
+    } else {
+      console.log("No map URLs available");
     }
-  }, [worldMapQuery.data]);
+  }, [worldMapQuery.data, everdiceWorldQuery.data]);
   
   // Filter locations based on discovered status (for player view)
   const filteredLocations = showDiscoveredOnly && !isDm
@@ -720,50 +765,59 @@ export function AdventureMapPanel({
                 )}
                 
                 {/* Main campaign map */}
+                {/* Main campaign map - with better fallback strategy */}
                 {worldMap ? (
-                  <>
-                    <ImageOverlay
-                      url={worldMap}
-                      bounds={[[-85, -180], [85, 180]]}
-                      opacity={1.0}
-                      zIndex={10}
-                    />
-                    
-                    {/* Region indicator frame to show this is a portion of the Everdice world */}
-                    <LeafletRectangle 
-                      bounds={[[-85, -180], [85, 180]]}
-                      pathOptions={{ 
-                        color: '#9333ea', 
-                        weight: 3, 
-                        opacity: 0.8,
-                        dashArray: '10, 10',
-                        fillOpacity: 0.05,
-                        fillColor: '#9333ea'
-                      }}
-                    >
-                      <LeafletTooltip 
-                        permanent 
-                        className="custom-tooltip everdice-region-tooltip"
-                        direction="top"
-                        offset={[0, -20]}
-                      >
-                        <div className="text-xs font-semibold p-1 flex items-center gap-1">
-                          <Globe2 className="h-4 w-4 text-primary" />
-                          <span>{regionName}</span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="text-primary-foreground/70">Region of {continentName}</span>
-                        </div>
-                      </LeafletTooltip>
-                    </LeafletRectangle>
-                  </>
-                ) : (
+                  // If we have a specific campaign map, show it
                   <ImageOverlay
-                    url="https://cdna.artstation.com/p/assets/images/images/018/066/339/large/anastasia-shabalina-.jpg"
+                    url={worldMap}
                     bounds={[[-85, -180], [85, 180]]}
-                    opacity={0.8}
+                    opacity={1.0}
+                    zIndex={10}
+                  />
+                ) : everdiceWorldQuery.data?.mapUrl ? (
+                  // If no specific map but we have Everdice map, use it as primary
+                  <ImageOverlay
+                    url={everdiceWorldQuery.data.mapUrl}
+                    bounds={[[-85, -180], [85, 180]]}
+                    opacity={0.9}
+                    zIndex={10}
+                  />
+                ) : (
+                  // Ultimate fallback - generic fantasy map
+                  <ImageOverlay
+                    url="https://i.imgur.com/VMdj8dD.jpg"
+                    bounds={[[-85, -180], [85, 180]]}
+                    opacity={0.9}
                     zIndex={10}
                   />
                 )}
+                
+                {/* Region indicator frame to show this is a portion of the Everdice world */}
+                <LeafletRectangle 
+                  bounds={[[-85, -180], [85, 180]]}
+                  pathOptions={{ 
+                    color: '#9333ea', 
+                    weight: 3, 
+                    opacity: 0.8,
+                    dashArray: '10, 10',
+                    fillOpacity: 0.05,
+                    fillColor: '#9333ea'
+                  }}
+                >
+                  <LeafletTooltip 
+                    permanent 
+                    className="custom-tooltip everdice-region-tooltip"
+                    direction="top"
+                    offset={[0, -20]}
+                  >
+                    <div className="text-xs font-semibold p-1 flex items-center gap-1">
+                      <Globe2 className="h-4 w-4 text-primary" />
+                      <span>{regionName}</span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="text-primary-foreground/70">Region of {continentName}</span>
+                    </div>
+                  </LeafletTooltip>
+                </LeafletRectangle>
                 
                 {/* Fallback map tiles that show through in areas without fantasy map coverage */}
                 <TileLayer
