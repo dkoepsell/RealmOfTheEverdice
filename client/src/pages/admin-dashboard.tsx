@@ -607,10 +607,39 @@ const AdminDashboard = () => {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="p-0">
-                        {everdiceWorld?.mapUrl ? (
-                          <div className="relative">
-                            <div className="overflow-hidden rounded-md">
-                              <div className={`relative ${isMapFullscreen ? 'fixed inset-0 bg-background z-50 p-4' : ''}`} style={{ height: isMapFullscreen ? "100%" : "450px" }}>
+                        {/* Mobile-specific static map for Edge and other problematic browsers */}
+                        <div className="md:hidden p-4 mb-4 bg-amber-50 border border-amber-200 rounded-md">
+                          <h4 className="font-medium text-amber-900 mb-2">Everdice World Map</h4>
+                          <p className="text-xs text-amber-800 mb-4">For the best map experience, view on desktop or use the regenerate button to create a new map.</p>
+                          
+                          <div className="aspect-video bg-white/50 rounded border border-amber-300 overflow-hidden">
+                            <img 
+                              src="/assets/placeholder-map.jpg" 
+                              alt="Static Everdice World Map" 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          
+                          <Button 
+                            variant="outline"
+                            className="w-full flex items-center justify-center mt-4"
+                            onClick={() => {
+                              if (window.confirm("Are you sure you want to regenerate the Everdice world map? This will reset the map but keep all region data intact.")) {
+                                regenerateWorldMap();
+                              }
+                            }}
+                          >
+                            <Map className="h-4 w-4 mr-2" />
+                            Regenerate World Map
+                          </Button>
+                        </div>
+
+                        {/* Interactive map - hidden on problematic mobile browsers */}
+                        <div className="hidden md:block">
+                          {everdiceWorld?.mapUrl ? (
+                            <div className="relative">
+                              <div className="overflow-hidden rounded-md">
+                                <div className={`relative ${isMapFullscreen ? 'fixed inset-0 bg-background z-50 p-4' : ''}`} style={{ height: isMapFullscreen ? "100%" : "450px" }}>
                                 {/* Map controls toolbar with clear labeling */}
                                 <div className="absolute top-2 right-2 z-10 flex flex-col gap-2 bg-background/80 p-2 rounded-md shadow-lg border border-border">
                                   <div className="text-xs font-medium mb-1 text-center">Map Controls</div>
@@ -724,6 +753,20 @@ const AdminDashboard = () => {
                                     onError={(e) => {
                                       e.currentTarget.src = '/assets/placeholder-map.jpg';
                                       console.log('Fallback to placeholder map');
+                                      // Force re-render by setting a small timeout for mobile browsers
+                                      setTimeout(() => {
+                                        if (e.currentTarget) {
+                                          // Try to force image reload
+                                          const timestamp = new Date().getTime();
+                                          e.currentTarget.src = `/assets/placeholder-map.jpg?t=${timestamp}`;
+                                        }
+                                      }, 100);
+                                    }}
+                                    style={{
+                                      maxWidth: '100%',
+                                      maxHeight: '100%',
+                                      display: 'block',
+                                      margin: '0 auto'
                                     }}
                                   />
                                   
@@ -791,8 +834,22 @@ const AdminDashboard = () => {
                                 </div>
                               </div>
                             </div>
+                          </div>
+                          ) : (
+                            <div className="p-6 text-center">
+                              <p className="text-muted-foreground mb-3">No map available</p>
+                              <Button 
+                                variant="outline"
+                                onClick={() => regenerateWorldMap()}
+                              >
+                                <Map className="h-4 w-4 mr-2" />
+                                Generate World Map
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                             
-                            {/* Region name editing dialog */}
+                        {/* Region name editing dialog */}
                             <Dialog open={regionNameDialog} onOpenChange={setRegionNameDialog}>
                               <DialogContent>
                                 <DialogHeader>
