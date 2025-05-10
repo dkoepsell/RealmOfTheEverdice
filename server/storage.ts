@@ -1067,17 +1067,16 @@ export class DatabaseStorage implements IStorage {
           map_url TEXT,
           lore TEXT,
           continents JSONB,
-          metadata JSONB,
-          updated_at TIMESTAMP
+          metadata JSONB
         )
       `, []);
       
       // Use a simplified insert query to avoid schema mismatches
       const insertQuery = `
         INSERT INTO campaigns
-        (name, description, dm_id, status, setting, is_ai_dm, updated_at)
+        (name, description, dm_id, status, setting, is_ai_dm)
         VALUES
-        ($1, $2, $3, $4, $5, $6, NOW())
+        ($1, $2, $3, $4, $5, $6)
         RETURNING 
           id, 
           name, 
@@ -1119,9 +1118,9 @@ export class DatabaseStorage implements IStorage {
         console.log("Attempting minimal campaign insert as fallback");
         const minimalInsertQuery = `
           INSERT INTO campaigns
-          (name, description, dm_id, status, is_ai_dm, updated_at)
+          (name, description, dm_id, status, is_ai_dm)
           VALUES
-          ($1, $2, $3, $4, $5, NOW())
+          ($1, $2, $3, $4, $5)
           RETURNING 
             id, 
             name, 
