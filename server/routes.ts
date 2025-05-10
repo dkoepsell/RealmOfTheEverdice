@@ -135,29 +135,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Regenerating Everdice world map...");
       
       // Generate a new world map
-      let mapUrl;
-      try {
-        // Import the OpenAI generation function
-        const generatedMap = await generateGlobalMapImage();
-        mapUrl = generatedMap?.url || "/assets/placeholder-map.jpg";
-        console.log("Generated new world map:", mapUrl);
-      } catch (genError) {
-        console.error("Error generating world map with OpenAI:", genError);
-        // Fallback to placeholder if generation fails
-        mapUrl = "/assets/placeholder-map.jpg";
+      // No try/catch needed here since the function now safely returns errors instead of throwing
+      const generatedMap = await generateGlobalMapImage();
+      const mapUrl = generatedMap?.url || "/assets/placeholder-map.jpg";
+      console.log("Generated new world map:", mapUrl);
+      
+      // If there was an error but we're using a fallback URL, log it
+      if (generatedMap?.error) {
+        console.warn(`Using fallback map due to error: ${generatedMap.error}`);
       }
       
-      // Update the world with the new map URL
+      // Update the world with the new map URL and any world data from generation
       const updatedWorld = await storage.createOrUpdateEverdiceWorld({
         ...everdiceWorld,
         mapUrl,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        // If we have any world data from the generation, update the continents as well
+        ...(generatedMap?.worldData && {
+          continents: generatedMap.worldData.continents || everdiceWorld.continents,
+          metadata: JSON.stringify({
+            worldData: generatedMap.worldData,
+            generatedAt: new Date()
+          })
+        })
       });
       
-      res.json(updatedWorld);
-    } catch (error) {
+      // Return both the updated world and any error that might have occurred
+      res.json({
+        ...updatedWorld,
+        generationStatus: generatedMap?.error ? 'fallback' : 'success',
+        generationError: generatedMap?.error
+      });
+    } catch (error: any) {
       console.error("Error regenerating world map:", error);
-      res.status(500).json({ message: "Failed to regenerate world map" });
+      res.status(500).json({ 
+        message: "Failed to regenerate world map", 
+        error: error.message 
+      });
     }
   });
   

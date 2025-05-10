@@ -725,19 +725,69 @@ export async function generateGlobalMapImage() {
       temperature: 0.8
     });
     
-    const worldData = safeJsonParse(continentsResponse.choices[0].message.content);
+    if (!continentsResponse.choices || !continentsResponse.choices.length || !continentsResponse.choices[0].message.content) {
+      console.error("Invalid response from OpenAI for continents data");
+      throw new Error("Invalid response format from OpenAI");
+    }
     
-    // Create a map generation prompt
+    const worldDataJson = continentsResponse.choices[0].message.content;
+    let worldData;
+    
+    try {
+      worldData = safeJsonParse(worldDataJson);
+      
+      // Validate the worldData has expected structure
+      if (!worldData || !worldData.continents || !Array.isArray(worldData.continents) || 
+          !worldData.oceans || !Array.isArray(worldData.oceans) || 
+          !worldData.magicalFeatures || !Array.isArray(worldData.magicalFeatures)) {
+        throw new Error("Missing required world data fields");
+      }
+    } catch (parseError) {
+      console.error("Could not parse or validate world data:", parseError);
+      // Create fallback world data to ensure map generation can continue
+      worldData = {
+        continents: [
+          { name: "Mystara", terrainTypes: ["forests", "plains", "hills"] },
+          { name: "The Northern Reaches", terrainTypes: ["tundra", "mountains"] },
+          { name: "The Solaran Peninsula", terrainTypes: ["coast", "islands"] },
+          { name: "Eldramir", terrainTypes: ["ancient forests", "mountains"] },
+          { name: "The Burning Sands", terrainTypes: ["deserts", "canyons"] },
+          { name: "The Shattered Isles", terrainTypes: ["archipelagos", "volcanic islands"] }
+        ],
+        oceans: ["The Great Expanse", "The Azure Deep", "The Misty Reach"],
+        magicalFeatures: ["The Everflame", "Whispering Woods", "Crystal Spires"]
+      };
+    }
+    
+    // Create a map generation prompt with proper error handling for array mapping
+    const continentDescriptions = Array.isArray(worldData.continents) 
+      ? worldData.continents.map((c: any) => {
+          const name = c?.name || "Unnamed Continent";
+          const terrainTypes = Array.isArray(c?.terrainTypes) ? c.terrainTypes.join(', ') : "varied terrain";
+          return `- ${name}: ${terrainTypes}`;
+        }).join('\n')
+      : "- Mystara: forests, plains, hills\n- The Northern Reaches: tundra, mountains";
+    
+    const oceanDescriptions = Array.isArray(worldData.oceans)
+      ? worldData.oceans.map((o: any) => {
+          return `- ${typeof o === 'string' ? o : (o?.name || "Unnamed Ocean")}`;
+        }).join('\n')
+      : "- The Great Expanse\n- The Azure Deep";
+    
+    const magicalFeaturesList = Array.isArray(worldData.magicalFeatures)
+      ? worldData.magicalFeatures.join('\n')
+      : "- The Everflame\n- Whispering Woods";
+    
     const mapPrompt = `Create a beautiful, full-color fantasy world map of "Everdice", a realm of adventure.
 
 This global map MUST accurately represent these specific continents in geographically appropriate positions:
-${worldData.continents.map((c: any) => `- ${c.name}: ${c.terrainTypes.join(', ')}`).join('\n')}
+${continentDescriptions}
 
 The map must show these major oceans and seas:
-${worldData.oceans.map((o: any) => `- ${typeof o === 'string' ? o : o.name}`).join('\n')}
+${oceanDescriptions}
 
 Include these unique magical features that define the world:
-${worldData.magicalFeatures.join('\n')}
+${magicalFeaturesList}
 
 Style this as a detailed, high-fantasy world map on aged parchment with ornate borders, a decorative compass rose, and elegant fantasy-style illustrations of sea monsters and creatures in the oceans. Create a map with high readability, rich colors, and clear geographical labels. Make sure all text is clearly legible.
 
@@ -753,13 +803,21 @@ This should be a complete, global world map showing ALL of the major continents 
       response_format: "url"
     });
     
+    if (!imageResponse || !imageResponse.data || !imageResponse.data[0] || !imageResponse.data[0].url) {
+      throw new Error("No image URL returned from OpenAI");
+    }
+    
     console.log("Map image generation complete");
     return {
       url: imageResponse.data[0].url,
       worldData
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating global map image:", error);
-    throw new Error("Failed to generate global map");
+    // Return a placeholder URL instead of throwing, to make the function more resilient
+    return {
+      url: "/assets/placeholder-map.jpg",
+      error: error.message || "Failed to generate global map"
+    };
   }
 }
