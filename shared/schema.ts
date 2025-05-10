@@ -310,6 +310,7 @@ export const everdiceWorld = pgTable("everdice_world", {
   metadata: json("metadata"),
   isActive: boolean("is_active").default(true),
   isMainWorld: boolean("is_main_world").default(false),
+  createdBy: integer("created_by"), // ID of the admin who created this world
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -320,8 +321,28 @@ export const insertEverdiceWorldSchema = createInsertSchema(everdiceWorld).omit(
   updatedAt: true
 });
 
+// World Access (which users have access to which worlds)
+export const worldAccess = pgTable("world_access", {
+  id: serial("id").primaryKey(),
+  worldId: integer("world_id").notNull().references(() => everdiceWorld.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  accessLevel: text("access_level").notNull().default("player"), // admin, player, viewer
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => {
+  return {
+    uniqUserWorld: primaryKey({ columns: [table.worldId, table.userId] })
+  };
+});
+
+export const insertWorldAccessSchema = createInsertSchema(worldAccess).omit({
+  id: true,
+  createdAt: true
+});
+
 export type EverdiceWorld = typeof everdiceWorld.$inferSelect;
 export type InsertEverdiceWorld = z.infer<typeof insertEverdiceWorldSchema>;
+export type WorldAccess = typeof worldAccess.$inferSelect;
+export type InsertWorldAccess = z.infer<typeof insertWorldAccessSchema>;
 
 // Campaign Turns System (for asynchronous play)
 export const campaignTurns = pgTable("campaign_turns", {
