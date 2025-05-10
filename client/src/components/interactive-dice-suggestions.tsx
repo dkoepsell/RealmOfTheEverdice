@@ -386,25 +386,26 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
       // Mark as auto-rolled to prevent infinite loop
       setAutoRolled(true);
       
-      // Call the performRoll function after a short delay
+      // Call the performRoll function after a short delay with a separate mechanism for story advancement
       const timer = setTimeout(() => {
+        // First perform the roll
         performRoll();
         
-        // Auto-advance after the roll if enabled
+        // Auto-advance only after the roll animation is complete and the user has seen the result
         if (autoAdvanceEnabled && onAdvanceStory) {
-          // Close the modal first
-          const closeTimer = setTimeout(() => {
+          // Show the roll result for a sufficient time before advancing (3.5 seconds total)
+          const advanceTimer = setTimeout(() => {
+            // Close the modal
             setIsModalOpen(false);
             
-            // Then wait a moment to advance the story
-            const advanceTimer = setTimeout(() => {
+            // Wait a moment after the modal closes before advancing
+            setTimeout(() => {
+              // Finally, advance the story
               onAdvanceStory();
-            }, 1500);
-            
-            return () => clearTimeout(advanceTimer);
-          }, 2000); // Show the roll result for 2 seconds
+            }, 500);
+          }, 3000); // Longer duration to ensure roll is complete
           
-          return () => clearTimeout(closeTimer);
+          return () => clearTimeout(advanceTimer);
         }
       }, 800);  // Delay for 800ms to allow the modal to render first
       
