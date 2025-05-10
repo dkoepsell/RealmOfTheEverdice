@@ -145,9 +145,19 @@ export function AddCharacterDialog({
         variant: "default",
       });
       
-      // Invalidate queries to refresh data
+      // Invalidate multiple queries to refresh all related data
+      console.log("Invalidating queries for campaign:", validCampaignId);
+      
       queryClient.invalidateQueries({
         queryKey: [`/api/campaigns/${validCampaignId}/characters`],
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ["/api/campaigns"],
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ["/api/characters"],
       });
       
       // Close dialog and trigger callback
@@ -227,9 +237,19 @@ export function AddCharacterDialog({
         variant: "default",
       });
       
-      // Invalidate queries to refresh data
+      // Invalidate multiple queries to refresh all related data
+      console.log("Invalidating queries for bot companion in campaign:", validCampaignId);
+      
       queryClient.invalidateQueries({
         queryKey: [`/api/campaigns/${validCampaignId}/characters`],
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ["/api/campaigns"],
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ["/api/characters"],
       });
       
       // Close dialog and trigger callback
