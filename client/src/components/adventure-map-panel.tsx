@@ -735,18 +735,23 @@ export function AdventureMapPanel({
                       pathOptions={{ 
                         color: '#9333ea', 
                         weight: 3, 
-                        opacity: 0.7,
+                        opacity: 0.8,
                         dashArray: '10, 10',
-                        fillOpacity: 0
+                        fillOpacity: 0.05,
+                        fillColor: '#9333ea'
                       }}
                     >
                       <LeafletTooltip 
                         permanent 
-                        className="custom-tooltip"
+                        className="custom-tooltip everdice-region-tooltip"
+                        direction="top"
                         offset={[0, -20]}
                       >
-                        <div className="text-xs font-semibold p-1">
-                          {regionName} - Part of {continentName}
+                        <div className="text-xs font-semibold p-1 flex items-center gap-1">
+                          <Globe2 className="h-4 w-4 text-primary" />
+                          <span>{regionName}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-primary-foreground/70">Region of {continentName}</span>
                         </div>
                       </LeafletTooltip>
                     </LeafletRectangle>
@@ -905,6 +910,18 @@ export function AdventureMapPanel({
                 {/* Map event handler */}
                 <MapEventsHandler onClick={handleMapClick} />
               </MapContainer>
+              
+              {/* Everdice world map info box */}
+              <div className="absolute top-2 left-2 z-[1000] bg-background/90 backdrop-blur-sm rounded-md p-2 shadow-md border border-border max-w-[250px]">
+                <div className="flex items-center gap-2 mb-1">
+                  <Globe2 className="h-5 w-5 text-primary" />
+                  <h3 className="text-sm font-semibold">Everdice World Region</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This map shows <span className="text-primary font-medium">{regionName}</span>, a region within 
+                  <span className="text-secondary font-medium"> {continentName}</span> of the Everdice world.
+                </p>
+              </div>
               
               {/* Map controls overlay */}
               <div className="absolute top-2 right-2 z-[1000] flex flex-col space-y-2">
