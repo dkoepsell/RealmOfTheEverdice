@@ -334,12 +334,15 @@ export class DatabaseStorage implements IStorage {
   async getCampaignWorldMap(campaignId: number): Promise<CampaignWorldMap | undefined> {
     try {
       // Use explicit column selection to avoid issues with missing columns
+      // Note: This table doesn't have an 'id' column - campaignId is the primary key
       const [worldMap] = await db.select({
-        id: campaignWorldMaps.id,
         campaignId: campaignWorldMaps.campaignId,
         mapUrl: campaignWorldMaps.mapUrl,
         regionName: campaignWorldMaps.regionName,
-        createdAt: campaignWorldMaps.createdAt,
+        continentId: campaignWorldMaps.continentId,
+        position: campaignWorldMaps.position,
+        bounds: campaignWorldMaps.bounds,
+        metadata: campaignWorldMaps.metadata,
         updatedAt: campaignWorldMaps.updatedAt
       })
       .from(campaignWorldMaps)
@@ -350,7 +353,6 @@ export class DatabaseStorage implements IStorage {
       // If there's a column-related error, try a more minimal query
       try {
         const [minimalWorldMap] = await db.select({
-          id: campaignWorldMaps.id,
           campaignId: campaignWorldMaps.campaignId,
           mapUrl: campaignWorldMaps.mapUrl
         })
@@ -397,11 +399,13 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
             .returning({
-              id: campaignWorldMaps.id,
               campaignId: campaignWorldMaps.campaignId,
               mapUrl: campaignWorldMaps.mapUrl,
               regionName: campaignWorldMaps.regionName,
-              createdAt: campaignWorldMaps.createdAt,
+              continentId: campaignWorldMaps.continentId,
+              position: campaignWorldMaps.position,
+              bounds: campaignWorldMaps.bounds,
+              metadata: campaignWorldMaps.metadata,
               updatedAt: campaignWorldMaps.updatedAt
             });
           return updatedMap;
@@ -417,9 +421,9 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
             .returning({
-              id: campaignWorldMaps.id,
               campaignId: campaignWorldMaps.campaignId,
-              mapUrl: campaignWorldMaps.mapUrl
+              mapUrl: campaignWorldMaps.mapUrl,
+              updatedAt: campaignWorldMaps.updatedAt
             });
           return minimalUpdatedMap;
         }
@@ -428,16 +432,24 @@ export class DatabaseStorage implements IStorage {
           // Create a new map - only include the essential fields
           const mapData = {
             campaignId: worldMap.campaignId,
-            mapUrl: worldMap.mapUrl
+            mapUrl: worldMap.mapUrl,
+            // Add optional fields if they exist
+            ...(worldMap.regionName && { regionName: worldMap.regionName }),
+            ...(worldMap.continentId && { continentId: worldMap.continentId }),
+            ...(worldMap.metadata && { metadata: worldMap.metadata })
           };
           
           const [newMap] = await db
             .insert(campaignWorldMaps)
             .values(mapData)
             .returning({
-              id: campaignWorldMaps.id,
               campaignId: campaignWorldMaps.campaignId,
-              mapUrl: campaignWorldMaps.mapUrl
+              mapUrl: campaignWorldMaps.mapUrl,
+              regionName: campaignWorldMaps.regionName,
+              continentId: campaignWorldMaps.continentId,
+              position: campaignWorldMaps.position,
+              metadata: campaignWorldMaps.metadata,
+              updatedAt: campaignWorldMaps.updatedAt
             });
           return newMap;
         } catch (insertError) {
