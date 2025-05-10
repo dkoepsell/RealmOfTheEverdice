@@ -226,6 +226,7 @@ export class DatabaseStorage implements IStorage {
   async executeRawQuery(query: string, params?: any[]): Promise<any> {
     try {
       const result = await pool.query(query, params || []);
+      console.log("Raw query result:", JSON.stringify(result.rows || [], null, 2));
       return result.rows;
     } catch (error) {
       console.error("Error executing raw query:", error);
@@ -1078,13 +1079,30 @@ export class DatabaseStorage implements IStorage {
         insertCampaign.isAiDm !== undefined ? insertCampaign.isAiDm : false
       ];
       
+      console.log("Executing campaign insert with values:", JSON.stringify(values, null, 2));
       const result = await this.executeRawQuery(insertQuery, values);
       
       if (!result || result.length === 0) {
         throw new Error("Failed to create campaign - no rows returned");
       }
       
-      const campaign = result[0];
+      // Handle date conversion explicitly
+      const rawCampaign = result[0];
+      console.log("Raw campaign from DB:", JSON.stringify(rawCampaign, null, 2));
+      
+      // Create a proper Campaign object with correct typing
+      const campaign: Campaign = {
+        id: rawCampaign.id,
+        name: rawCampaign.name,
+        description: rawCampaign.description,
+        dmId: rawCampaign.dmId,
+        status: rawCampaign.status,
+        setting: rawCampaign.setting,
+        isAiDm: rawCampaign.isAiDm,
+        createdAt: rawCampaign.createdAt ? new Date(rawCampaign.createdAt) : null
+      };
+      
+      console.log("Returning campaign object:", JSON.stringify(campaign, null, 2));
       return campaign;
     } catch (error) {
       console.error("Error creating campaign:", error);
@@ -1176,7 +1194,7 @@ export class DatabaseStorage implements IStorage {
       try {
         // Check if party_plan_comments table exists before deleting
         try {
-          const tableExists = await this.executeRawQuery(
+          const commentsTableExists = await this.executeRawQuery(
             `SELECT EXISTS (
                SELECT FROM information_schema.tables 
                WHERE table_name = 'party_plan_comments'
@@ -1184,14 +1202,31 @@ export class DatabaseStorage implements IStorage {
             []
           );
           
-          if (tableExists && tableExists.length > 0 && tableExists[0].exists) {
-            // Delete party plan comments first
-            await this.executeRawQuery(
-              `DELETE FROM party_plan_comments 
-               WHERE plan_id IN (SELECT id FROM party_plans WHERE campaign_id = $1)`,
-              [id]
+          if (commentsTableExists && commentsTableExists.length > 0 && commentsTableExists[0].exists) {
+            // First we need to check the column name to handle both itemId and item_id
+            const columnCheck = await this.executeRawQuery(
+              `SELECT column_name FROM information_schema.columns 
+               WHERE table_name='party_plan_comments' AND column_name IN ('item_id', 'itemId')`,
+              []
             );
-            console.log(`Deleted party plan comments for campaign ${id}`);
+            
+            if (columnCheck && columnCheck.length > 0) {
+              const columnName = columnCheck[0].column_name;
+              // Delete party plan comments first with correct column name
+              await this.executeRawQuery(
+                `DELETE FROM party_plan_comments 
+                 WHERE ${columnName} IN (
+                   SELECT id FROM party_plan_items 
+                   WHERE plan_id IN (
+                     SELECT id FROM party_plans WHERE campaign_id = $1
+                   )
+                 )`,
+                [id]
+              );
+              console.log(`Deleted party plan comments for campaign ${id} using column ${columnName}`);
+            } else {
+              console.log(`No item_id or itemId column found in party_plan_comments, skipping deletion`);
+            }
           } else {
             console.log(`Table party_plan_comments does not exist, skipping deletion`);
           }
@@ -1201,7 +1236,7 @@ export class DatabaseStorage implements IStorage {
         
         // Check if party_plan_items table exists before deleting
         try {
-          const tableExists = await this.executeRawQuery(
+          const itemsTableExists = await this.executeRawQuery(
             `SELECT EXISTS (
                SELECT FROM information_schema.tables 
                WHERE table_name = 'party_plan_items'
@@ -1209,14 +1244,26 @@ export class DatabaseStorage implements IStorage {
             []
           );
           
-          if (tableExists && tableExists.length > 0 && tableExists[0].exists) {
-            // Delete party plan items
-            await this.executeRawQuery(
-              `DELETE FROM party_plan_items 
-               WHERE plan_id IN (SELECT id FROM party_plans WHERE campaign_id = $1)`,
-              [id]
+          if (itemsTableExists && itemsTableExists.length > 0 && itemsTableExists[0].exists) {
+            // Check for correct column name (plan_id or planId)
+            const columnCheck = await this.executeRawQuery(
+              `SELECT column_name FROM information_schema.columns 
+               WHERE table_name='party_plan_items' AND column_name IN ('plan_id', 'planId')`,
+              []
             );
-            console.log(`Deleted party plan items for campaign ${id}`);
+            
+            if (columnCheck && columnCheck.length > 0) {
+              const columnName = columnCheck[0].column_name;
+              // Delete party plan items with correct column name
+              await this.executeRawQuery(
+                `DELETE FROM party_plan_items 
+                 WHERE ${columnName} IN (SELECT id FROM party_plans WHERE campaign_id = $1)`,
+                [id]
+              );
+              console.log(`Deleted party plan items for campaign ${id} using column ${columnName}`);
+            } else {
+              console.log(`No plan_id or planId column found in party_plan_items, skipping deletion`);
+            }
           } else {
             console.log(`Table party_plan_items does not exist, skipping deletion`);
           }
@@ -1226,7 +1273,7 @@ export class DatabaseStorage implements IStorage {
         
         // Check if party_plans table exists before deleting
         try {
-          const tableExists = await this.executeRawQuery(
+          const plansTableExists = await this.executeRawQuery(
             `SELECT EXISTS (
                SELECT FROM information_schema.tables 
                WHERE table_name = 'party_plans'
@@ -1234,13 +1281,25 @@ export class DatabaseStorage implements IStorage {
             []
           );
           
-          if (tableExists && tableExists.length > 0 && tableExists[0].exists) {
-            // Delete party plans
-            await this.executeRawQuery(
-              `DELETE FROM party_plans WHERE campaign_id = $1`,
-              [id]
+          if (plansTableExists && plansTableExists.length > 0 && plansTableExists[0].exists) {
+            // Check for correct column name (campaign_id or campaignId)
+            const columnCheck = await this.executeRawQuery(
+              `SELECT column_name FROM information_schema.columns 
+               WHERE table_name='party_plans' AND column_name IN ('campaign_id', 'campaignId')`,
+              []
             );
-            console.log(`Deleted party plans for campaign ${id}`);
+            
+            if (columnCheck && columnCheck.length > 0) {
+              const columnName = columnCheck[0].column_name;
+              // Delete party plans with correct column name
+              await this.executeRawQuery(
+                `DELETE FROM party_plans WHERE ${columnName} = $1`,
+                [id]
+              );
+              console.log(`Deleted party plans for campaign ${id} using column ${columnName}`);
+            } else {
+              console.log(`No campaign_id or campaignId column found in party_plans, skipping deletion`);
+            }
           } else {
             console.log(`Table party_plans does not exist, skipping deletion`);
           }
