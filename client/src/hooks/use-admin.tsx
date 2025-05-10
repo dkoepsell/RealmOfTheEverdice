@@ -241,6 +241,11 @@ export function useAdmin() {
     refetch: refetchWorldUsers
   } = useQuery({
     queryKey: ["/api/admin/worlds", selectedWorldId, "access"],
+    queryFn: async () => {
+      if (!(selectedWorldId && (isAdmin || isSuperAdmin))) return [];
+      const res = await apiRequest("GET", `/api/admin/worlds/${selectedWorldId}/users`);
+      return await res.json();
+    },
     enabled: !!(selectedWorldId && (isAdmin || isSuperAdmin))
   });
   

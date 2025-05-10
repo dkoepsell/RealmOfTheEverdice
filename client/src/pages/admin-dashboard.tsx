@@ -114,6 +114,19 @@ export default function AdminDashboard() {
   const [worldLoading, setWorldLoading] = useState(false);
   const [showCreateWorldDialog, setShowCreateWorldDialog] = useState(false);
   const [showRegenerateWorldDialog, setShowRegenerateWorldDialog] = useState(false);
+  
+  // Set the initial selectedWorldId when worlds load
+  useEffect(() => {
+    if (worlds && worlds.length > 0 && !selectedWorldId) {
+      // Select the main world if available, otherwise select the first world
+      const mainWorld = worlds.find(w => w.isMainWorld);
+      if (mainWorld) {
+        setSelectedWorldId(mainWorld.id);
+      } else if (worlds[0]) {
+        setSelectedWorldId(worlds[0].id);
+      }
+    }
+  }, [worlds, selectedWorldId, setSelectedWorldId]);
 
   // Regenerate world map
   const handleRegenerateWorld = async () => {
