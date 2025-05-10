@@ -831,8 +831,23 @@ export default function CampaignPage() {
                       </div>
                     </div>
                     
+                    {/* Empty state message when no logs are present */}
+                    {(!gameLogs || gameLogs.length === 0) && (
+                      <div className="pl-6 py-8">
+                        <div className="border-4 border-double border-amber-800/40 bg-amber-50/30 p-6 rounded-lg shadow-inner">
+                          <h3 className="text-xl font-medieval text-primary-800 mb-4">Begin Your Adventure</h3>
+                          <p className="mb-3 font-serif italic first-letter:text-3xl first-letter:font-bold first-letter:mr-1 first-letter:float-left first-letter:text-primary-900">
+                            Welcome to your journey in the realm of Everdice. The adventure is about to begin! Use the action box below to describe what your character wants to do, and the Dungeon Master will respond with a narrative that continues your story.
+                          </p>
+                          <p className="text-sm font-medium text-primary-700 mt-4">
+                            Tip: Try simple actions like "I look around the area" or "I introduce myself to nearby travelers" to begin.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Map logs to messages */}
-                    {gameLogs.map((log, index, array) => {
+                    {gameLogs && gameLogs.length > 0 && gameLogs.map((log, index, array) => {
                       // Calculate if this is a "new" entry (one of the 3 most recent narrative logs)
                       const narrativeLogs = array.filter(l => l.type === "narrative");
                       const recentNarrativeIds = narrativeLogs.slice(0, 3).map(l => l.id);
