@@ -959,9 +959,9 @@ const AdminDashboard = () => {
                           </CardHeader>
                           <CardContent className="pt-0">
                             <p className="text-sm text-muted-foreground">
-                              {campaignRegions && continent.regions ? 
-                                `${campaignRegions.uniqueRegions?.filter((regionName: string) => 
-                                  continent.regions.some((r: any) => r.name === regionName)).length || 0} active regions` :
+                              {campaignRegions && Array.isArray(campaignRegions.uniqueRegions) && Array.isArray(continent.regions) ? 
+                                `${campaignRegions.uniqueRegions.filter((regionName: string) => 
+                                  regionName && continent.regions.some((r: any) => r.name === regionName)).length || 0} active regions` :
                                 "0 active regions"}
                             </p>
                             {continent.regions && continent.regions.length > 0 && (
@@ -978,12 +978,14 @@ const AdminDashboard = () => {
                                       {continent.regions.map((region: any, i: number) => (
                                         <li key={i} className="flex items-center">
                                           <span className={campaignRegions && 
-                                            campaignRegions.uniqueRegions?.includes(region.name) ? 
+                                            Array.isArray(campaignRegions.uniqueRegions) && 
+                                            campaignRegions.uniqueRegions.includes(region.name) ? 
                                             "text-amber-700 font-medium" : ""}>
                                             {region.name}
                                           </span>
                                           {campaignRegions && 
-                                            campaignRegions.uniqueRegions?.includes(region.name) && (
+                                            Array.isArray(campaignRegions.uniqueRegions) && 
+                                            campaignRegions.uniqueRegions.includes(region.name) && (
                                             <Badge variant="outline" className="ml-2 h-5 text-[10px]">
                                               Active
                                             </Badge>
