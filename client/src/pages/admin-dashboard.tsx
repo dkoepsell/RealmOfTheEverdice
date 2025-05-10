@@ -723,10 +723,19 @@ const AdminDashboard = () => {
                                           setRegionNameDialog(true);
                                         }}
                                       >
-                                        <div className="absolute -inset-2 rounded-full bg-primary/20 animate-pulse group-hover:bg-primary/40 transition-all"></div>
-                                        <button className="relative h-4 w-4 rounded-full bg-primary shadow-sm hover:bg-primary-focus transition-colors"/>
-                                        <div className="absolute opacity-0 group-hover:opacity-100 bottom-6 bg-background shadow-md rounded px-2 py-1 text-xs transition-opacity whitespace-nowrap">
-                                          {campaign.region || 'Unnamed Region'}
+                                        {/* Pulsing region marker with improved visibility */}
+                                        <div className="absolute -inset-3 rounded-full bg-primary/30 animate-pulse group-hover:bg-primary/60 transition-all"></div>
+                                        <div className="absolute -inset-1 rounded-full bg-amber-400/50 group-hover:bg-amber-400/80"></div>
+                                        <button className="relative h-6 w-6 rounded-full bg-amber-600 shadow-md hover:bg-amber-700 transition-colors flex items-center justify-center">
+                                          <MapPin className="h-3 w-3 text-white" />
+                                        </button>
+                                        
+                                        {/* Enhanced tooltips */}
+                                        <div className="absolute opacity-0 group-hover:opacity-100 bottom-8 bg-background/90 shadow-md rounded-md px-3 py-2 text-xs transition-opacity whitespace-nowrap z-20 border border-amber-200">
+                                          <div className="font-semibold text-amber-900">{campaign.region || 'Unnamed Region'}</div>
+                                          <div className="text-[10px] text-muted-foreground mt-1">
+                                            {campaign.name || 'Campaign'} • Click to edit
+                                          </div>
                                         </div>
                                       </div>
                                     </div>
@@ -787,6 +796,17 @@ const AdminDashboard = () => {
                                   </div>
                                 )}
                                 
+                                <div className="my-2 p-2 bg-amber-50 rounded-md border border-amber-200">
+                                  <div className="flex items-center mb-2">
+                                    <MapPin className="h-4 w-4 text-amber-600 mr-2" />
+                                    <span className="text-sm font-medium text-amber-900">Region ID: {selectedRegion?.id}</span>
+                                  </div>
+                                  <p className="text-xs text-amber-800">
+                                    Naming regions helps create a consistent world map for all campaigns. 
+                                    Region names and descriptions will be visible to players exploring the world.
+                                  </p>
+                                </div>
+                                
                                 <DialogFooter>
                                   <Button
                                     variant="outline"
@@ -795,6 +815,7 @@ const AdminDashboard = () => {
                                     Cancel
                                   </Button>
                                   <Button
+                                    className="bg-amber-600 hover:bg-amber-700"
                                     onClick={() => {
                                       if (selectedRegion) {
                                         // Save region info
