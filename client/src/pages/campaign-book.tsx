@@ -95,13 +95,14 @@ export default function CampaignPage() {
   }, [user, campaignCharacters]);
 
   // Get map locations
+  const validMapCampaignId = campaignId && !isNaN(parseInt(campaignId)) ? parseInt(campaignId) : 0;
   const {
     data: mapLocations = [],
     isLoading: locationsLoading,
     error: locationsError,
   } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/map/locations`],
-    enabled: !!campaignId
+    queryKey: [`/api/campaigns/${validMapCampaignId}/map/locations`],
+    enabled: !!validMapCampaignId
   });
 
   // Get map paths
@@ -110,8 +111,8 @@ export default function CampaignPage() {
     isLoading: pathsLoading,
     error: pathsError,
   } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/map/paths`],
-    enabled: !!campaignId
+    queryKey: [`/api/campaigns/${validMapCampaignId}/map/paths`],
+    enabled: !!validMapCampaignId
   });
 
   // Get comments 

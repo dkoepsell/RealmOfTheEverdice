@@ -379,7 +379,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
-      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      const campaignId = parseInt(req.params.id);
+      if (isNaN(campaignId)) {
+        return res.status(400).json({ message: "Invalid campaign ID" });
+      }
+      const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ message: "Campaign not found" });
       
       // Only DM or players in the campaign can access map locations
@@ -474,7 +478,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
-      const campaign = await storage.getCampaign(parseInt(req.params.id));
+      const campaignId = parseInt(req.params.id);
+      if (isNaN(campaignId)) {
+        return res.status(400).json({ message: "Invalid campaign ID" });
+      }
+      const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ message: "Campaign not found" });
       
       // Only DM or players in the campaign can access journey paths
