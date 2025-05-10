@@ -102,6 +102,11 @@ export function AddCharacterDialog({
   // Mutation for adding a user character
   const addCharacterMutation = useMutation({
     mutationFn: async (characterId: number) => {
+      // Validate campaignId to prevent NaN errors
+      if (!campaignId || isNaN(campaignId)) {
+        throw new Error(`Invalid campaign ID: ${campaignId}`);
+      }
+      
       console.log("Adding character to campaign:", campaignId, characterId);
       try {
         const res = await apiRequest(
@@ -152,6 +157,11 @@ export function AddCharacterDialog({
   // Mutation for adding a bot companion
   const addBotCompanionMutation = useMutation({
     mutationFn: async (botId: string) => {
+      // Validate campaignId to prevent NaN errors
+      if (!campaignId || isNaN(campaignId)) {
+        throw new Error(`Invalid campaign ID: ${campaignId}`);
+      }
+      
       console.log("Adding bot companion to campaign:", campaignId, botId);
       const botCompanion = BOT_COMPANIONS.find(bot => bot.id === botId);
       
