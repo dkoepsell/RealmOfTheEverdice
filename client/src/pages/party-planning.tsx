@@ -48,8 +48,24 @@ const commentSchema = z.object({
 
 const PartyPlanning = () => {
   const queryClient = useQueryClient();
-  const [params] = useParams();
-  const campaignId = parseInt(params?.id as string);
+  // Use the correct type for wouter params (no TS typings)
+  const params = useParams() as {id: string};
+  const campaignIdParam = params.id;
+  
+  // Parse and validate campaign ID ensuring it's always a valid number
+  const parsedId = campaignIdParam ? parseInt(campaignIdParam, 10) : 0;
+  // Ensure campaignId is a positive number greater than 0
+  const campaignId = !isNaN(parsedId) && parsedId > 0 ? parsedId : 0;
+  
+  // Log campaign ID for debugging
+  useEffect(() => {
+    console.log("Party Planning received campaignId param:", campaignIdParam, "| parsed as:", campaignId);
+    // Extra validation
+    if (campaignId <= 0) {
+      console.error("Invalid campaign ID in URL for party planning. Raw param:", campaignIdParam);
+    }
+  }, [campaignIdParam, campaignId]);
+  
   const { user } = useAuth();
   const [activePlanId, setActivePlanId] = useState<number | null>(null);
   const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
@@ -62,9 +78,14 @@ const PartyPlanning = () => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   
   useEffect(() => {
-    if (!campaignId || !user) return;
+    // Only proceed if we have a valid campaign ID and a user
+    if (campaignId <= 0 || !user) {
+      console.error("Cannot set up WebSocket: Invalid campaign ID or user not logged in", 
+                   { campaignId, user: user ? "logged in" : "not logged in" });
+      return;
+    }
     
-    // Setup WebSocket connection
+    // Setup WebSocket connection with validated campaign ID
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     const newSocket = new WebSocket(wsUrl);

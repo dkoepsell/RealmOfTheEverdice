@@ -22,7 +22,10 @@ import { ModeToggle } from "@/components/mode-toggle";
 // Campaign book / main adventure interface
 export default function CampaignPage() {
   const [, setLocation] = useLocation();
-  const { campaignId: campaignIdParam } = useParams();
+  // Use the correct type for wouter params (no TS typings)
+  const params = useParams() as {id: string};
+  const campaignIdParam = params.id;
+  
   // Parse and validate campaign ID ensuring it's always a valid number
   const parsedId = campaignIdParam ? parseInt(campaignIdParam, 10) : 0;
   // Ensure campaignId is a positive number greater than 0
@@ -31,6 +34,10 @@ export default function CampaignPage() {
   // Log campaign ID for debugging
   useEffect(() => {
     console.log("Campaign book received campaignId param:", campaignIdParam, "| parsed as:", campaignId);
+    // Extra validation
+    if (campaignId <= 0) {
+      console.error("Invalid campaign ID in URL, showing error UI. Raw param:", campaignIdParam);
+    }
   }, [campaignIdParam, campaignId]);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -1084,9 +1091,9 @@ export default function CampaignPage() {
         )}
       </div>
       
-      {/* Character dialog */}
+      {/* Character dialog - provide positively verified ID */}
       <AddCharacterDialog
-        campaignId={campaignId}
+        campaignId={campaignId > 0 ? campaignId : undefined}
         open={showAddCharacterDialog}
         onOpenChange={setShowAddCharacterDialog}
         onCharacterAdded={handleCharacterAdded}
