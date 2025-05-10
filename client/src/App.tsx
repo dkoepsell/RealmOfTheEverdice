@@ -9,6 +9,7 @@ import HomePage from "@/pages/home-page";
 import SimplifiedAuthPage from "@/pages/simplified-auth";
 import CharactersPage from "@/pages/characters-page";
 import CharacterCreation from "@/pages/character-creation";
+import CharacterDetail from "@/pages/character-detail";
 import CampaignCreation from "@/pages/campaign-creation";
 import CampaignPage from "@/pages/campaign-book";
 import LearnPage from "@/pages/learn-page";
@@ -39,6 +40,7 @@ function Router() {
       <ProtectedRoute path="/admin" component={AdminDashboard} />
       <ProtectedRoute path="/characters" component={CharactersPage} />
       <ProtectedRoute path="/characters/create" component={CharacterCreation} />
+      <ProtectedRoute path="/characters/:id" component={CharacterDetail} />
       <ProtectedRoute path="/campaigns/create" component={CampaignCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
       <ProtectedRoute path="/learn" component={LearnPage} />

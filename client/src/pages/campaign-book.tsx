@@ -12,7 +12,7 @@ import { BotCompanion } from "@/components/bot-companion";
 import { AddCharacterDialog } from "@/components/add-character-dialog";
 import { CampaignSettingsDialog } from "@/components/campaign-settings-dialog";
 import { InteractiveSkillChecks } from "@/components/interactive-skill-checks";
-import { DiceRoll } from "@/components/dice-roll";
+import { DiceRoller } from "@/components/dice-roll";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LootCollectionPanel } from "@/components/loot-collection-panel";
 import { useCombatDetection } from "@/hooks/use-combat-detection";
@@ -649,9 +649,9 @@ export default function CampaignPage() {
               )}
               
               {rightPanelTab === "roll" && (
-                <DiceRoll
-                  campaignId={parseInt(campaignId)}
-                  character={userCharacter}
+                <DiceRoller
+                  characterName={userCharacter?.name || "Adventurer"}
+                  characterModifiers={userCharacter?.stats}
                 />
               )}
               
@@ -954,9 +954,9 @@ export default function CampaignPage() {
                 )}
                 
                 {rightPanelTab === "roll" && (
-                  <DiceRoll
-                    campaignId={parseInt(campaignId)}
-                    character={userCharacter}
+                  <DiceRoller
+                    characterName={userCharacter?.name || "Adventurer"}
+                    characterModifiers={userCharacter?.stats}
                   />
                 )}
                 

@@ -153,45 +153,53 @@ export default function CharactersPage() {
                 </CardContent>
                 <Separator />
                 <CardFooter className="flex justify-between pt-4">
-                  {isMobile ? (
-                    <Drawer>
-                      <DrawerTrigger asChild>
-                        <Button variant="outline" onClick={() => setSelectedCharacter(character)}>View Details</Button>
-                      </DrawerTrigger>
-                      <DrawerContent>
-                        <DrawerHeader>
-                          <DrawerTitle>{character.name}</DrawerTitle>
-                          <DrawerDescription>{character.race} {character.class}</DrawerDescription>
-                        </DrawerHeader>
-                        <div className="px-4 py-2 max-h-[calc(80vh-10rem)] overflow-y-auto">
+                  <div className="flex gap-2">
+                    {isMobile ? (
+                      <Drawer>
+                        <DrawerTrigger asChild>
+                          <Button variant="outline" onClick={() => setSelectedCharacter(character)}>Quick View</Button>
+                        </DrawerTrigger>
+                        <DrawerContent>
+                          <DrawerHeader>
+                            <DrawerTitle>{character.name}</DrawerTitle>
+                            <DrawerDescription>{character.race} {character.class}</DrawerDescription>
+                          </DrawerHeader>
+                          <div className="px-4 py-2 max-h-[calc(80vh-10rem)] overflow-y-auto">
+                            {character && <CharacterSheet character={character} />}
+                          </div>
+                          <DrawerFooter>
+                            <DrawerClose asChild>
+                              <Button variant="outline">Close</Button>
+                            </DrawerClose>
+                          </DrawerFooter>
+                        </DrawerContent>
+                      </Drawer>
+                    ) : (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" onClick={() => setSelectedCharacter(character)}>Quick View</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>{character.name}</DialogTitle>
+                            <DialogDescription>{character.race} {character.class}</DialogDescription>
+                          </DialogHeader>
                           {character && <CharacterSheet character={character} />}
-                        </div>
-                        <DrawerFooter>
-                          <DrawerClose asChild>
-                            <Button variant="outline">Close</Button>
-                          </DrawerClose>
-                        </DrawerFooter>
-                      </DrawerContent>
-                    </Drawer>
-                  ) : (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" onClick={() => setSelectedCharacter(character)}>View Details</Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>{character.name}</DialogTitle>
-                          <DialogDescription>{character.race} {character.class}</DialogDescription>
-                        </DialogHeader>
-                        {character && <CharacterSheet character={character} />}
-                        <div className="flex justify-end mt-4">
-                          <DialogClose asChild>
-                            <Button variant="outline">Close</Button>
-                          </DialogClose>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
+                          <div className="flex justify-end mt-4">
+                            <DialogClose asChild>
+                              <Button variant="outline">Close</Button>
+                            </DialogClose>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                    
+                    <Button asChild variant="default">
+                      <Link href={`/characters/${character.id}`}>
+                        Manage Character
+                      </Link>
+                    </Button>
+                  </div>
                   <Button 
                     variant="ghost" 
                     size="icon" 
