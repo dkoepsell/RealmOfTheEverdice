@@ -65,7 +65,10 @@ import {
   CheckCircle, 
   XCircle,
   LogIn,
-  ChevronsUpDown
+  ChevronsUpDown,
+  ZoomIn,
+  ZoomOut,
+  Maximize
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -99,6 +102,10 @@ const AdminDashboard = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
   const [isInitializingWorld, setIsInitializingWorld] = useState(false);
+  
+  // Map interaction state
+  const [selectedRegion, setSelectedRegion] = useState<any>(null);
+  const [regionNameDialog, setRegionNameDialog] = useState(false);
   
   // Redirect if not a superuser
   if (!user) {
@@ -574,17 +581,239 @@ const AdminDashboard = () => {
                     </Card>
                     
                     <Card className="bg-muted">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Interactive World Map</CardTitle>
+                        <CardDescription>
+                          Explore the world of Everdice and manage its regions
+                        </CardDescription>
+                      </CardHeader>
                       <CardContent className="p-0">
                         {everdiceWorld?.mapUrl ? (
                           <div className="relative">
-                            <img 
-                              src={everdiceWorld.mapUrl} 
-                              alt="Everdice World Map" 
-                              className="w-full h-auto rounded-md"
-                            />
-                            <div className="absolute bottom-2 right-2 bg-background/80 p-1 px-2 rounded text-xs">
-                              The World of Everdice
+                            <div className="overflow-hidden rounded-md">
+                              <div className="relative" style={{ height: "350px" }}>
+                                {/* Interactive zoom controls */}
+                                <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full bg-background/90 shadow-md"
+                                    onClick={() => {
+                                      const map = document.getElementById('everdice-map-container');
+                                      if (map) {
+                                        const currentScale = map.style.transform ? 
+                                          parseFloat(map.style.transform.replace('scale(', '').replace(')', '')) || 1 : 1;
+                                        const newScale = Math.min(currentScale + 0.2, 3);
+                                        map.style.transform = `scale(${newScale})`;
+                                      }
+                                    }}
+                                  >
+                                    <ZoomIn className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full bg-background/90 shadow-md"
+                                    onClick={() => {
+                                      const map = document.getElementById('everdice-map-container');
+                                      if (map) {
+                                        const currentScale = map.style.transform ? 
+                                          parseFloat(map.style.transform.replace('scale(', '').replace(')', '')) || 1 : 1;
+                                        const newScale = Math.max(currentScale - 0.2, 0.5);
+                                        map.style.transform = `scale(${newScale})`;
+                                      }
+                                    }}
+                                  >
+                                    <ZoomOut className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full bg-background/90 shadow-md"
+                                    onClick={() => {
+                                      const map = document.getElementById('everdice-map-container');
+                                      if (map) {
+                                        map.style.transform = 'scale(1)';
+                                        map.style.left = '0';
+                                        map.style.top = '0';
+                                      }
+                                    }}
+                                  >
+                                    <Maximize className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                
+                                {/* Interactive map with draggable functionality */}
+                                <div 
+                                  id="everdice-map-container"
+                                  className="absolute cursor-move origin-center transition-transform duration-100"
+                                  style={{ 
+                                    width: "100%", 
+                                    height: "100%",
+                                  }}
+                                  onMouseDown={(e) => {
+                                    const map = e.currentTarget;
+                                    const startX = e.clientX;
+                                    const startY = e.clientY;
+                                    const startLeft = map.offsetLeft;
+                                    const startTop = map.offsetTop;
+                                    
+                                    const onMouseMove = (moveEvent: MouseEvent) => {
+                                      const dx = moveEvent.clientX - startX;
+                                      const dy = moveEvent.clientY - startY;
+                                      map.style.left = `${startLeft + dx}px`;
+                                      map.style.top = `${startTop + dy}px`;
+                                    };
+                                    
+                                    const onMouseUp = () => {
+                                      document.removeEventListener('mousemove', onMouseMove);
+                                      document.removeEventListener('mouseup', onMouseUp);
+                                    };
+                                    
+                                    document.addEventListener('mousemove', onMouseMove);
+                                    document.addEventListener('mouseup', onMouseUp);
+                                  }}
+                                >
+                                  <img 
+                                    src={everdiceWorld.mapUrl} 
+                                    alt="Everdice World Map" 
+                                    className="w-full h-full object-contain"
+                                  />
+                                  
+                                  {/* Map region markers - highlight campaign regions */}
+                                  {campaignRegions && campaignRegions.campaigns && campaignRegions.campaigns.map((campaign: any, index: number) => (
+                                    <div 
+                                      key={`region-${campaign.id || index}`}
+                                      className="absolute flex items-center justify-center"
+                                      style={{
+                                        // Position randomly if no actual coordinates, since we're just prototyping this feature
+                                        left: `${Math.random() * 80 + 10}%`,
+                                        top: `${Math.random() * 80 + 10}%`,
+                                        transform: 'translate(-50%, -50%)'
+                                      }}
+                                    >
+                                      <div 
+                                        className="group relative"
+                                        onClick={() => {
+                                          // Show region edit dialog
+                                          setSelectedRegion(campaign);
+                                          setRegionNameDialog(true);
+                                        }}
+                                      >
+                                        <div className="absolute -inset-2 rounded-full bg-primary/20 animate-pulse group-hover:bg-primary/40 transition-all"></div>
+                                        <button className="relative h-4 w-4 rounded-full bg-primary shadow-sm hover:bg-primary-focus transition-colors"/>
+                                        <div className="absolute opacity-0 group-hover:opacity-100 bottom-6 bg-background shadow-md rounded px-2 py-1 text-xs transition-opacity whitespace-nowrap">
+                                          {campaign.region || 'Unnamed Region'}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                <div className="absolute bottom-2 right-2 bg-background/80 p-1 px-2 rounded text-xs">
+                                  The World of Everdice
+                                </div>
+                              </div>
                             </div>
+                            
+                            {/* Region name editing dialog */}
+                            <Dialog open={regionNameDialog} onOpenChange={setRegionNameDialog}>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Edit Region</DialogTitle>
+                                  <DialogDescription>
+                                    Change details for this region of the Everdice world.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                
+                                {selectedRegion && (
+                                  <div className="space-y-4 py-2">
+                                    <div className="space-y-2">
+                                      <Label htmlFor="region-name">Region Name</Label>
+                                      <Input 
+                                        id="region-name"
+                                        placeholder="Enter region name" 
+                                        value={selectedRegion.region || ''} 
+                                        onChange={(e) => setSelectedRegion({
+                                          ...selectedRegion,
+                                          region: e.target.value
+                                        })}
+                                      />
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      <Label htmlFor="region-description">Region Description</Label>
+                                      <Textarea 
+                                        id="region-description"
+                                        placeholder="Describe this region"
+                                        value={selectedRegion.description || ''}
+                                        onChange={(e) => setSelectedRegion({
+                                          ...selectedRegion,
+                                          description: e.target.value
+                                        })}
+                                        rows={3}
+                                      />
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      <Label>Connected Campaigns</Label>
+                                      <div className="text-sm text-muted-foreground">
+                                        {selectedRegion.name || 'This campaign'} is located in this region
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                <DialogFooter>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setRegionNameDialog(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    onClick={() => {
+                                      if (selectedRegion) {
+                                        // Save region info
+                                        fetch(`/api/admin/update-region`, {
+                                          method: 'POST',
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                          },
+                                          body: JSON.stringify({
+                                            campaignId: selectedRegion.id,
+                                            regionName: selectedRegion.region,
+                                            description: selectedRegion.description
+                                          })
+                                        })
+                                        .then(response => {
+                                          if (!response.ok) throw new Error('Failed to update region');
+                                          return response.json();
+                                        })
+                                        .then(() => {
+                                          toast({
+                                            title: 'Region Updated',
+                                            description: 'The region information has been saved successfully.'
+                                          });
+                                          if (refetchCampaignRegions) refetchCampaignRegions();
+                                          setRegionNameDialog(false);
+                                        })
+                                        .catch(error => {
+                                          console.error('Error updating region:', error);
+                                          toast({
+                                            title: 'Error',
+                                            description: error.message,
+                                            variant: 'destructive'
+                                          });
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    Save Changes
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
                           </div>
                         ) : (
                           <div className="p-8 rounded-md flex flex-col items-center justify-center h-full">

@@ -130,6 +130,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // New endpoint to update region information
+  app.post("/api/admin/update-region", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Only superuser and admins can update regions
+    if (req.user.role !== "superuser" && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const { campaignId, regionName, description, position, bounds } = req.body;
+      
+      if (!campaignId) {
+        return res.status(400).json({ message: "Campaign ID is required" });
+      }
+      
+      // Get the existing map data
+      const worldMap = await storage.getCampaignWorldMap(campaignId);
+      
+      if (!worldMap) {
+        return res.status(404).json({ message: "Campaign world map not found" });
+      }
+      
+      // Update the region information
+      const updatedMap = await storage.createOrUpdateCampaignWorldMap({
+        campaignId,
+        mapUrl: worldMap.mapUrl,
+        regionName: regionName || worldMap.regionName,
+        position: position || worldMap.position,
+        bounds: bounds || worldMap.bounds,
+        continentId: worldMap.continentId,
+        metadata: worldMap.metadata,
+        updatedAt: new Date()
+      });
+      
+      // Also update the campaign description if provided
+      if (description) {
+        await storage.updateCampaign(campaignId, { description });
+      }
+      
+      res.json({ success: true, updatedMap });
+    } catch (error) {
+      console.error("Error updating region information:", error);
+      res.status(500).json({ message: "Failed to update region information" });
+    }
+  });
+  
   // Item related routes (add, remove, trade, equip)
   app.post("/api/characters/:id/items", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
