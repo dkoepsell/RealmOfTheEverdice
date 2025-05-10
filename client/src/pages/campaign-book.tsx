@@ -74,6 +74,7 @@ import {
   Shield, ShieldCheck, Wand2, Heart, Eye, EyeOff,
   MoveRight, Package, MessageCircle
 } from "lucide-react";
+import { LootCollectionPanel } from "@/components/loot-collection-panel";
 import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
 import { DndQuickReference } from "@/components/dnd-quick-reference";
 import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
@@ -81,7 +82,6 @@ import { InventoryManagement } from "@/components/inventory-management";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
 import { BattleTracker } from "@/components/battle-tracker";
 import { useCombatDetection } from "@/hooks/use-combat-detection";
-import { LootCollectionPanel } from "@/components/loot-collection-panel";
 
 export default function CampaignPage() {
   // URL parameters
@@ -101,6 +101,7 @@ export default function CampaignPage() {
   const [showDiceRoller, setShowDiceRoller] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<string | null>(null);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
   const [playerInput, setPlayerInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasUnclaimedLoot, setHasUnclaimedLoot] = useState(false);
