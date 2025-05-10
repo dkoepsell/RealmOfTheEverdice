@@ -384,6 +384,15 @@ export default function CampaignCreation() {
                     )}
                   />
 
+                  
+                  <Alert className="my-4 bg-background/80 border border-accent">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Quick Campaign Creation</AlertTitle>
+                    <AlertDescription>
+                      We've enabled local templates for faster campaign creation. This ensures reliable campaign generation without delays.
+                    </AlertDescription>
+                  </Alert>
+                  
                   <div className="flex flex-col md:flex-row justify-between gap-4">
                     <Button 
                       type="button"

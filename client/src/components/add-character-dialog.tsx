@@ -64,8 +64,24 @@ export function AddCharacterDialog({
   onOpenChange,
   onCharacterAdded
 }: AddCharacterDialogProps) {
-  // Safety check for campaign ID to prevent NaN issues and log for debugging
-  const validCampaignId = campaignId && !isNaN(campaignId) ? Number(campaignId) : 0;
+  const { user } = useAuth();
+  const { toast } = useToast();
+  // Enhanced safety check for campaign ID to prevent issues with invalid values
+  const [validCampaignId, setValidCampaignId] = useState<number>(0);
+  
+  // Validate campaign ID whenever it changes
+  useEffect(() => {
+    // Parse and validate the campaign ID
+    const parsedId = campaignId && !isNaN(Number(campaignId)) ? Number(campaignId) : 0;
+    
+    if (parsedId <= 0) {
+      console.error("Invalid campaign ID detected:", campaignId, "parsed as:", parsedId);
+      // Don't update the validCampaignId if it's invalid
+    } else {
+      console.log("Valid campaign ID confirmed:", parsedId);
+      setValidCampaignId(parsedId);
+    }
+  }, [campaignId]);
   
   // Log campaign ID for debugging
   useEffect(() => {
@@ -73,11 +89,14 @@ export function AddCharacterDialog({
       console.log("AddCharacterDialog opened with campaignId:", campaignId, "validCampaignId:", validCampaignId);
       if (!validCampaignId || validCampaignId <= 0) {
         console.error("Invalid campaign ID detected in AddCharacterDialog:", campaignId);
+        toast({
+          title: "Error",
+          description: "There's an issue with the campaign ID. Please try reloading the page.",
+          variant: "destructive",
+        });
       }
     }
-  }, [open, campaignId, validCampaignId]);
-  const { user } = useAuth();
-  const { toast } = useToast();
+  }, [open, campaignId, validCampaignId, toast]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>("");
   const [characterList, setCharacterList] = useState<Character[]>([]);
   const [characterTab, setCharacterTab] = useState<"my-characters" | "bot-companions">("my-characters");
