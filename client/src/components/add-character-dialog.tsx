@@ -219,7 +219,7 @@ export function AddCharacterDialog({
       
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({
-        queryKey: [`/api/campaigns/${campaignId}/characters`],
+        queryKey: [`/api/campaigns/${validCampaignId}/characters`],
       });
       
       // Close dialog and trigger callback
