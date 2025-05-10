@@ -1440,7 +1440,17 @@ export class DatabaseStorage implements IStorage {
   // Get all campaigns for admin dashboard
   async getAllCampaigns(): Promise<Campaign[]> {
     try {
-      return db.select().from(campaigns);
+      // Use explicit column selection to avoid issues with missing columns
+      return db.select({
+        id: campaigns.id,
+        name: campaigns.name,
+        description: campaigns.description,
+        dmId: campaigns.dmId,
+        status: campaigns.status,
+        setting: campaigns.setting,
+        isAiDm: campaigns.isAiDm,
+        createdAt: campaigns.createdAt
+      }).from(campaigns);
     } catch (error) {
       console.error("Error getting all campaigns:", error);
       return [];
