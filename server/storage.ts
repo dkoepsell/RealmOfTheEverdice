@@ -1165,19 +1165,7 @@ export class DatabaseStorage implements IStorage {
         status: rawCampaign.status || 'active',
         setting: rawCampaign.setting || null,
         isAiDm: !!rawCampaign.isAiDm,
-        createdAt: rawCampaign.createdAt ? new Date(rawCampaign.createdAt) : null,
-        // Add additional fields with null fallbacks
-        updatedAt: rawCampaign.updatedAt ? new Date(rawCampaign.updatedAt) : null,
-        difficulty: rawCampaign.difficulty || null,
-        levelRange: rawCampaign.levelRange || null,
-        playerCount: typeof rawCampaign.playerCount === 'number' ? rawCampaign.playerCount : null,
-        sessionLength: rawCampaign.sessionLength || null,
-        campaignType: rawCampaign.campaignType || null,
-        theme: rawCampaign.theme || null,
-        customRules: rawCampaign.customRules || null,
-        privacy: rawCampaign.privacy || 'private',
-        customBackgrounds: !!rawCampaign.customBackgrounds,
-        currentTurnId: rawCampaign.currentTurnId || null
+        createdAt: rawCampaign.createdAt ? new Date(rawCampaign.createdAt) : null
       };
       
       console.log("Returning campaign object:", JSON.stringify(campaign, null, 2));
