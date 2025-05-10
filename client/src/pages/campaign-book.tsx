@@ -1,102 +1,32 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useParams } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { v4 as uuidv4 } from 'uuid';
-import { Adventure, Campaign, GameLog } from "@shared/schema";
-
-// Character interface with explicit typing
-interface Character {
-  id: number;
-  name: string;
-  race: string;
-  class: string;
-  level: number;
-  background: string | null;
-  appearance: string | null;
-  backstory: string | null;
-  stats: {
-    strength: number;
-    dexterity: number;
-    constitution: number;
-    intelligence: number;
-    wisdom: number;
-    charisma: number;
-  };
-  hp: number;
-  maxHp: number;
-  equipment: {
-    items: Array<{
-      name: string;
-      type: string;
-      isEquipped: boolean;
-    }>;
-    inventory?: any[];
-  };
-  spells?: any;
-  abilities?: any;
-  userId: number;
-  isBot: boolean;
-  createdAt: Date | null;
-};
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import Navbar from "@/components/navbar";
-import { CharacterPanel } from "@/components/character-panel";
-import { GameArea } from "@/components/game-area";
-import { WorldInfoPanel } from "@/components/world-info-panel";
-import { CampaignChat } from "@/components/campaign-chat";
-import { DiceRoller } from "@/components/dice-roll";
-import { DiceType } from "@/hooks/use-dice";
-import { ResizablePanels } from "@/components/resizable-panels";
-import { BotCompanion } from "@/components/bot-companion";
-import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results";
-import { AddCharacterDialog } from "@/components/add-character-dialog";
-import { InviteToCampaignDialog } from "@/components/invite-to-campaign-dialog";
-import { PartyVoting } from "@/components/party-voting";
-import { PartyManagement } from "@/components/party-management";
-import { PartyPlanning } from "@/components/party-planning";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useCampaignDiceHistory } from "@/hooks/use-dice-history";
-import { 
-  Loader2, UserPlus, Users, Bot, UserCog, 
-  MessageSquare, DicesIcon, Vote, Split, 
-  ClipboardList, ScrollTextIcon, Menu, X,
-  Send, BookOpen, BookMarked, Map, Sword,
-  ShieldAlert, Backpack, HelpCircle, Info,
-  Shield, ShieldCheck, Wand2, Heart, Eye, EyeOff,
-  MoveRight, Package, MessageCircle
-} from "lucide-react";
-import { LootCollectionPanel } from "@/components/loot-collection-panel";
-import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
-import { DndQuickReference } from "@/components/dnd-quick-reference";
-import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
+import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
+import { Link, useLocation, useParams } from "wouter";
+import { BotCompanion } from "@/components/bot-companion";
+import { AddCharacterDialog } from "@/components/add-character-dialog";
+import { CampaignSettingsDialog } from "@/components/campaign-settings-dialog";
 import { InteractiveSkillChecks } from "@/components/interactive-skill-checks";
-import { InventoryManagement } from "@/components/inventory-management";
-import { AdventureMapPanel } from "@/components/adventure-map-panel";
-import { BattleTracker } from "@/components/battle-tracker";
+import { DiceRoll } from "@/components/dice-roll";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LootCollectionPanel } from "@/components/loot-collection-panel";
 import { useCombatDetection } from "@/hooks/use-combat-detection";
+import { AdventureMapPanel } from "@/components/adventure-map-panel";
 
+// Campaign book / main adventure interface
 export default function CampaignPage() {
-  // URL parameters
-  const { id } = useParams();
-  const campaignId = parseInt(id || "0");
-  
-  // Auth and UI hooks
+  const [, setLocation] = useLocation();
+  const { campaignId } = useParams();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { campaignRolls, addCampaignRoll, clearCampaignRolls } = useCampaignDiceHistory();
   const narrativeRef = useRef<HTMLDivElement>(null);
   
-  // State management
-  const [gameLogs, setGameLogs] = useState<GameLog[]>([]);
+  // State for the campaign page
   const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
   const [showDiceRoller, setShowDiceRoller] = useState(false);
@@ -116,986 +46,707 @@ export default function CampaignPage() {
     const savedSize = localStorage.getItem('narrativeFontSize');
     return savedSize ? parseFloat(savedSize) : 1;
   });
+  const [shouldScrollToLatest, setShouldScrollToLatest] = useState(true);
   
   // NPC characters that have joined the party
-  const [npcPartyMembers, setNpcPartyMembers] = useState<Character[]>([]);
-  
+  const [npcPartyMembers, setNpcPartyMembers] = useState([]);
 
   
-  // Loot system state
-  const [availableLoot, setAvailableLoot] = useState<Array<{
-    id: string;
-    name: string;
-    description?: string;
-    type: string;
-    quantity: number;
-    weight?: number;
-    value?: number;
-    source: string; // e.g., "Goblin Warrior", "Treasure Chest"
-  }>>([]);
-  
-  // Action shortcuts state
-  const [actionShortcuts, setActionShortcuts] = useState<Array<{
-    id: string;
-    name: string;
-    icon: string;
-    action: string;
-  }>>([
-    { id: "attack", name: "Attack", icon: "sword", action: "I attack the nearest enemy" },
-    { id: "defend", name: "Defend", icon: "shield", action: "I take the Dodge action to avoid attacks" },
-    { id: "cast", name: "Cast Spell", icon: "wand", action: "I cast a spell at the enemy" },
-    { id: "heal", name: "Heal", icon: "heart", action: "I use a healing potion" },
-    { id: "look", name: "Look Around", icon: "eye", action: "I look around for clues or hidden items" },
-    { id: "talk", name: "Talk", icon: "message-circle", action: "I try to talk to the character in front of me" }
-  ]);
-  
-  // Fetch campaign data
-  const { 
+  // Show campaign settings dialog
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Campaign data query
+  const {
     data: campaign,
     isLoading: campaignLoading,
-    error: campaignError
-  } = useQuery<Campaign>({
+    error: campaignError,
+  } = useQuery({
     queryKey: [`/api/campaigns/${campaignId}`],
-    enabled: !!campaignId && !!user,
-  });
-  
-  // Fetch campaign characters
-  const {
-    data: campaignCharactersRaw,
-    isLoading: charactersLoading,
-    error: charactersError
-  } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignId}/characters`],
-    enabled: !!campaignId && !!user,
-  });
-  
-  // Cast the raw data to our Character type with proper stats shape
-  const campaignCharacters: Character[] | undefined = campaignCharactersRaw?.map(char => ({
-    ...char,
-    stats: char.stats as Character['stats'] || {
-      strength: 10,
-      dexterity: 10,
-      constitution: 10, 
-      intelligence: 10,
-      wisdom: 10,
-      charisma: 10
-    },
-    equipment: char.equipment as Character['equipment'] || {
-      items: []
-    }
-  }));
-  
-  // Fetch adventures
-  const {
-    data: adventures,
-    isLoading: adventuresLoading,
-    error: adventuresError
-  } = useQuery<Adventure[]>({
-    queryKey: [`/api/campaigns/${campaignId}/adventures`],
-    enabled: !!campaignId && !!user,
-  });
-  
-  // Fetch game logs
-  const {
-    data: fetchedLogs,
-    isLoading: logsLoading,
-    error: logsError
-  } = useQuery<GameLog[]>({
-    queryKey: [`/api/campaigns/${campaignId}/logs`],
-    enabled: !!campaignId && !!user
-  });
-  
-  // Get current character and adventure
-  const currentCharacter = campaignCharacters?.find(char => char.id === selectedCharacterId) || campaignCharacters?.[0];
-  const currentAdventure = adventures?.[0]; // Just use the first adventure for now
-  
-  // Create game log mutation
-  const createLogMutation = useMutation({
-    mutationFn: async (log: Partial<GameLog>) => {
-      const res = await apiRequest("POST", `/api/campaigns/${campaignId}/logs`, log);
-      return await res.json();
-    },
-    onSuccess: (newLog) => {
-      // Add new log to the beginning of the array
-      setGameLogs(prevLogs => [newLog, ...prevLogs]);
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/logs`] });
-    }
+    enabled: !!campaignId
   });
 
-  // Update game logs when fetchedLogs changes
+  // Campaign characters query
+  const {
+    data: campaignCharacters = [],
+    isLoading: charactersLoading,
+    error: charactersError,
+  } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/characters`],
+    enabled: !!campaignId
+  });
+
+  // Campaign game logs query
+  const {
+    data: gameLogs = [],
+    isLoading: logsLoading,
+    error: logsError,
+  } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/logs`],
+    enabled: !!campaignId
+  });
+
+  // Get user's player character in this campaign
+  const userCharacter = useMemo(() => {
+    if (!user || !campaignCharacters.length) return null;
+    return campaignCharacters.find(
+      (char) => char.userId === user.id && !char.isBot
+    );
+  }, [user, campaignCharacters]);
+
+  // Get map locations
+  const {
+    data: mapLocations = [],
+    isLoading: locationsLoading,
+    error: locationsError,
+  } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/map-locations`],
+    enabled: !!campaignId
+  });
+
+  // Get map paths
+  const {
+    data: mapPaths = [],
+    isLoading: pathsLoading,
+    error: pathsError,
+  } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/map-paths`],
+    enabled: !!campaignId
+  });
+
+  // Get comments 
+  const {
+    data: comments = [],
+    isLoading: commentsLoading,
+    error: commentsError,
+  } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/comments`],
+    enabled: !!campaignId && rightPanelTab === "comments"
+  });
+
+  // Get loot items
+  const {
+    data: lootItems = [],
+    isLoading: itemsLoading,
+    error: itemsError,
+  } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/loot`],
+    enabled: !!campaignId && rightPanelTab === "loot"
+  });
+
+  // Mutation for adding player input (action)
+  const playerActionMutation = useMutation({
+    mutationFn: async (input: string) => {
+      setIsProcessing(true);
+      
+      try {
+        // Add player action to logs
+        const actionResponse = await apiRequest(
+          "POST",
+          `/api/campaigns/${campaignId}/logs`,
+          {
+            content: input,
+            type: "player",
+            timestamp: new Date()
+          }
+        );
+        
+        if (!actionResponse.ok) {
+          throw new Error("Failed to add player action");
+        }
+        
+        // Generate DM response
+        const dmResponse = await apiRequest(
+          "POST",
+          `/api/campaigns/${campaignId}/generate-response`,
+          { 
+            playerAction: input,
+            isAutoAdvance: isAutoDmMode
+          }
+        );
+        
+        if (!dmResponse.ok) {
+          throw new Error("Failed to generate DM response");
+        }
+        
+        return await dmResponse.json();
+      } catch (error) {
+        console.error("Error in player action:", error);
+        throw error;
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    onSuccess: (data) => {
+      // Clear player input
+      setPlayerInput("");
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({
+        queryKey: [`/api/campaigns/${campaignId}/logs`],
+      });
+      
+      // If auto-advancing, refresh map locations and loot items
+      if (isAutoDmMode) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/campaigns/${campaignId}/map-locations`],
+        });
+        
+        queryClient.invalidateQueries({
+          queryKey: [`/api/campaigns/${campaignId}/map-paths`],
+        });
+        
+        queryClient.invalidateQueries({
+          queryKey: [`/api/campaigns/${campaignId}/loot`],
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Action Failed",
+        description: `Failed to process your action: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Detect combat and loot from narrative
+  const { detectedLoot } = useCombatDetection(
+    // Join all narrative logs content
+    gameLogs
+      .filter(log => log.type === "narrative")
+      .map(log => log.content)
+      .join(" ")
+  );
+
+  // Update hasUnclaimedLoot state when we detect loot
   useEffect(() => {
-    if (fetchedLogs) {
-      // Sort logs by timestamp in ascending order (oldest to newest)
-      const sortedLogs = [...fetchedLogs].sort((a, b) => 
-        new Date(a.timestamp || new Date()).getTime() - new Date(b.timestamp || new Date()).getTime()
-      );
-      setGameLogs(sortedLogs);
+    if (detectedLoot && detectedLoot.length > 0) {
+      setHasUnclaimedLoot(true);
     }
-  }, [fetchedLogs]);
-  
-  // Use the first character as the selected character initially
-  useEffect(() => {
-    if (campaignCharacters && campaignCharacters.length > 0 && !selectedCharacterId) {
-      setSelectedCharacterId(campaignCharacters[0].id);
-    }
-  }, [campaignCharacters, selectedCharacterId]);
-  
-  // Save font size to localStorage when it changes
+  }, [detectedLoot]);
+
+  // Save font size multiplier to local storage when it changes
   useEffect(() => {
     localStorage.setItem('narrativeFontSize', fontSizeMultiplier.toString());
   }, [fontSizeMultiplier]);
   
-  // Get the latest narrative content for combat detection
-  const latestNarrativeContent = gameLogs.length > 0 
-    ? gameLogs.filter(log => log.type === 'narrative').slice(-1)[0]?.content || ""
-    : "";
-    
-  // Combat state
-  const [combatRound, setCombatRound] = useState(1);
-  const [combatTurn, setCombatTurn] = useState(0);
-  const [combatParticipants, setCombatParticipants] = useState<any[]>([]);
-  
-  // Use combat detection hook to automatically detect threats in the narrative
-  const { 
-    inCombat, 
-    detectedThreats,
-    availableLoot: detectedLoot,
-    setInCombat,
-    setDetectedThreats,
-    setAvailableLoot: updateAvailableLoot
-  } = useCombatDetection(latestNarrativeContent || "");
-  
-  // Update detected loot from combat detection
+  // Save auto roll setting to local storage when it changes
   useEffect(() => {
-    if (detectedLoot.length > 0) {
-      setAvailableLoot(prev => {
-        // Merge with existing loot, avoid duplicates by ID
-        const existingIds = prev.map(item => item.id);
-        const newLoot = detectedLoot.filter(item => !existingIds.includes(item.id));
-        return [...prev, ...newLoot];
-      });
-    }
-  }, [detectedLoot]);
+    localStorage.setItem('autoRollEnabled', isAutoRollEnabled.toString());
+  }, [isAutoRollEnabled]);
 
-  // Update unclaimed loot status
-  useEffect(() => {
-    setHasUnclaimedLoot(availableLoot.length > 0);
-  }, [availableLoot]);
-
-  // Add detected threats to combat participants when combat starts
-  useEffect(() => {
-    if (inCombat && detectedThreats.length > 0) {
-      // Convert threats to combat participants format
-      const newParticipants = detectedThreats.map(threat => ({
-        id: threat.id,
-        name: threat.name,
-        initiative: threat.initiative || Math.floor(Math.random() * 20) + 1,
-        isEnemy: true,
-        isActive: false,
-        hp: threat.hp,
-        maxHp: threat.maxHp,
-        ac: threat.ac,
-        conditions: [],
-        actions: threat.attacks || [],
-        stats: threat.stats,
-      }));
-      
-      // Add to existing participants (avoid duplicates)
-      setCombatParticipants(prev => {
-        const existingIds = prev.map(p => p.id);
-        const filteredNew = newParticipants.filter(p => !existingIds.includes(p.id));
-        return [...prev, ...filteredNew];
-      });
-    }
-  }, [inCombat, detectedThreats]);
-  
-  // Combat action handlers
-  const onNextTurn = () => {
-    // Advance turn or round
-    if (combatParticipants.length > 0) {
-      if (combatTurn >= combatParticipants.length - 1) {
-        setCombatTurn(0);
-        setCombatRound(prevRound => prevRound + 1);
-      } else {
-        setCombatTurn(prevTurn => prevTurn + 1);
-      }
-      
-      // Update active participant
-      setCombatParticipants(prevParticipants => 
-        prevParticipants.map((participant, index) => ({
-          ...participant,
-          isActive: index === (combatTurn + 1) % prevParticipants.length
-        }))
-      );
-    }
-  };
-  
-  const onEndCombat = () => {
-    setInCombat(false);
-    setCombatTurn(0);
-    setCombatRound(1);
-    setCombatParticipants([]);
-  };
-  
-  // Add a game log entry and persist it to the server
-  const addGameLog = async (log: { type: string; content: string; metadata?: any }) => {
-    try {
-      if (!campaignId) return;
-      
-      // Add to local state immediately for responsive UI
-      const newLog = {
-        id: uuidv4(),
-        campaignId: Number(campaignId),
-        type: log.type,
-        content: log.content,
-        timestamp: new Date(),
-        metadata: log.metadata
-      };
-      
-      setGameLogs(prev => [...prev, newLog]);
-      
-      // Persist to server
-      const response = await fetch(`/api/campaigns/${campaignId}/logs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          type: log.type,
-          content: log.content,
-          metadata: log.metadata
-        })
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to save game log');
-      }
-      
-      return newLog;
-    } catch (error) {
-      console.error('Error adding game log:', error);
-      return null;
-    }
-  };
-  
-  // Detect NPCs that have joined the party in narrative text
-  const detectNPCCharactersInNarrative = (narrativeContent: string) => {
-    if (!narrativeContent) return;
+  // Handle player input submission
+  const handleSubmitAction = async (e) => {
+    e.preventDefault();
     
-    // Patterns to detect NPC companions joining the party
-    const npcJoinPatterns = [
-      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*) (?:joins|has joined|agrees to join|will accompany|accompanies|follows) (?:your party|the party|you|the group)/i,
-      /(?:your party|the party|the group) (?:is joined by|welcomes|gains) ([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
-      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),? (?:a|an|the) ([a-z]+)(?: [a-z]+)* (?:joins|accompanies) (?:your party|the party|you|the group)/i
-    ];
-    
-    // Check for these patterns in the narrative
-    for (const pattern of npcJoinPatterns) {
-      const match = narrativeContent.match(pattern);
-      if (match) {
-        const npcName = match[1];
-        // Check if this NPC is already in the party
-        const isExistingMember = npcPartyMembers.some(member => member.name === npcName) || 
-                                  campaignCharacters?.some(character => character.name === npcName);
-        
-        if (!isExistingMember) {
-          // Create a basic NPC character
-          const npcClass = match[2] || deriveClassFromDescription(narrativeContent, npcName) || "Fighter";
-          
-          const newNpc: Character = {
-            id: -1 * (npcPartyMembers.length + 1), // Negative IDs for NPCs to distinguish from player characters
-            name: npcName,
-            race: "Human", // Default, could be refined with more analysis
-            class: npcClass,
-            level: currentCharacter?.level || 1,
-            background: null,
-            appearance: null,
-            backstory: null,
-            stats: {
-              strength: 10,
-              dexterity: 10,
-              constitution: 10,
-              intelligence: 10,
-              wisdom: 10,
-              charisma: 10
-            },
-            hp: 10,
-            maxHp: 10,
-            equipment: {
-              items: []
-            },
-            userId: -1, // Indicates NPC
-            isBot: true,
-            createdAt: new Date()
-          };
-          
-          // Add the NPC to the party
-          setNpcPartyMembers(prev => [...prev, newNpc]);
-          
-          // Add a notification about the new party member
-          toast({
-            title: "NPC Joined Party",
-            description: `${npcName} has joined your adventure party!`,
-            variant: "default"
-          });
-          
-          // TODO: In a real implementation, we'd send this NPC to the server
-          // so they persist across sessions
-        }
-        break; // Found one match, stop looking
-      }
-    }
-  };
-  
-  // Helper function to try to determine character class from narrative description
-  const deriveClassFromDescription = (content: string, npcName: string): string | null => {
-    const classPatterns = [
-      { pattern: /wizard|mage|sorcerer|arcanist/i, class: "Wizard" },
-      { pattern: /cleric|priest|healer|acolyte/i, class: "Cleric" },
-      { pattern: /fighter|warrior|soldier|knight/i, class: "Fighter" },
-      { pattern: /rogue|thief|assassin|scout/i, class: "Rogue" },
-      { pattern: /ranger|hunter|archer|tracker/i, class: "Ranger" },
-      { pattern: /paladin|templar|holy warrior/i, class: "Paladin" },
-      { pattern: /bard|minstrel|musician|performer/i, class: "Bard" },
-      { pattern: /barbarian|berserker|savage/i, class: "Barbarian" },
-      { pattern: /druid|shaman|nature priest/i, class: "Druid" },
-      { pattern: /monk|martial artist|ascetic/i, class: "Monk" },
-      { pattern: /warlock|occultist|witch/i, class: "Warlock" }
-    ];
-    
-    // Look for class descriptions near the character name
-    const nameIndex = content.indexOf(npcName);
-    if (nameIndex !== -1) {
-      const surroundingContext = content.substring(
-        Math.max(0, nameIndex - 100), 
-        Math.min(content.length, nameIndex + 100)
-      );
-      
-      for (const { pattern, class: className } of classPatterns) {
-        if (pattern.test(surroundingContext)) {
-          return className;
-        }
-      }
-    }
-    
-    return null;
-  };
-  
-  const handleRollOutcome = async (skill: string, rollResult: number, success?: boolean) => {
-    try {
-      if (!campaignId || !currentCharacter) return;
-      
-      // Send the roll outcome to the API to continue the story
-      const response = await fetch(`/api/campaigns/${campaignId}/continue`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: `rolled a ${skill} check and got ${rollResult}${success !== undefined ? success ? ' (Success)' : ' (Failure)' : ''}`,
-          characterId: currentCharacter.id
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to send roll outcome to API');
-      }
-      
-      const data = await response.json();
-      
-      // Add the narrative response based on the roll outcome
-      if (data.content) {
-        addGameLog({
-          type: "narrative",
-          content: data.content
-        });
-        
-        // Check for new NPCs or party members in the narrative
-        detectNPCCharactersInNarrative(data.content);
-      }
-    } catch (error) {
-      console.error('Error sending roll outcome:', error);
+    if (!playerInput.trim()) {
       toast({
-        title: 'Error',
-        description: 'Failed to process roll outcome. Please try again.',
-        variant: 'destructive'
+        title: "Empty Action",
+        description: "Please enter an action before submitting.",
+        variant: "destructive",
       });
+      return;
+    }
+    
+    if (!userCharacter) {
+      toast({
+        title: "No Character",
+        description: "You need to add a character to the campaign first!",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await playerActionMutation.mutateAsync(playerInput);
+    } catch (error) {
+      console.error("Action submission error:", error);
     }
   };
-  
-  const onAddParticipant = (participant: any) => {
-    setCombatParticipants(prev => [...prev, { 
-      ...participant, 
-      id: participant.id || uuidv4() 
-    }]);
-  };
-  
-  const onApplyDamage = (participantId: string, amount: number) => {
-    setCombatParticipants(prevParticipants => 
-      prevParticipants.map(participant => {
-        if (participant.id === participantId) {
-          const newHp = Math.max(0, participant.hp - amount);
-          return {
-            ...participant,
-            hp: newHp
-          };
-        }
-        return participant;
-      })
-    );
-  };
-  
-  const onApplyHealing = (participantId: string, amount: number) => {
-    setCombatParticipants(prevParticipants => 
-      prevParticipants.map(participant => {
-        if (participant.id === participantId) {
-          const newHp = Math.min(participant.maxHp, participant.hp + amount);
-          return {
-            ...participant,
-            hp: newHp
-          };
-        }
-        return participant;
-      })
-    );
-  };
-  
-  const onAddCondition = (participantId: string, condition: string) => {
-    setCombatParticipants(prevParticipants => 
-      prevParticipants.map(participant => {
-        if (participant.id === participantId) {
-          const updatedConditions = [...(participant.conditions || [])];
-          if (!updatedConditions.includes(condition)) {
-            updatedConditions.push(condition);
-          }
-          return {
-            ...participant,
-            conditions: updatedConditions
-          };
-        }
-        return participant;
-      })
-    );
-  };
-  
-  const onRemoveCondition = (participantId: string, condition: string) => {
-    setCombatParticipants(prevParticipants => 
-      prevParticipants.map(participant => {
-        if (participant.id === participantId) {
-          return {
-            ...participant,
-            conditions: (participant.conditions || []).filter((c: string) => c !== condition)
-          };
-        }
-        return participant;
-      })
-    );
-  };
-  
-  const onDiceRoll = (participantId: string, type: string, purpose: string) => {
-    // Simple dice roll implementation
-    const dieSize = parseInt(type.substring(1));
-    const result = Math.floor(Math.random() * dieSize) + 1;
+
+  // Handle skill check roll
+  const handleSkillCheckRoll = (skill, roll, modifier, dc) => {
+    // Create a formatted roll result message
+    const success = dc ? (roll + modifier >= dc) : undefined;
+    const resultMessage = dc 
+      ? `${userCharacter?.name} rolled a ${roll} + ${modifier} = ${roll + modifier} for ${skill} check ${success ? '(Success!)' : '(Failure)'}`
+      : `${userCharacter?.name} rolled a ${roll} + ${modifier} = ${roll + modifier} for ${skill} check`;
     
-    setCombatParticipants(prevParticipants => 
-      prevParticipants.map(participant => {
-        if (participant.id === participantId) {
-          return {
-            ...participant,
-            lastRoll: {
-              type: purpose,
-              result,
-              total: result,
-              success: undefined
-            }
-          };
-        }
-        return participant;
-      })
-    );
-  };
-  
-  // Update available loot when new loot is detected
-  useEffect(() => {
-    if (detectedLoot.length > 0) {
-      updateAvailableLoot(prevLoot => {
-        // Combine previous loot with new loot, avoiding duplicates by id
-        const existingIds = new Set(prevLoot.map(item => item.id));
-        const newLoot = detectedLoot.filter(item => !existingIds.has(item.id));
-        return [...prevLoot, ...newLoot];
+    // Add roll to logs
+    apiRequest(
+      "POST",
+      `/api/campaigns/${campaignId}/logs`,
+      {
+        content: resultMessage,
+        type: "roll"
+      }
+    ).then(() => {
+      // Refresh logs
+      queryClient.invalidateQueries({
+        queryKey: [`/api/campaigns/${campaignId}/logs`],
       });
-    }
-  }, [detectedLoot, updateAvailableLoot]);
-  
-  // Handle DM mode toggle
-  const handleDmModeToggle = () => {
-    setIsAutoDmMode(prevMode => !prevMode);
-    
-    // Notify the user about the DM mode change
-    toast({
-      title: isAutoDmMode ? "Human DM Mode Activated" : "Auto-DM Mode Activated",
-      description: isAutoDmMode 
-        ? "A human Dungeon Master will now control the narrative." 
-        : "The AI Dungeon Master will now guide your adventure.",
-      variant: "default",
+    }).catch(error => {
+      console.error("Failed to log skill check:", error);
     });
   };
 
-  // Scroll to the bottom when new logs are added
-  useEffect(() => {
-    if (narrativeRef.current) {
-      narrativeRef.current.scrollTop = narrativeRef.current.scrollHeight;
-    }
-  }, [gameLogs]);
+  // Handle adjusting font size
+  const handleFontSizeAdjust = (increase: boolean) => {
+    setFontSizeMultiplier(prev => {
+      // Limit the range from 0.8 to 1.5
+      const newSize = increase ? prev + 0.1 : prev - 0.1;
+      return Math.max(0.8, Math.min(1.5, newSize));
+    });
+  };
 
-  // Handle player input submission
-  const handleSubmitAction = () => {
-    if (!playerInput.trim() || isProcessing) return;
-    
-    setIsProcessing(true);
-    
-    if (isAutoDmMode) {
-      // Use AI to generate a response
-      generateNarrationMutation.mutate(playerInput);
+  // Handle character added to campaign
+  const handleCharacterAdded = () => {
+    queryClient.invalidateQueries({
+      queryKey: [`/api/campaigns/${campaignId}/characters`],
+    });
+  };
+
+  // Title for the right panel tab
+  const getRightPanelTitle = () => {
+    switch (rightPanelTab) {
+      case "map": return "Adventure Map";
+      case "chat": return "Bot Companion";
+      case "roll": return "Dice Roller";
+      case "characters": return "Party Members";
+      case "loot": return "Treasure & Loot";
+      case "comments": return "Campaign Notes";
+      default: return "";
+    }
+  };
+
+  const handleToggleRightPanel = (tab: string | null) => {
+    if (rightPanelTab === tab) {
+      setRightPanelTab(null); // Close if same tab is clicked
     } else {
-      // Just record the player action in human DM mode
-      const playerLog: Partial<GameLog> = {
-        campaignId,
-        content: playerInput,
-        type: "player"
-      };
-      
-      createLogMutation.mutate(playerLog);
-      setPlayerInput("");
-      setIsProcessing(false);
+      setRightPanelTab(tab); // Open new tab
     }
   };
 
-  // Generate adventure narration mutation
-  const generateNarrationMutation = useMutation({
-    mutationFn: async (input: string) => {
-      // Create a context from recent game logs to include dice roll results
-      const recentLogs = gameLogs.slice(0, 10)
-        .map(log => {
-          // Include the type of log to help AI understand what's happening
-          return `[${log.type}] ${log.content}`;
-        })
-        .join("\n");
-      
-      const res = await apiRequest("POST", "/api/generate/narration", {
-        context: `${currentAdventure?.description || ""}\n\nRecent game events:\n${recentLogs}`,
-        playerAction: input,
-        isAutoAdvance: false
-      });
-      return await res.json();
-    },
-    onSuccess: (data) => {
-      // Add the narration to game logs
-      const narrativeLog: Partial<GameLog> = {
-        campaignId,
-        content: data.narration,
-        type: "narrative"
-      };
-      
-      createLogMutation.mutate(narrativeLog);
-      
-      // Add player input to game logs as well
-      const playerLog: Partial<GameLog> = {
-        campaignId,
-        content: playerInput,
-        type: "player"
-      };
-      
-      createLogMutation.mutate(playerLog);
-      
-      // Reset the player input
-      setPlayerInput("");
-      setIsProcessing(false);
-    },
-    onError: (error) => {
-      setIsProcessing(false);
-      toast({
-        title: "Error",
-        description: `Failed to generate narration: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Calculate inventory weight
-  const calculateInventoryWeight = () => {
-    if (!currentCharacter?.equipment || !(currentCharacter.equipment as any)?.inventory) return 0;
-    
-    // Safely cast to the expected type or use empty array as fallback
-    const inventory = ((currentCharacter.equipment as any).inventory as any[] || []);
-    
-    return inventory.reduce((total, item) => {
-      return total + (item.weight || 0) * item.quantity;
-    }, 0).toFixed(1);
-  };
-  
-  // Calculate carrying capacity based on strength
-  const calculateCarryingCapacity = () => {
-    if (!currentCharacter?.stats) return 0;
-    
-    // Safely access strength or default to 10 if not found
-    const strength = (currentCharacter.stats as any)?.strength || 10;
-    
-    // D&D 5e carrying capacity is strength score × 15 in pounds
-    return (strength * 15).toFixed(0);
-  };
-
-  // Loading state
-  if (campaignLoading || charactersLoading || adventuresLoading) {
+  // If loading, show loading state
+  if (campaignLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin mb-4 mx-auto w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          <p className="text-lg">Loading campaign...</p>
+        </div>
       </div>
     );
   }
 
-  // Error state
-  if (campaignError || charactersError || adventuresError) {
+  // If error, show error state
+  if (campaignError) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <div className="text-destructive mb-4">
-          <ShieldAlert className="h-12 w-12 mx-auto mb-2" />
-          <h2 className="text-2xl font-bold text-center">Adventure Error</h2>
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6 bg-destructive/10 rounded-lg">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Error Loading Campaign</h1>
+          <p className="mb-4">We couldn't load the campaign information. This might be because:</p>
+          <ul className="list-disc text-left ml-8 mb-6">
+            <li>The campaign doesn't exist</li>
+            <li>You don't have permission to view this campaign</li>
+            <li>There was a server error</li>
+          </ul>
+          <div className="flex justify-center gap-4">
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+            <Button onClick={() => setLocation("/campaigns")}>
+              Back to Campaigns
+            </Button>
+          </div>
         </div>
-        <p className="text-muted-foreground text-center mb-6">
-          {campaignError?.message || charactersError?.message || adventuresError?.message || "Something went wrong loading your adventure."}
-        </p>
-        <Button asChild>
-          <a href="/">Return to Tavern</a>
-        </Button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navbar showBackButton />
-      
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Main campaign area with resizable panels */}
-        <ResizablePanels
-          initialSizes={[20, 80]} 
-          direction="horizontal"
-          className="h-full border-0"
-          minSizes={[15, 50]}
-          maxSizes={[35, 85]}
-        >
-          {/* Left sidebar - Character info, etc. */}
-          <div className="h-full flex flex-col bg-muted/30">
-            <div className="p-3 border-b flex items-center justify-between">
-              <h2 className="font-medieval text-lg">Campaign</h2>
-              
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Dice Roller"
-                  onClick={() => setShowDiceRoller(!showDiceRoller)}
-                >
-                  <DicesIcon className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Party Management"
-                  onClick={() => setRightPanelTab(rightPanelTab === "party" ? null : "party")}
-                >
-                  <Users className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 relative"
-                  title="Loot Collection"
-                  onClick={() => setRightPanelTab(rightPanelTab === "loot" ? null : "loot")}
-                >
-                  <Package className="h-4 w-4" />
-                  {hasUnclaimedLoot && (
-                    <span className="absolute top-0 right-0 h-2 w-2 bg-primary rounded-full" />
-                  )}
-                </Button>
-              </div>
-            </div>
-            
-            {/* Campaign details */}
-            <div className="p-3 border-b">
-              <h3 className="font-semibold text-sm mb-1">{campaign?.name}</h3>
-              <p className="text-xs text-muted-foreground mb-2">{campaign?.setting || "Fantasy World"}</p>
-              
-              <div className="flex items-center gap-2 mb-2">
-                <div className="text-xs flex items-center">
-                  <Switch
-                    id="auto-dm"
-                    checked={isAutoDmMode}
-                    onCheckedChange={handleDmModeToggle}
-                    className="scale-75"
-                  />
-                  <Label htmlFor="auto-dm" className="ml-1">
-                    {isAutoDmMode ? "AI DM" : "Human DM"}
-                  </Label>
-                </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Add Character button clicked (header)");
-                    setShowAddCharacterDialog(true);
-                  }}
-                >
-                  <UserPlus className="h-3 w-3 mr-1" />
-                  Add Character
-                </Button>
-              </div>
-            </div>
-            
-            {/* Character selection */}
-            <div className="p-3 border-b">
-              <h3 className="font-semibold text-sm mb-2">Your Characters</h3>
-              
-              <div className="space-y-2">
-                {campaignCharacters?.map(character => (
-                  <div
-                    key={character.id}
-                    className={`p-2 rounded-md cursor-pointer text-sm transition-colors ${
-                      selectedCharacterId === character.id
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted"
-                    }`}
-                    onClick={() => setSelectedCharacterId(character.id)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={(character as any).avatarUrl || ""} alt={character.name} />
-                        <AvatarFallback className="text-xs">
-                          {character.name?.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium leading-none">{character.name}</div>
-                        <div className="text-xs opacity-70">
-                          {character.race} {character.class}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                {(!campaignCharacters || campaignCharacters.length === 0) && (
-                  <div className="text-xs text-muted-foreground text-center p-2">
-                    No characters yet. Add one to begin!
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Bot companions */}
-            <div className="p-3 border-b">
-              <h3 className="font-semibold text-sm mb-2">Bot Companions</h3>
-              
-              <div className="space-y-2">
-                <div
-                  className="p-2 rounded-md cursor-pointer text-sm hover:bg-muted"
-                  onClick={() => setRightPanelTab("companion")}
-                >
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6 bg-blue-100">
-                      <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
-                        <Bot className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium leading-none">Sage Eldrin</div>
-                      <div className="text-xs opacity-70">
-                        D&D Lore Expert
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div
-                  className="p-2 rounded-md cursor-pointer text-sm hover:bg-muted"
-                  onClick={() => setRightPanelTab("companion")}
-                >
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6 bg-amber-100">
-                      <AvatarFallback className="text-xs bg-amber-100 text-amber-800">
-                        <Sword className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium leading-none">Bron Ironfist</div>
-                      <div className="text-xs opacity-70">
-                        Combat Strategist
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div
-                  className="p-2 rounded-md cursor-pointer text-sm hover:bg-muted"
-                  onClick={() => setRightPanelTab("companion")}
-                >
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6 bg-green-100">
-                      <AvatarFallback className="text-xs bg-green-100 text-green-800">
-                        <BookOpen className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium leading-none">Lily Whisperwind</div>
-                      <div className="text-xs opacity-70">
-                        Rules & Mechanics
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Quick menu */}
-            <div className="mt-auto p-3 border-t">
-              <div className="grid grid-cols-2 gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setRightPanelTab("inventory")}
-                >
-                  <Backpack className="h-3 w-3 mr-1" />
-                  Inventory
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs relative"
-                  onClick={() => setRightPanelTab("loot")}
-                >
-                  <Package className="h-3 w-3 mr-1" />
-                  Loot
-                  {hasUnclaimedLoot && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
-                  )}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setRightPanelTab("map")}
-                >
-                  <Map className="h-3 w-3 mr-1" />
-                  Map
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setRightPanelTab("battle")}
-                >
-                  <Sword className="h-3 w-3 mr-1" />
-                  Battle
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setRightPanelTab("spells")}
-                >
-                  <Wand2 className="h-3 w-3 mr-1" />
-                  Spells
-                </Button>
-              </div>
-            </div>
+    <div className="flex flex-col h-screen overflow-hidden bg-parchment">
+      {/* Top navigation */}
+      <div className="flex-none border-b border-amber-200 bg-amber-50/80 p-2 md:p-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation("/campaigns")}
+              className="text-amber-900 hover:text-amber-700 hover:bg-amber-100"
+            >
+              &larr; Back
+            </Button>
+            <h1 className="text-lg md:text-xl font-bold text-amber-900 truncate">
+              {campaign?.title || "Campaign"}
+            </h1>
           </div>
           
-          {/* Main Book-Like Content Area - Set explicit height constraints at parent level */}
-          <div className="h-full flex flex-col bg-[#fffbf0] relative overflow-hidden">
-            {/* Split the content into two sections: scrollable narrative at top, fixed controls at bottom */}
+          <div className="flex items-center gap-1 md:gap-2">
+            {/* Add character */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddCharacterDialog(true)}
+                    className="border-amber-300 hover:bg-amber-100 text-amber-900"
+                  >
+                    <Users className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Add Character</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Add a character to this campaign</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
-            {/* Font size controls */}
-            <div className="border-b border-amber-200/50 bg-amber-50/30 flex-none p-2">
-              <div className="flex items-center justify-end max-w-3xl mx-auto">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Font Size: {Math.round(fontSizeMultiplier * 100)}%</span>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-6 w-6"
-                          onClick={() => setFontSizeMultiplier(prev => Math.max(0.8, prev - 0.1))}
-                          disabled={fontSizeMultiplier <= 0.8}
-                        >
-                          <span className="text-xs">A-</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        <p className="text-xs">Decrease text size</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-6 w-6"
-                          onClick={() => setFontSizeMultiplier(1)} // Reset to default
-                          disabled={fontSizeMultiplier === 1}
-                        >
-                          <span className="text-xs">A</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        <p className="text-xs">Reset to default size</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-6 w-6"
-                          onClick={() => setFontSizeMultiplier(prev => Math.min(1.5, prev + 0.1))}
-                          disabled={fontSizeMultiplier >= 1.5}
-                        >
-                          <span className="text-xs">A+</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        <p className="text-xs">Increase text size</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
+            {/* Campaign settings */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSettings(true)}
+                    className="border-amber-300 hover:bg-amber-100 text-amber-900"
+                  >
+                    <Settings className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Settings</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Campaign settings</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Toggle map */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={rightPanelTab === "map" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleRightPanel("map")}
+                    className={rightPanelTab === "map" 
+                      ? "bg-amber-700 hover:bg-amber-600" 
+                      : "border-amber-300 hover:bg-amber-100 text-amber-900"}
+                  >
+                    <Map className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Map</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View adventure map</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Characters panel */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={rightPanelTab === "characters" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleRightPanel("characters")}
+                    className={rightPanelTab === "characters" 
+                      ? "bg-amber-700 hover:bg-amber-600" 
+                      : "border-amber-300 hover:bg-amber-100 text-amber-900"}
+                  >
+                    <Users className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Party</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View party members</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Loot panel */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={rightPanelTab === "loot" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleRightPanel("loot")}
+                    className={`
+                      ${rightPanelTab === "loot" 
+                        ? "bg-amber-700 hover:bg-amber-600" 
+                        : "border-amber-300 hover:bg-amber-100 text-amber-900"}
+                      ${hasUnclaimedLoot ? "animate-pulse relative" : ""}
+                    `}
+                  >
+                    <Briefcase className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Loot</span>
+                    {hasUnclaimedLoot && (
+                      <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View available loot{hasUnclaimedLoot ? " (unclaimed items!)" : ""}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Comments */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={rightPanelTab === "comments" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleRightPanel("comments")}
+                    className={rightPanelTab === "comments" 
+                      ? "bg-amber-700 hover:bg-amber-600" 
+                      : "border-amber-300 hover:bg-amber-100 text-amber-900"}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Notes</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Campaign notes and comments</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Bot companion */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={rightPanelTab === "chat" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleRightPanel("chat")}
+                    className={rightPanelTab === "chat" 
+                      ? "bg-amber-700 hover:bg-amber-600" 
+                      : "border-amber-300 hover:bg-amber-100 text-amber-900"}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Helper</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Chat with bot companion</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Dice Roller */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={rightPanelTab === "roll" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleRightPanel("roll")}
+                    className={rightPanelTab === "roll" 
+                      ? "bg-amber-700 hover:bg-amber-600" 
+                      : "border-amber-300 hover:bg-amber-100 text-amber-900"}
+                  >
+                    <Dice5 className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Roll</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Roll dice</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Font Size Buttons */}
+            <div className="hidden md:flex items-center gap-1 pl-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleFontSizeAdjust(false)}
+                      className="h-8 w-8 p-0 text-amber-900"
+                      disabled={fontSizeMultiplier <= 0.8}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Decrease font size</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <span className="text-xs text-muted-foreground">
+                Text Size
+              </span>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm" 
+                      onClick={() => handleFontSizeAdjust(true)}
+                      className="h-8 w-8 p-0 text-amber-900"
+                      disabled={fontSizeMultiplier >= 1.5}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Increase font size</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Main content - flexbox with left-center-right layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Right panel (conditional) */}
+        {rightPanelTab && (
+          <div className="hidden lg:block flex-none w-[400px] border-l border-amber-200 bg-amber-50/60 overflow-y-auto">
+            <div className="p-4 border-b border-amber-200 flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-amber-900">
+                {getRightPanelTitle()}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRightPanelTab(null)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
             
-            {/* Top scrollable narrative - Fixed percentage height - content will scale with viewport */}
-            <div className="h-[calc(100vh-350px-32px)] min-h-[300px] overflow-hidden">
+            <div className="p-4 h-full overflow-y-auto">
+              {rightPanelTab === "map" && (
+                <AdventureMapPanel 
+                  campaignId={parseInt(campaignId)} 
+                  locations={mapLocations} 
+                  paths={mapPaths}
+                  isLoading={locationsLoading || pathsLoading}
+                  campaign={campaign}
+                />
+              )}
+              
+              {rightPanelTab === "chat" && (
+                <BotCompanion 
+                  campaignId={parseInt(campaignId)} 
+                  userCharacter={userCharacter} 
+                  campaign={campaign}
+                />
+              )}
+              
+              {rightPanelTab === "roll" && (
+                <DiceRoll
+                  campaignId={parseInt(campaignId)}
+                  character={userCharacter}
+                />
+              )}
+              
+              {rightPanelTab === "characters" && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold border-b pb-2">Player Characters</h3>
+                  <div className="space-y-3">
+                    {campaignCharacters.filter(c => !c.isBot).map(character => (
+                      <div key={character.id} className="border rounded-lg p-3 bg-card">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-bold text-amber-900">{character.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Level {character.level} {character.race} {character.class}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                              HP: {character.hp}/{character.maxHp}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* NPC Party Members */}
+                  <h3 className="text-lg font-semibold border-b pb-2 mt-6">NPC Companions</h3>
+                  <div className="space-y-3">
+                    {campaignCharacters.filter(c => c.isBot).map(character => (
+                      <div key={character.id} className="border rounded-lg p-3 bg-card">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-bold text-amber-900">{character.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Level {character.level} {character.race} {character.class}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                              HP: {character.hp}/{character.maxHp}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {campaignCharacters.filter(c => c.isBot).length === 0 && (
+                      <div className="text-center p-4 border border-dashed rounded-lg">
+                        <p className="text-muted-foreground text-sm">No NPC companions in the party yet</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {rightPanelTab === "loot" && (
+                <LootCollectionPanel 
+                  characterId={userCharacter?.id || 0} 
+                  availableLoot={detectedLoot || []}
+                  onLootCollected={() => setHasUnclaimedLoot(false)}
+                />
+              )}
+              
+              {rightPanelTab === "comments" && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    {comments.map(comment => (
+                      <div key={comment.id} className="border rounded-lg p-3 bg-card">
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {comment.authorName} • {new Date(comment.createdAt).toLocaleDateString()}
+                        </p>
+                        <p>{comment.content}</p>
+                      </div>
+                    ))}
+                    
+                    {comments.length === 0 && (
+                      <div className="text-center p-6 border border-dashed rounded-lg">
+                        <p className="text-muted-foreground mb-2">No campaign notes yet</p>
+                        <Button size="sm">Add Note</Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Main book area - central part that takes remaining space */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-parchment relative">
+          {/* Book UI - fixed aspect ratio container with book styling */}
+          <div className="flex-1 flex flex-col overflow-hidden border-amber-200 bg-parchment relative">
+            {/* Book content - scrollable area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
               {/* Narrative content with explicit scrollbar */}
               <div 
                 className="h-full overflow-y-scroll p-4 scrollbar scrollbar-thumb-amber-300 scrollbar-track-amber-50" 
@@ -1108,79 +759,102 @@ export default function CampaignPage() {
                 {/* Game logs */}
                 <div className="max-w-3xl mx-auto">
                   {/* Game narration */}
-                  {gameLogs.slice().reverse().map((log, index) => (
-                    <div key={log.id || index} className="mb-4">
-                      {log.type === "player" && (
-                        <div className="mb-2 text-right">
-                          <div className="inline-block bg-primary/10 text-primary rounded-lg py-2 px-3">
-                            <p style={{ 
-                              fontSize: `${0.95 * fontSizeMultiplier}rem`,
-                              lineHeight: 1.5
-                            }}>
-                              {log.content}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {log.type === "narrative" && (
-                        <div className="prose prose-amber max-w-none">
-                          <div 
-                            className="mb-4" 
-                            style={{ 
-                              fontSize: `${1 * fontSizeMultiplier}rem`,
-                              lineHeight: 1.5
-                            }}
-                          >
-                            <InteractiveSkillChecks
-                              content={log.content}
-                              autoRoll={isAutoRollEnabled}
-                              character={currentCharacter}
-                              onRollSkillCheck={(skill, roll, modifier, dc) => {
-                                // Add the roll to the campaign logs
-                                const rollResult = roll + modifier;
-                                const success = dc ? rollResult >= dc : undefined;
-                                const rollMessage = `${currentCharacter?.name || 'You'} rolled a ${skill} check: ${roll} + ${modifier} = ${rollResult}${dc ? ` vs DC ${dc}` : ''}${success !== undefined ? success ? ' (Success)' : ' (Failure)' : ''}`;
-                                
-                                addGameLog({
-                                  type: "roll",
-                                  content: rollMessage,
-                                  metadata: {
-                                    roll,
-                                    modifier,
-                                    total: rollResult,
-                                    dc,
-                                    success,
-                                    skill
-                                  }
-                                });
-                                
-                                // If this is part of the story progression, send to the API
-                                handleRollOutcome(skill, rollResult, success);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                      
-                      {log.type === "roll" && (
-                        <div className="mb-2">
-                          <div className="inline-block bg-muted rounded-lg py-2 px-3 text-sm">
-                            <p className="flex items-center" style={{ 
-                              fontSize: `${0.9 * fontSizeMultiplier}rem`,
-                              lineHeight: 1.5
-                            }}>
-                              <DicesIcon className="h-4 w-4 mr-1 text-primary" style={{
-                                height: `${1 * fontSizeMultiplier}em`,
-                                width: `${1 * fontSizeMultiplier}em`
-                              }} />
-                              {log.content}
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                  <div className="relative mb-8">
+                    {/* Visual timeline */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-100 rounded-full">
+                      <div className="w-1 bg-amber-300 rounded-full" style={{
+                        height: '33%'
+                      }}></div>
                     </div>
-                  ))}
+                    
+                    {/* Progress indicators showing new vs. old content */}
+                    <div className="absolute left-0 top-0 flex flex-col items-center -translate-x-1/2">
+                      <div className="px-2 py-1 bg-amber-100 rounded-md text-xs font-medium text-amber-700 whitespace-nowrap">
+                        Start of Adventure
+                      </div>
+                    </div>
+                    
+                    <div className="absolute left-0 bottom-0 flex flex-col items-center -translate-x-1/2">
+                      <div className="px-2 py-1 bg-amber-400 rounded-md text-xs font-medium text-amber-900 whitespace-nowrap border border-amber-500/30 shadow-sm">
+                        Current Moment
+                      </div>
+                    </div>
+                    
+                    {/* Map logs to messages */}
+                    {gameLogs.map((log, index, array) => {
+                      // Calculate if this is a "new" entry (one of the 3 most recent narrative logs)
+                      const narrativeLogs = array.filter(l => l.type === "narrative");
+                      const recentNarrativeIds = narrativeLogs.slice(0, 3).map(l => l.id);
+                      const isRecentNarrative = log.type === "narrative" && recentNarrativeIds.includes(log.id);
+                      
+                      // Format the timestamp if available
+                      const timestamp = log.timestamp 
+                        ? new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                        : '';
+                      
+                      return (
+                        <div 
+                          key={log.id || index} 
+                          className={`mb-8 pl-6 relative ${isRecentNarrative ? 'bg-amber-50/70 p-4 rounded-lg border-l-4 border-amber-300' : ''}`}
+                          id={`log-${log.id}`}
+                          ref={index === 0 ? (el) => { if (el && shouldScrollToLatest) el.scrollIntoView({ behavior: 'smooth' }); } : undefined}
+                        >
+                          {/* Timeline node */}
+                          <div className="absolute left-0 top-0 flex flex-col items-center">
+                            <div className={`h-3 w-3 rounded-full ${isRecentNarrative ? 'bg-amber-400' : 'bg-amber-200'}`}></div>
+                            {timestamp && (
+                              <div className="text-xs text-muted-foreground mt-1 rotate-270 transform origin-center whitespace-nowrap">
+                                {timestamp}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {log.type === "player" && (
+                            <div className="mb-4 text-right">
+                              <div className="inline-block bg-primary/10 text-primary rounded-lg py-2 px-3">
+                                <p style={{ 
+                                  fontSize: `${1 * fontSizeMultiplier}rem`,
+                                  lineHeight: 1.5
+                                }}>
+                                  {log.content}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {log.type === "narrative" && (
+                            <div className="mb-4">
+                              <div className="text-gray-800">
+                                <InteractiveSkillChecks 
+                                  content={log.content}
+                                  autoRoll={isAutoRollEnabled}
+                                  onRollSkillCheck={handleSkillCheckRoll}
+                                  character={userCharacter}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {log.type === "roll" && (
+                            <div className="mb-2">
+                              <div className="inline-block bg-muted rounded-lg py-2 px-3 text-sm">
+                                <p className="flex items-center" style={{ 
+                                  fontSize: `${0.9 * fontSizeMultiplier}rem`,
+                                  lineHeight: 1.5
+                                }}>
+                                  <DicesIcon className="h-4 w-4 mr-1 text-primary" style={{
+                                    height: `${1 * fontSizeMultiplier}em`,
+                                    width: `${1 * fontSizeMultiplier}em`
+                                  }} />
+                                  {log.content}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1189,596 +863,205 @@ export default function CampaignPage() {
             <div className="border-t border-amber-200/50 bg-amber-50/30 flex-none">
               <div className="p-4">
                 <div className="max-w-3xl mx-auto">
-                  {/* Common Action Shortcuts */}
-                  <div className="mb-3">
-                    <h3 className="text-sm font-medium mb-2">Quick Actions</h3>
-                    <div className="grid grid-cols-3 gap-1">
-                      {actionShortcuts.map(shortcut => (
-                        <Button
-                          key={shortcut.id}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8 px-2"
-                          onClick={() => setPlayerInput(shortcut.action)}
-                        >
-                          {shortcut.icon === "sword" && <Sword className="mr-1 h-3 w-3" />}
-                          {shortcut.icon === "shield" && <ShieldCheck className="mr-1 h-3 w-3" />}
-                          {shortcut.icon === "wand" && <Wand2 className="mr-1 h-3 w-3" />}
-                          {shortcut.icon === "heart" && <Heart className="mr-1 h-3 w-3" />}
-                          {shortcut.icon === "eye" && <Eye className="mr-1 h-3 w-3" />}
-                          {shortcut.icon === "message-circle" && <MessageCircle className="mr-1 h-3 w-3" />}
-                          {shortcut.name}
-                        </Button>
-                      ))}
-                    </div>
-                    
-                    {/* Tabletop Tools */}
-                    <div className="flex justify-center items-center gap-2 mt-2">
-                      {/* Inventory Management */}
-                      {currentCharacter && (
-                        <InventoryManagement 
-                          characterId={currentCharacter.id}
-                          campaignId={campaignId}
-                          character={currentCharacter}
-                          campaignCharacters={campaignCharacters || []}
-                          onItemUpdate={() => {
-                            queryClient.invalidateQueries({ queryKey: [`/api/characters/${currentCharacter.id}`] });
-                          }}
-                          isDm={user?.id === campaign?.dmId}
+                  <form onSubmit={handleSubmitAction}>
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <Textarea
+                          placeholder={userCharacter ? "Describe your action..." : "Add a character to this campaign first!"}
+                          className="min-h-[80px] resize-none bg-white border-amber-200"
+                          value={playerInput}
+                          onChange={(e) => setPlayerInput(e.target.value)}
+                          disabled={!userCharacter || isProcessing}
+                          style={{ fontSize: `${fontSizeMultiplier}rem` }}
                         />
-                      )}
-                      
-                      {/* Adventure Map */}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="flex items-center space-x-2">
+                            <label className="flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={isAutoRollEnabled}
+                                onChange={(e) => setIsAutoRollEnabled(e.target.checked)}
+                              />
+                              <div className="relative w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                              <span className="ml-2 text-sm font-medium text-muted-foreground">Auto-roll dice</span>
+                            </label>
+                          </div>
+                          
+                          <div className="flex gap-2">
                             <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => setRightPanelTab(rightPanelTab === "map" ? null : "map")}
-                              className="h-8 w-8"
+                              type="submit"
+                              disabled={!userCharacter || isProcessing || !playerInput.trim()}
+                              className="font-semibold"
                             >
-                              <Map className="h-4 w-4" />
+                              {isProcessing ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                  Processing...
+                                </>
+                              ) : (
+                                "Submit Action"
+                              )}
                             </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Adventure Map</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSubmitAction();
-                    }}
-                    className="flex gap-2"
-                  >
-                    <Textarea 
-                      placeholder={`What will ${currentCharacter?.name || 'your character'} do next?`}
-                      value={playerInput}
-                      onChange={(e) => setPlayerInput(e.target.value)}
-                      className="flex-grow min-h-12 resize-none"
-                      disabled={isProcessing}
-                    />
-                    <Button 
-                      type="submit" 
-                      size="icon" 
-                      className="h-12 w-12"
-                      disabled={!playerInput.trim() || isProcessing}
-                    >
-                      {isProcessing ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <Send className="h-5 w-5" />
-                      )}
-                    </Button>
                   </form>
                 </div>
               </div>
             </div>
-            
-            {/* Right Side Panel */}
-            {rightPanelTab && (
-              <div className="absolute top-0 right-0 z-30 h-full w-80 bg-white border-l border-border overflow-y-auto">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medieval text-lg">
-                      {rightPanelTab === "inventory" && "Inventory"}
-                      {rightPanelTab === "equipment" && "Equipment & Attire"}
-                      {rightPanelTab === "spells" && "Spells & Abilities"}
-                      {rightPanelTab === "map" && "Adventure Map"}
-                      {rightPanelTab === "battle" && "Battle Tracker"}
-                      {rightPanelTab === "progression" && "Character Progression"}
-                      {rightPanelTab === "companion" && "Bot Companion"}
-                      {rightPanelTab === "loot" && "Available Loot"}
-                    </h3>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => setRightPanelTab(null)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  {/* Right panel content based on selected tab */}
-                  {rightPanelTab === "inventory" && (
-                    <div className="space-y-4">
-                      {/* Carrying capacity indicator */}
-                      <div className="p-2 border border-border rounded-md bg-muted/10">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs font-medium">Carrying Weight:</span>
-                          <span className={`text-xs ${
-                            Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) * 0.8
-                              ? 'text-destructive font-medium'
-                              : Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) * 0.5
-                                ? 'text-amber-600'
-                                : ''
-                          }`}>
-                            {calculateInventoryWeight()} / {calculateCarryingCapacity()} lbs
-                          </span>
-                        </div>
-                        <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${
-                              Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) * 0.8
-                                ? 'bg-destructive' 
-                                : Number(calculateInventoryWeight()) > Number(calculateCarryingCapacity()) * 0.5
-                                  ? 'bg-amber-500'
-                                  : 'bg-primary'
-                            }`}
-                            style={{ 
-                              width: `${Math.min(100, (Number(calculateInventoryWeight()) / Number(calculateCarryingCapacity())) * 100)}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Inventory items list */}
-                      <div className="space-y-2">
-                        {((currentCharacter?.equipment as any)?.inventory || [])?.map((item: any, index: number) => (
-                          <div key={index} className="p-2 border border-border rounded-md bg-background">
-                            <div className="flex justify-between">
-                              <div className="font-medium">{item.name}</div>
-                              <div className="text-sm">{item.quantity}x</div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{item.description}</p>
-                            <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                              <span>{item.type}</span>
-                              {item.weight && <span>{item.weight} lbs</span>}
-                            </div>
-                          </div>
-                        ))}
-                        
-                        {(!currentCharacter?.equipment || 
-                          !(currentCharacter.equipment as any)?.inventory || 
-                          ((currentCharacter.equipment as any)?.inventory || []).length === 0) && (
-                          <div className="text-center p-4 text-muted-foreground">
-                            <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p>Your inventory is empty</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {rightPanelTab === "map" && (
-                    <div className="relative">
-                      <div className="absolute top-0 right-0 z-10">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setRightPanelTab(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <AdventureMapPanel 
-                        campaignId={campaignId}
-                        isDm={campaign?.dmId === user?.id}
-                        onLocationClick={(location) => {
-                          // Handle location click - could generate description or reveal info
-                          toast({
-                            title: location.name,
-                            description: location.description || "A mysterious location on your adventure map.",
-                          });
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {rightPanelTab === "spells" && (
-                    <div className="space-y-4">
-                      <div className="absolute top-0 right-0 z-10">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setRightPanelTab(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      {currentCharacter?.spells && Object.keys(currentCharacter.spells).length > 0 ? (
-                        <div>
-                          <h4 className="text-sm font-semibold mb-2">Spells</h4>
-                          <div className="space-y-2">
-                            {Object.entries(currentCharacter.spells).map(([level, spellList]) => (
-                              <div key={level} className="border border-border rounded-md p-3">
-                                <h5 className="font-medieval text-sm mb-2">Level {level}</h5>
-                                <div className="space-y-1">
-                                  {Array.isArray(spellList) && spellList.map((spell: any, idx: number) => (
-                                    <div 
-                                      key={`${spell.name}-${idx}`} 
-                                      className="p-2 bg-background hover:bg-secondary/10 rounded-sm cursor-pointer"
-                                      onClick={() => {
-                                        toast({
-                                          title: spell.name,
-                                          description: spell.description || "A mysterious spell with unknown effects.",
-                                        });
-                                      }}
-                                    >
-                                      <div className="flex justify-between items-center">
-                                        <span className="font-medium">{spell.name}</span>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPlayerInput(`I cast ${spell.name}!`);
-                                          }}
-                                        >
-                                          Cast
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-center p-6">
-                          <Wand2 className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-3" />
-                          <h4 className="text-lg font-medieval mb-2">No Spells Available</h4>
-                          <p className="text-muted-foreground">
-                            {currentCharacter?.class === "Wizard" || currentCharacter?.class === "Sorcerer" || currentCharacter?.class === "Warlock" || currentCharacter?.class === "Bard" || currentCharacter?.class === "Cleric" || currentCharacter?.class === "Druid" ? 
-                              "You haven't learned any spells yet. Spells can be acquired through level advancement, finding scrolls, or receiving them as rewards." :
-                              "This character class doesn't have spellcasting abilities. Consider multiclassing or finding magical items to gain spells."}
-                          </p>
-                        </div>
-                      )}
-                      
-                      <div className="mt-6">
-                        <h4 className="text-sm font-semibold mb-2">Abilities & Skills</h4>
-                        {currentCharacter?.abilities && Object.keys(currentCharacter.abilities).length > 0 ? (
-                          <div className="space-y-2">
-                            {Object.entries(currentCharacter.abilities).map(([category, abilityList]) => (
-                              <div key={category} className="border border-border rounded-md p-3">
-                                <h5 className="font-medieval text-sm mb-2">{category}</h5>
-                                <div className="space-y-1">
-                                  {Array.isArray(abilityList) && abilityList.map((ability: any, idx: number) => (
-                                    <div 
-                                      key={`${ability.name}-${idx}`} 
-                                      className="p-2 bg-background hover:bg-secondary/10 rounded-sm cursor-pointer"
-                                      onClick={() => {
-                                        toast({
-                                          title: ability.name,
-                                          description: ability.description || "A mysterious ability with unknown effects.",
-                                        });
-                                      }}
-                                    >
-                                      <div className="flex justify-between items-center">
-                                        <span className="font-medium">{ability.name}</span>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPlayerInput(`I use my ${ability.name} ability!`);
-                                          }}
-                                        >
-                                          Use
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center p-6">
-                            <Shield className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-3" />
-                            <h4 className="text-lg font-medieval mb-2">No Abilities Listed</h4>
-                            <p className="text-muted-foreground">
-                              Your character's special abilities and skills will appear here as you gain them through leveling up and adventures.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {rightPanelTab === "battle" && (
-                    <div className="space-y-4">
-                      <div className="absolute top-0 right-0 z-10">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setRightPanelTab(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      <BattleTracker
-                        inCombat={inCombat}
-                        combatRound={combatRound}
-                        combatTurn={combatTurn}
-                        combatParticipants={combatParticipants}
-                        onNextTurn={onNextTurn}
-                        onEndCombat={onEndCombat}
-                        onAddParticipant={onAddParticipant}
-                        onApplyDamage={onApplyDamage}
-                        onApplyHealing={onApplyHealing}
-                        onAddCondition={onAddCondition}
-                        onRemoveCondition={onRemoveCondition}
-                        onDiceRoll={onDiceRoll}
-                        partyCharacters={campaignCharacters || []}
-                      />
-                    </div>
-                  )}
-                  
-                  {rightPanelTab === "companion" && (
-                    <BotCompanion 
-                      campaignId={campaignId}
-                      characterName={currentCharacter?.name} 
-                      compendiumMode={false}
-                    />
-                  )}
-                  
-                  {rightPanelTab === "loot" && (
-                    <LootCollectionPanel
-                      characterId={selectedCharacterId || (currentCharacter?.id || 0)}
-                      availableLoot={availableLoot}
-                      onLootCollected={() => {
-                        setHasUnclaimedLoot(false);
-                        setAvailableLoot([]);
-                        // Refresh character data
-                        if (selectedCharacterId) {
-                          queryClient.invalidateQueries({ queryKey: [`/api/characters/${selectedCharacterId}`] });
-                        } else if (currentCharacter?.id) {
-                          queryClient.invalidateQueries({ queryKey: [`/api/characters/${currentCharacter.id}`] });
-                        }
-                        toast({
-                          title: "Loot collected",
-                          description: "Items have been added to your inventory",
-                          variant: "default"
-                        });
-                      }}
-                    />
-                  )}
-                  
-                  {rightPanelTab === "party" && (
-                    <div className="space-y-4">
-                      {/* Party members list */}
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-semibold mb-2">Party Members</h4>
-                        
-                        {campaignCharacters && campaignCharacters.length > 0 ? (
-                          campaignCharacters.map(character => (
-                            <div 
-                              key={character.id} 
-                              className={`p-2 border ${selectedCharacterId === character.id ? 'border-primary' : 'border-border'} rounded-md bg-background cursor-pointer transition-colors hover:border-primary/70`}
-                              onClick={() => setSelectedCharacterId(character.id)}
-                            >
-                              <div className="flex items-center">
-                                <Avatar className="h-10 w-10 mr-3">
-                                  <AvatarFallback className="bg-primary/10 text-primary">
-                                    {character.name?.substring(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                  <div className="font-medium">{character.name}</div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {character.race} {character.class}
-                                  </div>
-                                </div>
-                                {selectedCharacterId === character.id && (
-                                  <div className="h-2 w-2 rounded-full bg-primary" />
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center p-4 text-muted-foreground">
-                            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p>No characters in party</p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Party management options */}
-                      <div className="space-y-2 pt-3 border-t border-border">
-                        <h4 className="text-sm font-semibold mb-2">Party Options</h4>
-                        
-                        <div className="flex flex-col gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="w-full justify-start py-3"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log("Add Character button clicked (sidebar)");
-                              setShowAddCharacterDialog(true);
-                            }}
-                            onTouchStart={(e) => {
-                              e.preventDefault();
-                              console.log("Touch start on Add Character button");
-                              setShowAddCharacterDialog(true);
-                            }}
-                          >
-                            <UserPlus className="h-4 w-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">Add Character</span>
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start py-3"
-                          >
-                            <UserCog className="h-4 w-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">Manage Party Roles</span>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {rightPanelTab === "loot" && selectedCharacterId && (
-                    <LootCollectionPanel 
-                      characterId={selectedCharacterId}
-                      availableLoot={availableLoot}
-                      onLootCollected={() => {
-                        // Clear the collected loot and refresh character data
-                        setAvailableLoot([]);
-                        // Refresh the character data
-                        queryClient.invalidateQueries({ queryKey: [`/api/characters/${selectedCharacterId}`] });
-                        // Show toast notification
-                        toast({
-                          title: "Loot collected",
-                          description: "Items have been added to your inventory",
-                        });
-                      }}
-                    />
-                  )}
-                  
-                  {rightPanelTab === "loot" && !selectedCharacterId && (
-                    <div className="p-4 text-center">
-                      <Package className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                      <h3 className="text-lg font-medium mb-1">Select a Character</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Please select a character to collect loot for.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
-        </ResizablePanels>
+        </div>
         
-        {/* Battle Tracker */}
-        <BattleTracker
-          inCombat={inCombat}
-          combatParticipants={combatParticipants}
-          combatRound={combatRound}
-          combatTurn={combatTurn}
-          onEndCombat={onEndCombat}
-          onNextTurn={onNextTurn}
-          onAddParticipant={onAddParticipant}
-          onApplyDamage={onApplyDamage}
-          onApplyHealing={onApplyHealing}
-          onAddCondition={onAddCondition}
-          onRemoveCondition={onRemoveCondition}
-          onDiceRoll={onDiceRoll}
-          partyCharacters={campaignCharacters as any[]}
-        />
-        
-        {/* Dice Roller Dialog */}
-        {showDiceRoller && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-medieval">Dice Roller</h2>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0" 
-                  onClick={() => setShowDiceRoller(false)}
+        {/* Right panel for mobile - conditional at bottom, fixed position */}
+        {rightPanelTab && (
+          <div className="lg:hidden fixed inset-0 bg-black/50 z-40 flex flex-col">
+            <div className="flex-1" onClick={() => setRightPanelTab(null)}></div>
+            <div className="max-h-[80vh] overflow-y-auto bg-parchment border-t border-amber-300 rounded-t-xl">
+              <div className="p-4 border-b border-amber-200 flex justify-between items-center">
+                <h2 className="text-lg font-semibold text-amber-900">
+                  {getRightPanelTitle()}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setRightPanelTab(null)}
+                  className="h-8 w-8 p-0"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
               
-              <DiceRoller 
-                characterName={currentCharacter?.name || "Character"} 
-                characterModifiers={{
-                  STR: 2,
-                  DEX: 3,
-                  CON: 1,
-                  INT: 0,
-                  WIS: 2,
-                  CHA: 1
-                }}
-                onRollResult={(type, result, modifier, purpose, threshold) => {
-                  // Handle roll result
-                  addCampaignRoll({
-                    id: uuidv4(),
-                    characterName: currentCharacter?.name || "Character",
-                    diceType: type,
-                    result: result,
-                    modifier: modifier || 0,
-                    total: result + (modifier || 0),
-                    purpose: purpose,
-                    threshold: threshold,
-                    isSuccess: threshold ? (result + (modifier || 0)) >= threshold : undefined,
-                    timestamp: new Date()
-                  });
-                  
-                  // Log the roll to the campaign
-                  createLogMutation.mutate({
-                    campaignId,
-                    content: `${currentCharacter?.name || "Character"} rolled ${result}${modifier ? ` + ${modifier} = ${result + modifier}` : ''} on a ${type}${purpose ? ` for ${purpose}` : ''}${threshold ? ` against DC ${threshold}` : ''}.`,
-                    type: "roll"
-                  });
-                }}
-              />
+              <div className="p-4 max-h-[70vh] overflow-y-auto">
+                {/* Same content as desktop but in a slide-up panel */}
+                {rightPanelTab === "map" && (
+                  <AdventureMapPanel 
+                    campaignId={parseInt(campaignId)} 
+                    locations={mapLocations} 
+                    paths={mapPaths}
+                    isLoading={locationsLoading || pathsLoading}
+                    campaign={campaign}
+                  />
+                )}
+                
+                {rightPanelTab === "chat" && (
+                  <BotCompanion 
+                    campaignId={parseInt(campaignId)} 
+                    userCharacter={userCharacter} 
+                    campaign={campaign}
+                  />
+                )}
+                
+                {rightPanelTab === "roll" && (
+                  <DiceRoll
+                    campaignId={parseInt(campaignId)}
+                    character={userCharacter}
+                  />
+                )}
+                
+                {rightPanelTab === "characters" && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold border-b pb-2">Player Characters</h3>
+                    <div className="space-y-3">
+                      {campaignCharacters.filter(c => !c.isBot).map(character => (
+                        <div key={character.id} className="border rounded-lg p-3 bg-card">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-bold text-amber-900">{character.name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Level {character.level} {character.race} {character.class}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                                HP: {character.hp}/{character.maxHp}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* NPC Party Members */}
+                    <h3 className="text-lg font-semibold border-b pb-2 mt-6">NPC Companions</h3>
+                    <div className="space-y-3">
+                      {campaignCharacters.filter(c => c.isBot).map(character => (
+                        <div key={character.id} className="border rounded-lg p-3 bg-card">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-bold text-amber-900">{character.name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Level {character.level} {character.race} {character.class}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                                HP: {character.hp}/{character.maxHp}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {campaignCharacters.filter(c => c.isBot).length === 0 && (
+                        <div className="text-center p-4 border border-dashed rounded-lg">
+                          <p className="text-muted-foreground text-sm">No NPC companions in the party yet</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {rightPanelTab === "loot" && (
+                  <LootCollectionPanel 
+                    characterId={userCharacter?.id || 0} 
+                    availableLoot={detectedLoot || []}
+                    onLootCollected={() => setHasUnclaimedLoot(false)}
+                  />
+                )}
+                
+                {rightPanelTab === "comments" && (
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      {comments.map(comment => (
+                        <div key={comment.id} className="border rounded-lg p-3 bg-card">
+                          <p className="text-sm text-muted-foreground mb-1">
+                            {comment.authorName} • {new Date(comment.createdAt).toLocaleDateString()}
+                          </p>
+                          <p>{comment.content}</p>
+                        </div>
+                      ))}
+                      
+                      {comments.length === 0 && (
+                        <div className="text-center p-6 border border-dashed rounded-lg">
+                          <p className="text-muted-foreground mb-2">No campaign notes yet</p>
+                          <Button size="sm">Add Note</Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
-        
-        {/* Mobile Add Character Button */}
-        <div className="md:hidden fixed bottom-20 right-4 z-40">
-          <Button
-            variant="default"
-            size="lg"
-            className="rounded-full h-14 w-14 shadow-lg"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log("Mobile add character button clicked");
-              setShowAddCharacterDialog(true);
-            }}
-          >
-            <UserPlus className="h-6 w-6" />
-          </Button>
-        </div>
-        
-        {/* Add Character Dialog */}
-        <AddCharacterDialog
-          campaignId={campaignId}
-          open={showAddCharacterDialog}
-          onOpenChange={setShowAddCharacterDialog}
-          onCharacterAdded={() => {
-            queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
-            toast({
-              title: "Character Added",
-              description: "Your character has joined the campaign!",
-              variant: "default",
-            });
-          }}
-        />
       </div>
+      
+      {/* Character dialog */}
+      <AddCharacterDialog
+        campaignId={parseInt(campaignId)}
+        open={showAddCharacterDialog}
+        onOpenChange={setShowAddCharacterDialog}
+        onCharacterAdded={handleCharacterAdded}
+      />
+      
+      {/* Settings dialog */}
+      <CampaignSettingsDialog
+        campaign={campaign}
+        open={showSettings}
+        onOpenChange={setShowSettings}
+      />
     </div>
   );
 }

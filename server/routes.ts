@@ -713,6 +713,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Bot Character Creation API
+  app.post("/api/characters/create-bot", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized");
+    }
+    
+    const { name, race, class: charClass, level, isBot } = req.body;
+    
+    if (!name || !race || !charClass) {
+      return res.status(400).json({ message: "Missing required character information" });
+    }
+    
+    try {
+      // Create standard stats for the bot based on class
+      let stats = {
+        strength: 10,
+        dexterity: 10,
+        constitution: 10,
+        intelligence: 10,
+        wisdom: 10,
+        charisma: 10
+      };
+      
+      // Adjust stats based on class
+      switch (charClass.toLowerCase()) {
+        case 'fighter':
+        case 'warrior':
+        case 'barbarian':
+          stats.strength = 16;
+          stats.constitution = 14;
+          break;
+        case 'ranger':
+        case 'rogue':
+          stats.dexterity = 16;
+          stats.wisdom = 14;
+          break;
+        case 'cleric':
+        case 'paladin':
+          stats.wisdom = 16;
+          stats.strength = 14;
+          break;
+        case 'wizard':
+        case 'sorcerer':
+          stats.intelligence = 16;
+          stats.constitution = 14;
+          break;
+        case 'druid':
+          stats.wisdom = 16;
+          stats.constitution = 14;
+          break;
+        case 'bard':
+          stats.charisma = 16;
+          stats.dexterity = 14;
+          break;
+      }
+      
+      // Calculate HP based on class and level
+      let baseHP = 10;
+      let hpPerLevel = 6;
+      
+      if (['fighter', 'warrior', 'barbarian', 'paladin'].includes(charClass.toLowerCase())) {
+        baseHP = 12;
+        hpPerLevel = 7;
+      } else if (['wizard', 'sorcerer'].includes(charClass.toLowerCase())) {
+        baseHP = 6;
+        hpPerLevel = 4;
+      }
+      
+      const hp = baseHP + (hpPerLevel * (parseInt(level) - 1));
+      
+      // Create basic equipment
+      const equipment = {
+        items: [
+          { name: "Adventurer's Pack", type: "gear", isEquipped: true },
+          { name: "Traveler's Clothes", type: "armor", isEquipped: true }
+        ]
+      };
+      
+      // Add class-specific equipment
+      switch (charClass.toLowerCase()) {
+        case 'fighter':
+        case 'warrior':
+        case 'barbarian':
+          equipment.items.push({ name: "Longsword", type: "weapon", isEquipped: true });
+          equipment.items.push({ name: "Chain Mail", type: "armor", isEquipped: true });
+          equipment.items.push({ name: "Shield", type: "armor", isEquipped: true });
+          break;
+        case 'ranger':
+        case 'rogue':
+          equipment.items.push({ name: "Shortbow", type: "weapon", isEquipped: true });
+          equipment.items.push({ name: "Shortsword", type: "weapon", isEquipped: true });
+          equipment.items.push({ name: "Leather Armor", type: "armor", isEquipped: true });
+          break;
+        case 'cleric':
+        case 'paladin':
+          equipment.items.push({ name: "Mace", type: "weapon", isEquipped: true });
+          equipment.items.push({ name: "Chain Mail", type: "armor", isEquipped: true });
+          equipment.items.push({ name: "Holy Symbol", type: "gear", isEquipped: true });
+          break;
+        case 'wizard':
+        case 'sorcerer':
+          equipment.items.push({ name: "Quarterstaff", type: "weapon", isEquipped: true });
+          equipment.items.push({ name: "Spellbook", type: "gear", isEquipped: true });
+          equipment.items.push({ name: "Component Pouch", type: "gear", isEquipped: true });
+          break;
+      }
+      
+      // Create the bot character
+      const botCharacter = await storage.createCharacter({
+        name,
+        race,
+        class: charClass,
+        level: parseInt(level) || 1,
+        background: "Adventurer",
+        appearance: `A ${race} ${charClass}`,
+        backstory: `A loyal companion willing to aid in any adventure.`,
+        stats,
+        hp,
+        maxHp: hp,
+        equipment,
+        spells: {},
+        abilities: {},
+        userId: req.user!.id,
+        isBot: true,
+        createdAt: new Date()
+      });
+      
+      res.status(201).json(botCharacter);
+    } catch (error) {
+      console.error("Error creating bot character:", error);
+      res.status(500).json({ message: "Failed to create bot character" });
+    }
+  });
+  
 //This route is duplicated above, removing this instance
   
   app.get("/api/campaigns/:id", async (req, res) => {

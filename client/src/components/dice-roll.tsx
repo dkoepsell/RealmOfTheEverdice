@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Dice5, Dice2, Dice1, Dice3, Dice4, Dice6, Info, Target, PlusCircle, MinusCircle, AlertCircle, HelpCircle } from 'lucide-react';
 
-// No need to re-export these anymore as we're importing directly from the source
+// Will add backward compatibility export at the end of the file
 
 interface DiceProps {
   diceType: DiceType;
@@ -487,4 +487,5 @@ export const DiceRoller = ({
   );
 };
 
+// We're now using the name DiceRoller consistently
 export default DiceRoller;
