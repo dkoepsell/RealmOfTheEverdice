@@ -256,6 +256,18 @@ export default function CampaignPage() {
     setAvailableLoot: updateAvailableLoot
   } = useCombatDetection(latestNarrativeContent || "");
   
+  // Update detected loot from combat detection
+  useEffect(() => {
+    if (detectedLoot.length > 0) {
+      setAvailableLoot(prev => {
+        // Merge with existing loot, avoid duplicates by ID
+        const existingIds = prev.map(item => item.id);
+        const newLoot = detectedLoot.filter(item => !existingIds.includes(item.id));
+        return [...prev, ...newLoot];
+      });
+    }
+  }, [detectedLoot]);
+
   // Update unclaimed loot status
   useEffect(() => {
     setHasUnclaimedLoot(availableLoot.length > 0);
@@ -1366,6 +1378,34 @@ export default function CampaignPage() {
                           </Button>
                         </div>
                       </div>
+                    </div>
+                  )}
+                  
+                  {rightPanelTab === "loot" && selectedCharacterId && (
+                    <LootCollectionPanel 
+                      characterId={selectedCharacterId}
+                      availableLoot={availableLoot}
+                      onLootCollected={() => {
+                        // Clear the collected loot and refresh character data
+                        setAvailableLoot([]);
+                        // Refresh the character data
+                        queryClient.invalidateQueries({ queryKey: [`/api/characters/${selectedCharacterId}`] });
+                        // Show toast notification
+                        toast({
+                          title: "Loot collected",
+                          description: "Items have been added to your inventory",
+                        });
+                      }}
+                    />
+                  )}
+                  
+                  {rightPanelTab === "loot" && !selectedCharacterId && (
+                    <div className="p-4 text-center">
+                      <Package className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                      <h3 className="text-lg font-medium mb-1">Select a Character</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Please select a character to collect loot for.
+                      </p>
                     </div>
                   )}
                 </div>
