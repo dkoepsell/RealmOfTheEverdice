@@ -698,18 +698,21 @@ const AdminDashboard = () => {
                                   }}
                                 >
                                   <img 
-                                    src={everdiceWorld.mapUrl} 
+                                    src={everdiceWorld?.mapUrl || '/assets/placeholder-map.jpg'} 
                                     alt="Everdice World Map" 
                                     className="w-full h-full object-contain"
                                   />
                                   
                                   {/* Map region markers - highlight campaign regions */}
-                                  {campaignRegions && campaignRegions.uniqueRegions && campaignRegions.uniqueRegions.map((regionName: string, index: number) => {
-                                    // Create a mock campaign object for display purposes
+                                  {campaignRegions && 
+                                   Array.isArray(campaignRegions.uniqueRegions) && 
+                                   campaignRegions.uniqueRegions.length > 0 && 
+                                   campaignRegions.uniqueRegions.map((regionName: string, index: number) => {
+                                    // Create a campaign object for display purposes
                                     const campaign = {
-                                      id: index + 1, // Generate a unique ID
-                                      region: regionName, // Use the region name
-                                      name: `Campaign in ${regionName}` // Generate a display name
+                                      id: index + 1,
+                                      region: regionName,
+                                      name: `Campaign in ${regionName}`
                                     };
                                     
                                     return (
@@ -717,7 +720,6 @@ const AdminDashboard = () => {
                                         key={`region-${index}`}
                                         className="absolute flex items-center justify-center"
                                         style={{
-                                          // Position randomly if no actual coordinates, since we're just prototyping this feature
                                           left: `${Math.random() * 80 + 10}%`,
                                           top: `${Math.random() * 80 + 10}%`,
                                           transform: 'translate(-50%, -50%)'
@@ -726,19 +728,18 @@ const AdminDashboard = () => {
                                         <div 
                                           className="group relative"
                                           onClick={() => {
-                                            // Show region edit dialog
                                             setSelectedRegion(campaign);
                                             setRegionNameDialog(true);
                                           }}
                                         >
-                                          {/* Pulsing region marker with improved visibility */}
+                                          {/* Pulsing region marker */}
                                           <div className="absolute -inset-3 rounded-full bg-primary/30 animate-pulse group-hover:bg-primary/60 transition-all"></div>
                                           <div className="absolute -inset-1 rounded-full bg-amber-400/50 group-hover:bg-amber-400/80"></div>
                                           <button className="relative h-6 w-6 rounded-full bg-amber-600 shadow-md hover:bg-amber-700 transition-colors flex items-center justify-center">
                                             <MapPin className="h-3 w-3 text-white" />
                                           </button>
                                           
-                                          {/* Enhanced tooltips */}
+                                          {/* Tooltips */}
                                           <div className="absolute opacity-0 group-hover:opacity-100 bottom-8 bg-background/90 shadow-md rounded-md px-3 py-2 text-xs transition-opacity whitespace-nowrap z-20 border border-amber-200">
                                             <div className="font-semibold text-amber-900">{campaign.region || 'Unnamed Region'}</div>
                                             <div className="text-[10px] text-muted-foreground mt-1">
