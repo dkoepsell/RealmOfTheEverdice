@@ -81,6 +81,7 @@ import { InventoryManagement } from "@/components/inventory-management";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
 import { BattleTracker } from "@/components/battle-tracker";
 import { useCombatDetection } from "@/hooks/use-combat-detection";
+import { LootCollectionPanel } from "@/components/loot-collection-panel";
 
 export default function CampaignPage() {
   // URL parameters
@@ -103,6 +104,7 @@ export default function CampaignPage() {
   const [rightPanelTab, setRightPanelTab] = useState<string | null>(null);
   const [playerInput, setPlayerInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [hasUnclaimedLoot, setHasUnclaimedLoot] = useState(false);
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState(() => {
     // Try to load saved font size from local storage, default to 1 if not found
     const savedSize = localStorage.getItem('narrativeFontSize');
@@ -254,6 +256,11 @@ export default function CampaignPage() {
     setAvailableLoot: updateAvailableLoot
   } = useCombatDetection(latestNarrativeContent || "");
   
+  // Update unclaimed loot status
+  useEffect(() => {
+    setHasUnclaimedLoot(availableLoot.length > 0);
+  }, [availableLoot]);
+
   // Add detected threats to combat participants when combat starts
   useEffect(() => {
     if (inCombat && detectedThreats.length > 0) {
@@ -750,6 +757,19 @@ export default function CampaignPage() {
                   <Backpack className="h-3 w-3 mr-1" />
                   Inventory
                 </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs relative"
+                  onClick={() => setRightPanelTab("loot")}
+                >
+                  <Package className="h-3 w-3 mr-1" />
+                  Loot
+                  {hasUnclaimedLoot && (
+                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
+                  )}
+                </Button>
                 
                 <Button
                   variant="outline"
@@ -1027,6 +1047,7 @@ export default function CampaignPage() {
                       {rightPanelTab === "battle" && "Battle Tracker"}
                       {rightPanelTab === "progression" && "Character Progression"}
                       {rightPanelTab === "companion" && "Bot Companion"}
+                      {rightPanelTab === "loot" && "Available Loot"}
                     </h3>
                     <Button 
                       variant="ghost" 
