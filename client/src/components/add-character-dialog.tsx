@@ -64,8 +64,18 @@ export function AddCharacterDialog({
   onOpenChange,
   onCharacterAdded
 }: AddCharacterDialogProps) {
-  // Safety check for campaign ID to prevent NaN issues
-  const validCampaignId = campaignId && !isNaN(campaignId) ? campaignId : 0;
+  // Safety check for campaign ID to prevent NaN issues and log for debugging
+  const validCampaignId = campaignId && !isNaN(campaignId) ? Number(campaignId) : 0;
+  
+  // Log campaign ID for debugging
+  useEffect(() => {
+    if (open) {
+      console.log("AddCharacterDialog opened with campaignId:", campaignId, "validCampaignId:", validCampaignId);
+      if (!validCampaignId || validCampaignId <= 0) {
+        console.error("Invalid campaign ID detected in AddCharacterDialog:", campaignId);
+      }
+    }
+  }, [open, campaignId, validCampaignId]);
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>("");

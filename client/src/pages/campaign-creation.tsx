@@ -107,14 +107,28 @@ export default function CampaignCreation() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       
-      // Store the new campaign ID and show the character dialog
-      console.log("Campaign created successfully:", campaign);
-      setNewCampaignId(campaign.id);
+      // Verify campaign has an ID and store it
+      if (!campaign || !campaign.id) {
+        console.error("Created campaign is missing ID:", campaign);
+        toast({
+          title: "Warning",
+          description: "Campaign created but ID is missing. Please refresh the page.",
+          variant: "destructive"
+        });
+        return;
+      }
       
-      // Add a small delay to ensure state update before showing dialog
+      console.log("Campaign created successfully:", campaign);
+      
+      // Update state with the new campaign ID
+      const campaignId = Number(campaign.id);
+      setNewCampaignId(campaignId);
+      
+      // Add a delay to ensure state update before showing dialog
       setTimeout(() => {
+        console.log("Opening add character dialog for campaign:", campaignId);
         setShowAddCharacterDialog(true);
-      }, 100);
+      }, 250);
     },
     onError: (error) => {
       toast({

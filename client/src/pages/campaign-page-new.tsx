@@ -34,6 +34,15 @@ export default function CampaignPage() {
   const { id } = useParams();
   const campaignId = parseInt(id || "0");
   
+  // Validate campaign ID for debugging
+  useEffect(() => {
+    if (!id || isNaN(parseInt(id))) {
+      console.error("Invalid campaign ID in URL parameter:", id);
+    } else {
+      console.log("Campaign page (new) loaded with ID:", campaignId);
+    }
+  }, [id, campaignId]);
+  
   // Auth and UI hooks
   const { user } = useAuth();
   const { toast } = useToast();
