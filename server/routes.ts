@@ -139,9 +139,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
     
     try {
+      // Don't add createdBy as the column doesn't exist in database
       const worldData = {
-        ...req.body,
-        createdBy: req.user.id
+        ...req.body
       };
       
       const world = await storage.createOrUpdateEverdiceWorld(worldData);
