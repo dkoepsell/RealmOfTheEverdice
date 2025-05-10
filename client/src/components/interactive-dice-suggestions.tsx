@@ -93,8 +93,74 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
   
   // Parse narrative for dice suggestions
   // This is a more robust parser to catch different phrasings of dice roll requests
+  // including the new [Roll: d20+modifier vs DC X for Y] format
   const diceSuggestions = React.useMemo(() => {
     const suggestions: DiceSuggestion[] = [];
+    
+    // New pattern for the standardized format
+    const standardizedRollPattern = /\[Roll: (d20\+\d+) vs DC (\d+) for ([^\]]+)\]/gi;
+    let standardMatch;
+    while ((standardMatch = standardizedRollPattern.exec(narrative)) !== null) {
+      const modifierMatch = standardMatch[1].match(/d20\+(\d+)/);
+      const bonus = modifierMatch ? parseInt(modifierMatch[1]) : 0;
+      
+      // Extract what type of check/save this is from the description
+      const description = standardMatch[3];
+      let type = 'skill';
+      let skill = 'strength'; // default
+      
+      if (description.toLowerCase().includes('saving throw') || description.toLowerCase().includes('save')) {
+        type = 'save';
+      } else if (description.toLowerCase().includes('attack')) {
+        type = 'attack';
+      }
+      
+      // Try to determine the ability from the description
+      const abilities = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+      for (const ability of abilities) {
+        if (description.toLowerCase().includes(ability)) {
+          skill = ability;
+          break;
+        }
+      }
+      
+      // Handle specific skills from the D&D 5e skill list
+      const skills = [
+        { name: 'athletics', ability: 'strength' },
+        { name: 'acrobatics', ability: 'dexterity' },
+        { name: 'sleight of hand', ability: 'dexterity' },
+        { name: 'stealth', ability: 'dexterity' },
+        { name: 'arcana', ability: 'intelligence' },
+        { name: 'history', ability: 'intelligence' },
+        { name: 'investigation', ability: 'intelligence' },
+        { name: 'nature', ability: 'intelligence' },
+        { name: 'religion', ability: 'intelligence' },
+        { name: 'animal handling', ability: 'wisdom' },
+        { name: 'insight', ability: 'wisdom' },
+        { name: 'medicine', ability: 'wisdom' },
+        { name: 'perception', ability: 'wisdom' },
+        { name: 'survival', ability: 'wisdom' },
+        { name: 'deception', ability: 'charisma' },
+        { name: 'intimidation', ability: 'charisma' },
+        { name: 'performance', ability: 'charisma' },
+        { name: 'persuasion', ability: 'charisma' }
+      ];
+      
+      for (const skillInfo of skills) {
+        if (description.toLowerCase().includes(skillInfo.name)) {
+          skill = skillInfo.ability;
+          break;
+        }
+      }
+      
+      suggestions.push({
+        type: type,
+        skill: skill,
+        dc: parseInt(standardMatch[2]),
+        bonus: bonus,
+        description: `${standardMatch[0]} - ${description}`,
+      });
+    }
     
     // Enhanced pattern for skill checks that catches more variations
     const skillCheckPatterns = [

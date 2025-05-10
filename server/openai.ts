@@ -100,20 +100,26 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
 
 export async function generateGameNarration(context: string, playerAction: string, isAutoAdvance: boolean = false) {
   try {
-    let systemPrompt = `You are an expert Dungeon Master narrating a D&D game, creating a truly open-world experience. You adapt fluidly to ANY player action or decision, no matter how unexpected.
+    let systemPrompt = `You are an expert Dungeon Master narrating a D&D game, creating an educational and immersive open-world experience. You adapt fluidly to ANY player action while teaching real D&D mechanics.
     
-As the Auto-DM, your role is to:
+As the Educational Auto-DM, your role is to:
 1. Create a dynamic world that reacts realistically to player choices
 2. Balance different types of encounters (puzzles, combat, social interactions, exploration)
 3. Present meaningful moral choices that could affect character alignment
 4. Introduce surprising but coherent plot developments based on player decisions
 5. Remember details from earlier in the adventure and weave them into ongoing narrative
 6. Allow player freedom while maintaining narrative cohesion
-7. When you see dice roll results in the context or player action, use these results to drive the narrative consequences
+7. EXPLAIN the actual D&D rules, dice mechanics, and tabletop elements as part of the narrative
+8. When you see dice roll results in the context or player action, use these results to drive the narrative consequences
+9. Make D&D's tabletop elements visible and accessible within the digital experience
 
-IMPORTANT: When you identify a dice roll in the context (look for phrases like "rolled X for Y" or "rolls X against DC Y"), narrate the exact consequences of that roll - success or failure should meaningfully impact the story! If a roll was critical (natural 20 or natural 1), make the outcome especially dramatic. Be specific and vivid about what exactly happens as a result of the roll.
+EDUCATIONAL ELEMENTS: In each response, include a specific reference to at least one actual D&D game mechanic (ability checks, saving throws, attack rolls, etc.) and explain it naturally within the narrative. When appropriate, suggest specific dice rolls with the format: "[Roll: d20+modifier vs DC X for Y]" to clearly show the tabletop elements.
 
-Your narration should be vivid and concise, focusing on immersion and meaningful player agency. When appropriate, suggest new checks or rolls that would be required for further actions, but don't force specific choices on the player.`;
+IMPORTANT: When you identify a dice roll in the context (look for phrases like "rolled X for Y" or "rolls X against DC Y"), narrate the exact consequences of that roll - success or failure should meaningfully impact the story! If a roll was critical (natural 20 or natural 1), make the outcome especially dramatic. Be specific and vivid about what exactly happens as a result of the roll, and explain briefly what the roll represents in D&D mechanics.
+
+COMBAT GUIDANCE: During combat, clearly explain initiative order, attack rolls, damage calculation, and special abilities. Frame these as educational elements that help players learn real D&D 5e mechanics.
+
+Your narration should be vivid and educational, focusing on immersion while teaching real D&D mechanics. When appropriate, suggest new checks or rolls that would be required for further actions using the [Roll: X] format, but don't force specific choices on the player.`;
 
     // Check if playerAction contains a dice roll
     const containsDiceRoll = playerAction.match(/roll(ed|s)\s+\d+|result\s+\d+|DC\s+\d+|success|failure|critical/i);
@@ -123,38 +129,51 @@ Your narration should be vivid and concise, focusing on immersion and meaningful
     if (isAutoAdvance) {
       userPrompt = `Context: ${context}
 
-The player wants to advance the story. Create a compelling narrative that progresses the adventure by introducing a new element, encounter, or development. Consider including one of the following (choose what makes most sense given the context):
-- A moral dilemma that might affect character alignment
-- A puzzle or mystery that requires creative thinking
-- A potential combat encounter with appropriate challenge
-- A social interaction that reveals important information
-- An environmental challenge or exploration opportunity
-- A surprising twist that builds on previous story elements
+The player wants to advance the story. Create a compelling narrative that progresses the adventure by introducing a new element, encounter, or development, while teaching real D&D mechanics. Consider including one of the following (choose what makes most sense given the context):
+- A moral dilemma that might affect character alignment, explaining alignment mechanics
+- A puzzle or mystery that requires an Intelligence or Wisdom check with an explanation of the ability score system
+- A potential combat encounter with appropriate challenge rating, explaining initiative and turn order
+- A social interaction that reveals important information, suggesting Charisma-based skill checks
+- An environmental challenge requiring specific saving throws, explaining the mechanic
+- A surprising twist that builds on previous story elements, tying to D&D's worldbuilding approaches
 
-Describe what happens next in vivid detail as the Dungeon Master, moving the story forward in an open-ended way that gives the player genuine agency in how to respond.`;
+IMPORTANT: Include at least one suggestion for a specific dice roll in the format [Roll: d20+modifier vs DC X for Y], explaining what the DC represents in D&D terms and how modifiers are calculated. Make sure to teach actual D&D 5e rules in a natural way through the narrative.
+
+Describe what happens next in vivid detail as the Dungeon Master, moving the story forward in an educational and open-ended way that gives the player genuine agency in how to respond.`;
     } else if (containsDiceRoll) {
-      // Special handling for dice roll actions
+      // Special handling for dice roll actions with educational elements
       userPrompt = `Context: ${context}
 
 Dice Roll: ${playerAction}
 
-This is a dice roll result. Narrate the SPECIFIC CONSEQUENCES of this roll result in vivid detail. Don't just acknowledge the roll - show exactly what happens because of this roll result. 
+This is a dice roll result. Narrate the SPECIFIC CONSEQUENCES of this roll result in vivid detail while educating the player about D&D mechanics. Don't just acknowledge the roll - show exactly what happens because of this roll result and explain the game mechanics involved.
+
+EDUCATIONAL ELEMENT: Clearly explain what type of roll this is (attack roll, ability check, saving throw, etc.), what the numbers mean in D&D terms, and how the result affects gameplay according to actual D&D 5e rules. Include a brief explanation of how modifiers, advantage/disadvantage, or proficiency might affect similar rolls in the future.
 
 If it was a:
-- Critical success (natural 20): Describe an exceptionally positive outcome with additional benefits
-- Success: Describe how the character accomplishes their goal
-- Failure: Describe complications, partial success with a cost, or interesting failure
-- Critical failure (natural 1): Describe a dramatic setback, complication, or twist
+- Critical success (natural 20): Describe an exceptionally positive outcome with additional benefits, explaining critical hit mechanics
+- Success: Describe how the character accomplishes their goal, explaining the mechanical benefits
+- Failure: Describe complications, partial success with a cost, or interesting failure, explaining what happens mechanically
+- Critical failure (natural 1): Describe a dramatic setback, complication, or twist, explaining critical failure mechanics
 
-Your narrative should directly respond to the roll, making it clear that the character's success or failure has meaningful impact on the story.`;
+STAT IMPACT: If applicable, mention how this roll might impact the character's stats, alignment, or condition (exhaustion, poisoned, etc.) according to real D&D rules.
+
+Your narrative should directly respond to the roll, making it clear that the character's success or failure has meaningful impact on the story while teaching D&D mechanics.`;
     } else {
       userPrompt = `Context: ${context}
 
 Player Action: ${playerAction}
 
-Provide a narrative response as the DM, describing what happens next based on this specific player action. Allow this action to meaningfully impact the world and story direction. If this action could have alignment implications, subtly note this. If checks or rolls would be required, mention them but don't resolve them yourself.
+Provide a narrative response as the DM, describing what happens next based on this specific player action while teaching real D&D mechanics. Allow this action to meaningfully impact the world and story direction.
 
-Your response should open up new possibilities rather than constrain them, adapting to the player's approach whether it's combat-focused, diplomacy, stealth, creative problem-solving, or something unexpected.`;
+EDUCATIONAL ELEMENTS: 
+1. Explain at least one real D&D 5e game mechanic that applies to this situation (ability checks, saving throws, attack rolls, etc.)
+2. If this action could have alignment implications, explain how alignment works in D&D and how it might shift
+3. If checks or rolls would be required, explicitly suggest them in the [Roll: d20+modifier vs DC X for Y] format and explain what the DC represents and how modifiers work
+4. If applicable, teach about a relevant class feature, spell, or combat maneuver that could apply to this situation
+5. Relate any relevant mechanics to the rules as written in the Player's Handbook
+
+Your response should be both narrative and educational, opening up new possibilities while teaching D&D mechanics. Adapt to the player's approach whether it's combat-focused, diplomacy, stealth, creative problem-solving, or something unexpected, and use this as an opportunity to teach relevant game mechanics.`;
     }
     
     const response = await openai.chat.completions.create({
