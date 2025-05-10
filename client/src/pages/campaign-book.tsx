@@ -1057,7 +1057,7 @@ export default function CampaignPage() {
       
       {/* Character dialog */}
       <AddCharacterDialog
-        campaignId={campaignId && !isNaN(parseInt(campaignId)) ? parseInt(campaignId) : 0}
+        campaignId={campaignId && !isNaN(parseInt(campaignId)) ? parseInt(campaignId) : undefined}
         open={showAddCharacterDialog}
         onOpenChange={setShowAddCharacterDialog}
         onCharacterAdded={handleCharacterAdded}

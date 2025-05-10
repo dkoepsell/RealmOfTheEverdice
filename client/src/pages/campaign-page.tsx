@@ -32,14 +32,16 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 export default function CampaignPage() {
   // URL parameters
   const { id } = useParams();
-  const campaignId = parseInt(id || "0");
+  // Parse campaign ID with improved validation
+  const parsedId = id && !isNaN(parseInt(id)) ? parseInt(id) : undefined;
+  const campaignId = parsedId && parsedId > 0 ? parsedId : undefined;
   
   // Validate campaign ID for debugging
   useEffect(() => {
-    if (!id || isNaN(parseInt(id))) {
-      console.error("Invalid campaign ID in URL parameter:", id);
+    if (!campaignId) {
+      console.error("Invalid campaign ID in URL parameter:", id, "- parsed ID is undefined");
     } else {
-      console.log("Campaign page loaded with ID:", campaignId);
+      console.log("Campaign page loaded with valid ID:", campaignId);
     }
   }, [id, campaignId]);
   
