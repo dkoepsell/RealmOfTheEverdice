@@ -225,6 +225,11 @@ export function useAdmin() {
     refetch: refetchWorlds
   } = useQuery({
     queryKey: ["/api/admin/worlds"],
+    queryFn: async () => {
+      if (!(isAdmin || isSuperAdmin)) return [];
+      const res = await apiRequest("GET", "/api/admin/worlds");
+      return await res.json();
+    },
     enabled: !!(isAdmin || isSuperAdmin)
   });
   
@@ -367,6 +372,12 @@ export function useAdmin() {
     isLoadingEverdiceWorld,
     everdiceWorldError,
     refetchEverdiceWorld,
+    worlds,
+    worldsLoading,
+    worldsError,
+    refetchWorlds,
+    selectedWorldId,
+    setSelectedWorldId,
     campaignRegions,
     isLoadingCampaignRegions,
     campaignRegionsError,
