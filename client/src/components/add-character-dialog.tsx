@@ -24,7 +24,7 @@ import { Loader2, UserPlus, Bot } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface AddCharacterDialogProps {
-  campaignId: number;
+  campaignId: number | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCharacterAdded?: () => void;
@@ -367,11 +367,11 @@ export function AddCharacterDialog({
           className="py-4"
         >
           <TabsList className="w-full grid grid-cols-2 mb-4">
-            <TabsTrigger value="my-characters" className="text-base">
+            <TabsTrigger value="my-characters" className="text-base" disabled={hasInvalidId}>
               <UserPlus className="mr-2 h-4 w-4" />
               My Characters
             </TabsTrigger>
-            <TabsTrigger value="bot-companions" className="text-base">
+            <TabsTrigger value="bot-companions" className="text-base" disabled={hasInvalidId}>
               <Bot className="mr-2 h-4 w-4" />
               Bot Companions
             </TabsTrigger>
@@ -540,7 +540,7 @@ export function AddCharacterDialog({
           </Button>
           <Button
             onClick={handleAddCharacter}
-            disabled={!isValid || isPending}
+            disabled={!isValid || isPending || hasInvalidId}
             className="w-full sm:w-auto text-base py-5 sm:py-2"
           >
             {isPending ? (

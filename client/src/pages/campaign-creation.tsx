@@ -229,7 +229,7 @@ export default function CampaignCreation() {
       <main className="flex-grow container mx-auto px-4 py-8">
         {/* Add Character Dialog - opens after campaign creation */}
         <AddCharacterDialog
-          campaignId={newCampaignId || 0}
+          campaignId={newCampaignId || undefined}
           open={showAddCharacterDialog}
           onOpenChange={(open) => {
             setShowAddCharacterDialog(open);
