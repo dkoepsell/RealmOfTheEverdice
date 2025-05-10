@@ -103,6 +103,11 @@ export default function CampaignPage() {
   const [rightPanelTab, setRightPanelTab] = useState<string | null>(null);
   const [playerInput, setPlayerInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [fontSizeMultiplier, setFontSizeMultiplier] = useState(() => {
+    // Try to load saved font size from local storage, default to 1 if not found
+    const savedSize = localStorage.getItem('narrativeFontSize');
+    return savedSize ? parseFloat(savedSize) : 1;
+  });
   
 
   
@@ -778,8 +783,41 @@ export default function CampaignPage() {
           <div className="h-full flex flex-col bg-[#fffbf0] relative overflow-hidden">
             {/* Split the content into two sections: scrollable narrative at top, fixed controls at bottom */}
             
+            {/* Font size controls */}
+            <div className="border-b border-amber-200/50 bg-amber-50/30 flex-none p-2">
+              <div className="flex items-center justify-end max-w-3xl mx-auto">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Font Size:</span>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-6 w-6"
+                    onClick={() => setFontSizeMultiplier(prev => Math.max(0.8, prev - 0.1))}
+                  >
+                    <span className="text-xs">A-</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-6 w-6"
+                    onClick={() => setFontSizeMultiplier(1)} // Reset to default
+                  >
+                    <span className="text-xs">A</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-6 w-6"
+                    onClick={() => setFontSizeMultiplier(prev => Math.min(1.5, prev + 0.1))}
+                  >
+                    <span className="text-xs">A+</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
             {/* Top scrollable narrative - Fixed percentage height - content will scale with viewport */}
-            <div className="h-[calc(100vh-350px)] min-h-[300px] overflow-hidden">
+            <div className="h-[calc(100vh-350px-32px)] min-h-[300px] overflow-hidden">
               {/* Narrative content with explicit scrollbar */}
               <div 
                 className="h-full overflow-y-scroll p-4 scrollbar scrollbar-thumb-amber-300 scrollbar-track-amber-50" 
@@ -804,7 +842,15 @@ export default function CampaignPage() {
                       
                       {log.type === "narrative" && (
                         <div className="prose prose-amber max-w-none">
-                          <p className="mb-4">{log.content}</p>
+                          <p 
+                            className="mb-4" 
+                            style={{ 
+                              fontSize: `${1 * fontSizeMultiplier}rem`,
+                              lineHeight: 1.5
+                            }}
+                          >
+                            {log.content}
+                          </p>
                         </div>
                       )}
                       
