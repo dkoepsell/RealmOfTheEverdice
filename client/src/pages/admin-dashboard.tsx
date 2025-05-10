@@ -216,10 +216,11 @@ export default function AdminDashboard() {
       </div>
       
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 mb-8 w-full max-w-3xl">
+        <TabsList className="grid grid-cols-6 mb-8 w-full max-w-4xl">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="worldmap">World Map</TabsTrigger>
+          <TabsTrigger value="worlds">Worlds</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
