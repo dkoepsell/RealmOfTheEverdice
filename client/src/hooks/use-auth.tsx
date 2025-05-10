@@ -8,8 +8,14 @@ import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+// Extended user type with role-based permission helpers
+type EnhancedUser = SelectUser & {
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+};
+
 type AuthContextType = {
-  user: SelectUser | null;
+  user: EnhancedUser | null;
   isLoading: boolean;
   error: Error | null;
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
@@ -93,10 +99,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Enhance user with permission helpers
+  const enhancedUser = user ? {
+    ...user,
+    isAdmin: user.role === 'admin' || user.role === 'superadmin',
+    isSuperAdmin: user.role === 'superadmin' || user.username === 'KoeppyLoco'
+  } : null;
+
   return (
     <AuthContext.Provider
       value={{
-        user: user ?? null,
+        user: enhancedUser,
         isLoading,
         error,
         loginMutation,
