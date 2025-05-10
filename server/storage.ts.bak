@@ -574,53 +574,12 @@ export class DatabaseStorage implements IStorage {
           throw new Error("Insert didn't return the inserted row");
         } catch (insertError) {
           console.error("Error creating campaign world map:", insertError);
-          
-          // Very basic fallback - just try to insert the minimal required fields
-          try {
-            const minimalInsertQuery = `
-              INSERT INTO campaign_world_maps
-              (campaign_id, map_url, generated_at, updated_at)
-              VALUES
-              ($1, $2, NOW(), NOW())
-              RETURNING 
-                campaign_id as "campaignId",
-                map_url as "mapUrl",
-                generated_at as "generatedAt",
-                updated_at as "updatedAt"
-            `;
-            
-            const minResult = await this.executeRawQuery(minimalInsertQuery, [
-              worldMap.campaignId,
-              worldMap.mapUrl
-            ]);
-            
-            if (minResult && minResult.length > 0) {
-              return minResult[0];
-            }
-            
-            throw insertError; // Re-throw if minimal insert still doesn't work
-          } catch (finalError) {
-            console.error("Even minimal insert failed:", finalError);
-            throw finalError;
-          }
+          throw insertError;
         }
       }
     } catch (error) {
       console.error("Error in createOrUpdateCampaignWorldMap:", error);
-      
-      // Ultimate fallback - return a synthetic record
-      // This guarantees we always return something, preventing UI errors
-      return {
-        campaignId: worldMap.campaignId,
-        mapUrl: worldMap.mapUrl || '/assets/default-map.jpg',
-        regionName: worldMap.regionName || 'Unknown Region',
-        continentId: worldMap.continentId || null,
-        position: worldMap.position || null,
-        bounds: worldMap.bounds || null,
-        metadata: worldMap.metadata || null,
-        generatedAt: new Date(),
-        updatedAt: new Date()
-      };
+      throw error;
     }
   }
   
