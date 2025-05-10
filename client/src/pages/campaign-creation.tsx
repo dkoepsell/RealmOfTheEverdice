@@ -168,6 +168,25 @@ export default function CampaignCreation() {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8">
+        {/* Add Character Dialog - opens after campaign creation */}
+        <AddCharacterDialog
+          campaignId={newCampaignId || 0}
+          open={showAddCharacterDialog}
+          onOpenChange={(open) => {
+            setShowAddCharacterDialog(open);
+            // If dialog is closed without adding a character, navigate to campaign
+            if (!open && newCampaignId) {
+              navigate(`/campaigns/${newCampaignId}`);
+            }
+          }}
+          onCharacterAdded={() => {
+            // Navigate to the new campaign after adding a character
+            if (newCampaignId) {
+              navigate(`/campaigns/${newCampaignId}`);
+            }
+          }}
+        />
+            
         <div className="max-w-4xl mx-auto">
           <header className="mb-8 text-center">
             <h1 className="text-4xl font-medieval text-primary mb-2">Create Your Campaign</h1>
