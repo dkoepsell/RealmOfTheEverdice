@@ -311,7 +311,7 @@ export const everdiceWorld = pgTable("everdice_world", {
   metadata: json("metadata"),
   isActive: boolean("is_active").default(true),
   isMainWorld: boolean("is_main_world").default(false),
-  createdBy: integer("created_by"), // ID of the admin who created this world
+  // createdBy: integer("created_by"), // ID of the admin who created this world - column doesn't exist in DB
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -319,7 +319,8 @@ export const everdiceWorld = pgTable("everdice_world", {
 export const insertEverdiceWorldSchema = createInsertSchema(everdiceWorld).omit({
   id: true,
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
+  createdBy: true
 });
 
 // World Access (which users have access to which worlds)
