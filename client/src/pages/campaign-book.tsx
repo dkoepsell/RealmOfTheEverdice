@@ -898,6 +898,13 @@ export default function CampaignPage() {
         <div className="flex-1 flex flex-col overflow-hidden bg-parchment relative">
           {/* Book UI - fixed aspect ratio container with book styling */}
           <div className="flex-1 flex flex-col overflow-hidden border-amber-200 bg-parchment relative">
+            {/* Campaign title banner */}
+            <div className="bg-gradient-to-r from-amber-800/70 via-amber-700 to-amber-800/70 p-2 text-center sticky top-0 z-10 shadow-md">
+              <h1 className="text-amber-50 font-medieval text-xl">
+                {campaign?.title || "Loading Campaign..."}
+              </h1>
+            </div>
+            
             {/* Book content - scrollable area */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Narrative content with explicit scrollbar */}
@@ -954,7 +961,7 @@ export default function CampaignPage() {
                         <span className="absolute left-[-4px] top-2 h-2 w-2 rounded-full bg-amber-400"></span>
                         
                         <div className="mb-4">
-                          <div className="text-gray-800">
+                          <div className="text-gray-800" style={{ fontSize: `${fontSizeMultiplier}rem` }}>
                             <h3 className="text-xl font-bold mb-2 text-amber-800">Welcome to {campaign?.title || "Your Adventure"}!</h3>
                             <p className="mb-4">The adventure is about to begin with {userCharacter.name}, a level {userCharacter.level} {userCharacter.race} {userCharacter.class}.</p>
                             <p className="mb-4">You stand at the threshold of a grand adventure in the world of Everdice. The path ahead is filled with mystery, danger, and excitement. What will you do first?</p>
@@ -1008,7 +1015,7 @@ export default function CampaignPage() {
                           
                           {log.type === "narrative" && (
                             <div className="mb-4">
-                              <div className="text-gray-800">
+                              <div className="text-gray-800" style={{ fontSize: `${fontSizeMultiplier}rem` }}>
                                 <InteractiveSkillChecks 
                                   content={log.content}
                                   autoRoll={isAutoRollEnabled}
