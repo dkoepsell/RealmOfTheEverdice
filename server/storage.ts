@@ -1051,32 +1051,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
-    // Make sure we only include fields that exist in the database
-    const fieldsToInsert: any = {
-      name: insertCampaign.name,
-      description: insertCampaign.description,
-      dmId: insertCampaign.dmId,
-      status: insertCampaign.status || 'active',
-      setting: insertCampaign.setting,
-      isAiDm: insertCampaign.isAiDm !== undefined ? insertCampaign.isAiDm : false
-    };
-    
-    // Avoid using currentTurnId which might not exist in the database yet
-    
-    const [campaign] = await db.insert(campaigns)
-      .values(fieldsToInsert)
-      .returning({
-        id: campaigns.id,
-        name: campaigns.name,
-        description: campaigns.description,
-        dmId: campaigns.dmId,
-        status: campaigns.status,
-        setting: campaigns.setting,
-        isAiDm: campaigns.isAiDm,
-        createdAt: campaigns.createdAt
-      });
-    
-    return campaign;
+    try {
+      // Use raw SQL to avoid schema mismatches
+      const insertQuery = `
+        INSERT INTO campaigns
+        (name, description, dm_id, status, setting, is_ai_dm)
+        VALUES
+        ($1, $2, $3, $4, $5, $6)
+        RETURNING 
+          id, 
+          name, 
+          description, 
+          dm_id as "dmId", 
+          status, 
+          setting, 
+          is_ai_dm as "isAiDm", 
+          created_at as "createdAt"
+      `;
+      
+      const values = [
+        insertCampaign.name,
+        insertCampaign.description,
+        insertCampaign.dmId,
+        insertCampaign.status || 'active',
+        insertCampaign.setting,
+        insertCampaign.isAiDm !== undefined ? insertCampaign.isAiDm : false
+      ];
+      
+      const result = await this.executeRawQuery(insertQuery, values);
+      
+      if (!result || result.length === 0) {
+        throw new Error("Failed to create campaign - no rows returned");
+      }
+      
+      const campaign = result[0];
+      return campaign;
+    } catch (error) {
+      console.error("Error creating campaign:", error);
+      throw error;
+    }
   }
 
   async updateCampaign(id: number, campaignUpdate: Partial<Campaign>): Promise<Campaign | undefined> {
@@ -1161,28 +1174,79 @@ export class DatabaseStorage implements IStorage {
       
       // 10. Delete party plans, items, and comments
       try {
-        // Delete party plan comments first
-        await this.executeRawQuery(
-          `DELETE FROM party_plan_comments 
-           WHERE plan_id IN (SELECT id FROM party_plans WHERE campaign_id = $1)`,
-          [id]
-        );
-        console.log(`Deleted party plan comments for campaign ${id}`);
+        // Check if party_plan_comments table exists before deleting
+        try {
+          const tableExists = await this.executeRawQuery(
+            `SELECT EXISTS (
+               SELECT FROM information_schema.tables 
+               WHERE table_name = 'party_plan_comments'
+             )`,
+            []
+          );
+          
+          if (tableExists && tableExists.length > 0 && tableExists[0].exists) {
+            // Delete party plan comments first
+            await this.executeRawQuery(
+              `DELETE FROM party_plan_comments 
+               WHERE plan_id IN (SELECT id FROM party_plans WHERE campaign_id = $1)`,
+              [id]
+            );
+            console.log(`Deleted party plan comments for campaign ${id}`);
+          } else {
+            console.log(`Table party_plan_comments does not exist, skipping deletion`);
+          }
+        } catch (error) {
+          console.log(`Skipping party_plan_comments deletion: ${error.message}`);
+        }
         
-        // Delete party plan items
-        await this.executeRawQuery(
-          `DELETE FROM party_plan_items 
-           WHERE plan_id IN (SELECT id FROM party_plans WHERE campaign_id = $1)`,
-          [id]
-        );
-        console.log(`Deleted party plan items for campaign ${id}`);
+        // Check if party_plan_items table exists before deleting
+        try {
+          const tableExists = await this.executeRawQuery(
+            `SELECT EXISTS (
+               SELECT FROM information_schema.tables 
+               WHERE table_name = 'party_plan_items'
+             )`,
+            []
+          );
+          
+          if (tableExists && tableExists.length > 0 && tableExists[0].exists) {
+            // Delete party plan items
+            await this.executeRawQuery(
+              `DELETE FROM party_plan_items 
+               WHERE plan_id IN (SELECT id FROM party_plans WHERE campaign_id = $1)`,
+              [id]
+            );
+            console.log(`Deleted party plan items for campaign ${id}`);
+          } else {
+            console.log(`Table party_plan_items does not exist, skipping deletion`);
+          }
+        } catch (error) {
+          console.log(`Skipping party_plan_items deletion: ${error.message}`);
+        }
         
-        // Delete party plans
-        await this.executeRawQuery(
-          `DELETE FROM party_plans WHERE campaign_id = $1`,
-          [id]
-        );
-        console.log(`Deleted party plans for campaign ${id}`);
+        // Check if party_plans table exists before deleting
+        try {
+          const tableExists = await this.executeRawQuery(
+            `SELECT EXISTS (
+               SELECT FROM information_schema.tables 
+               WHERE table_name = 'party_plans'
+             )`,
+            []
+          );
+          
+          if (tableExists && tableExists.length > 0 && tableExists[0].exists) {
+            // Delete party plans
+            await this.executeRawQuery(
+              `DELETE FROM party_plans WHERE campaign_id = $1`,
+              [id]
+            );
+            console.log(`Deleted party plans for campaign ${id}`);
+          } else {
+            console.log(`Table party_plans does not exist, skipping deletion`);
+          }
+        } catch (error) {
+          console.log(`Skipping party_plans deletion: ${error.message}`);
+        }
       } catch (planError) {
         console.error("Error deleting party plans:", planError);
         // Continue with campaign deletion even if this fails
