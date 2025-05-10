@@ -78,6 +78,7 @@ import { LootCollectionPanel } from "@/components/loot-collection-panel";
 import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
 import { DndQuickReference } from "@/components/dnd-quick-reference";
 import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
+import { InteractiveSkillChecks } from "@/components/interactive-skill-checks";
 import { InventoryManagement } from "@/components/inventory-management";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
 import { BattleTracker } from "@/components/battle-tracker";
@@ -1321,6 +1322,28 @@ export default function CampaignPage() {
                       campaignId={campaignId}
                       characterName={currentCharacter?.name} 
                       compendiumMode={false}
+                    />
+                  )}
+                  
+                  {rightPanelTab === "loot" && (
+                    <LootCollectionPanel
+                      characterId={selectedCharacterId || (currentCharacter?.id || 0)}
+                      availableLoot={availableLoot}
+                      onLootCollected={() => {
+                        setHasUnclaimedLoot(false);
+                        setAvailableLoot([]);
+                        // Refresh character data
+                        if (selectedCharacterId) {
+                          queryClient.invalidateQueries({ queryKey: [`/api/characters/${selectedCharacterId}`] });
+                        } else if (currentCharacter?.id) {
+                          queryClient.invalidateQueries({ queryKey: [`/api/characters/${currentCharacter.id}`] });
+                        }
+                        toast({
+                          title: "Loot collected",
+                          description: "Items have been added to your inventory",
+                          variant: "default"
+                        });
+                      }}
                     />
                   )}
                   
