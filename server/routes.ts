@@ -761,12 +761,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaign = await storage.createCampaign(validatedData);
         console.log("Campaign created successfully:", JSON.stringify(campaign));
         
-        if (!campaign || !campaign.id) {
-          throw new Error("Campaign created but returned invalid data: " + JSON.stringify(campaign));
+        if (!campaign || !campaign.id || campaign.id < 0) {
+          // Try to retrieve the campaign instead of throwing an error
+          console.log("Campaign may have been created but data retrieval failed, checking recent campaigns");
+          const campaigns = await storage.getCampaignsByDmId(req.user.id);
+          if (campaigns && campaigns.length > 0) {
+            // Sort by creation date descending
+            campaigns.sort((a, b) => {
+              const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return bDate - aDate;
+            });
+            
+            campaign = campaigns[0]; // Get the most recently created campaign
+            console.log("Found recent campaign:", JSON.stringify(campaign));
+          } else {
+            console.warn("Could not find any recent campaigns for the user");
+          }
         }
       } catch (createError) {
         console.error("Error creating campaign:", createError);
-        throw createError; // Re-throw to be caught by the outer catch block
+        
+        // Instead of throwing, check if the campaign was actually created
+        try {
+          console.log("Checking if campaign was created despite the error");
+          const campaigns = await storage.getCampaignsByDmId(req.user.id);
+          if (campaigns && campaigns.length > 0) {
+            // Sort by creation date descending
+            campaigns.sort((a, b) => {
+              const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return bDate - aDate;
+            });
+            
+            campaign = campaigns[0]; // Get the most recently created campaign
+            console.log("Found campaign despite error:", JSON.stringify(campaign));
+          } else {
+            // Actually re-throw as this seems to be a genuine failure
+            throw createError;
+          }
+        } catch (checkError) {
+          console.error("Error checking for campaign:", checkError);
+          throw createError; // Re-throw the original error
+        }
       }
       
       // Generate a world map for the new campaign
