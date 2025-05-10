@@ -645,6 +645,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updateData = req.body;
       
+      // Handle level progression tracking
+      if (updateData.level && updateData.level > (character.level || 1)) {
+        // Create progression entry for the level up
+        const progressionEntry = {
+          level: updateData.level,
+          statsIncreased: updateData.statsIncreased || {},
+          abilitiesGained: updateData.abilitiesGained || [],
+          date: new Date().toISOString()
+        };
+        
+        // Add to progression history
+        const currentProgression = character.progression || [];
+        updateData.progression = [...currentProgression, progressionEntry];
+        
+        // Remove temporary fields that shouldn't be stored in the character record
+        delete updateData.statsIncreased;
+        delete updateData.abilitiesGained;
+      }
+      
+      // Handle experience points tracking
+      if (updateData.experience !== undefined && character.experience !== undefined) {
+        const oldExperience = character.experience || 0;
+        const newExperience = updateData.experience;
+        
+        // If this is a milestone amount of XP, record it
+        if (newExperience >= 1000 && oldExperience < 1000) {
+          const milestone = {
+            title: "Experienced Adventurer",
+            description: "Gained over 1,000 experience points on this journey.",
+            date: new Date().toISOString()
+          };
+          updateData.milestones = [...(character.milestones || []), milestone];
+        } else if (newExperience >= 5000 && oldExperience < 5000) {
+          const milestone = {
+            title: "Veteran Adventurer",
+            description: "Gained over 5,000 experience points across multiple adventures.",
+            date: new Date().toISOString()
+          };
+          updateData.milestones = [...(character.milestones || []), milestone];
+        } else if (newExperience >= 10000 && oldExperience < 10000) {
+          const milestone = {
+            title: "Legendary Adventurer",
+            description: "Accumulated over 10,000 experience points, becoming a legend in the land of Everdice.",
+            date: new Date().toISOString()
+          };
+          updateData.milestones = [...(character.milestones || []), milestone];
+        }
+      }
+      
+      // Handle achievement tracking
+      if (updateData.achievement) {
+        const newAchievement = {
+          title: updateData.achievement.title,
+          description: updateData.achievement.description,
+          date: new Date().toISOString()
+        };
+        
+        updateData.achievements = [...(character.achievements || []), newAchievement];
+        delete updateData.achievement;
+      }
+      
       // Special handling for equipment updates to ensure proper structure
       if (updateData.equipment) {
         // Ensure equipment structure is maintained

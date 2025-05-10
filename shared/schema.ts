@@ -36,6 +36,15 @@ export const characters = pgTable("characters", {
   equipment: json("equipment"),
   spells: json("spells"),
   abilities: json("abilities"),
+  experience: integer("experience").default(0),
+  milestones: json("milestones").$type<Array<{ title: string, description: string, date: string }>>(),
+  achievements: json("achievements").$type<Array<{ title: string, description: string, date: string }>>(),
+  progression: json("progression").$type<Array<{ 
+    level: number, 
+    statsIncreased: Record<string, number>,
+    abilitiesGained: string[],
+    date: string
+  }>>(),
   isBot: boolean("is_bot").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow()
 });
