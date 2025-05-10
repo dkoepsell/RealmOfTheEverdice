@@ -2535,6 +2535,340 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Party Planning API Routes
+  
+  // Get all party plans for a campaign
+  app.get("/api/campaigns/:id/party-plans", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      
+      // Check if user has access to this campaign
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      const plans = await storage.getPartyPlans(campaignId);
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching party plans:", error);
+      res.status(500).json({ message: "Failed to fetch party plans" });
+    }
+  });
+  
+  // Create a new party plan
+  app.post("/api/campaigns/:id/party-plans", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      
+      // Check if user has access to this campaign
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      const validatedData = insertPartyPlanSchema.parse({
+        ...req.body,
+        campaignId
+      });
+      
+      const plan = await storage.createPartyPlan(validatedData);
+      res.status(201).json(plan);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid plan data", errors: error.errors });
+      }
+      
+      console.error("Error creating party plan:", error);
+      res.status(500).json({ message: "Failed to create party plan" });
+    }
+  });
+  
+  // Update a party plan
+  app.put("/api/party-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.id);
+      
+      // Get the plan to check if user has access
+      const plan = await storage.getPartyPlan(planId);
+      if (!plan) return res.status(404).json({ message: "Party plan not found" });
+      
+      // Check if user is a player in this campaign
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      // Update the plan
+      const updatedPlan = await storage.updatePartyPlan(planId, req.body);
+      
+      res.json(updatedPlan);
+    } catch (error) {
+      console.error("Error updating party plan:", error);
+      res.status(500).json({ message: "Failed to update party plan" });
+    }
+  });
+  
+  // Delete a party plan
+  app.delete("/api/party-plans/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.id);
+      
+      // Get the plan to check if user has access
+      const plan = await storage.getPartyPlan(planId);
+      if (!plan) return res.status(404).json({ message: "Party plan not found" });
+      
+      // Check if user is a player in this campaign
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      // Delete the plan
+      await storage.deletePartyPlan(planId);
+      
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting party plan:", error);
+      res.status(500).json({ message: "Failed to delete party plan" });
+    }
+  });
+  
+  // Get all items for a party plan
+  app.get("/api/party-plans/:id/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.id);
+      
+      // Get the plan to check if user has access
+      const plan = await storage.getPartyPlan(planId);
+      if (!plan) return res.status(404).json({ message: "Party plan not found" });
+      
+      // Check if user is a player in this campaign
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      // Get items with their comments
+      const items = await storage.getPartyPlanItems(planId);
+      
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching party plan items:", error);
+      res.status(500).json({ message: "Failed to fetch plan items" });
+    }
+  });
+  
+  // Create a new item for a party plan
+  app.post("/api/party-plans/:id/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.id);
+      
+      // Get the plan to check if user has access
+      const plan = await storage.getPartyPlan(planId);
+      if (!plan) return res.status(404).json({ message: "Party plan not found" });
+      
+      // Check if user is a player in this campaign
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      // Create the item
+      const validatedData = insertPartyPlanItemSchema.parse(req.body);
+      const item = await storage.createPartyPlanItem(validatedData);
+      
+      // Get the creator's username for broadcasting to other clients
+      const creator = await storage.getUser(req.user.id);
+      
+      // Broadcast to other clients via WebSocket
+      connections[plan.campaignId]?.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'planning',
+            action: 'item_created',
+            campaignId: plan.campaignId,
+            planId,
+            userId: req.user.id,
+            username: creator?.username || 'Unknown',
+            timestamp: new Date()
+          }));
+        }
+      });
+      
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid item data", errors: error.errors });
+      }
+      
+      console.error("Error creating party plan item:", error);
+      res.status(500).json({ message: "Failed to create plan item" });
+    }
+  });
+  
+  // Update a party plan item
+  app.put("/api/party-plans/:planId/items/:itemId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.planId);
+      const itemId = parseInt(req.params.itemId);
+      
+      // Get the plan to check if user has access
+      const plan = await storage.getPartyPlan(planId);
+      if (!plan) return res.status(404).json({ message: "Party plan not found" });
+      
+      // Check if user is a player in this campaign
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      // Update the item
+      const updatedItem = await storage.updatePartyPlanItem(itemId, req.body);
+      
+      // Get the updater's username for broadcasting to other clients
+      const updater = await storage.getUser(req.user.id);
+      
+      // Broadcast to other clients via WebSocket
+      connections[plan.campaignId]?.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'planning',
+            action: 'item_updated',
+            campaignId: plan.campaignId,
+            planId,
+            itemId,
+            userId: req.user.id,
+            username: updater?.username || 'Unknown',
+            timestamp: new Date()
+          }));
+        }
+      });
+      
+      res.json(updatedItem);
+    } catch (error) {
+      console.error("Error updating party plan item:", error);
+      res.status(500).json({ message: "Failed to update plan item" });
+    }
+  });
+  
+  // Delete a party plan item
+  app.delete("/api/party-plans/:planId/items/:itemId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.planId);
+      const itemId = parseInt(req.params.itemId);
+      
+      // Get the plan to check if user has access
+      const plan = await storage.getPartyPlan(planId);
+      if (!plan) return res.status(404).json({ message: "Party plan not found" });
+      
+      // Check if user is a player in this campaign
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      // Delete the item
+      await storage.deletePartyPlanItem(itemId);
+      
+      // Get the deleter's username for broadcasting to other clients
+      const deleter = await storage.getUser(req.user.id);
+      
+      // Broadcast to other clients via WebSocket
+      connections[plan.campaignId]?.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'planning',
+            action: 'item_deleted',
+            campaignId: plan.campaignId,
+            planId,
+            itemId,
+            userId: req.user.id,
+            username: deleter?.username || 'Unknown',
+            timestamp: new Date()
+          }));
+        }
+      });
+      
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting party plan item:", error);
+      res.status(500).json({ message: "Failed to delete plan item" });
+    }
+  });
+  
+  // Add a comment to a party plan item
+  app.post("/api/party-plans/:planId/items/:itemId/comments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const planId = parseInt(req.params.planId);
+      const itemId = parseInt(req.params.itemId);
+      
+      // Get the plan to check if user has access
+      const plan = await storage.getPartyPlan(planId);
+      if (!plan) return res.status(404).json({ message: "Party plan not found" });
+      
+      // Check if user is a player in this campaign
+      const campaign = await storage.getCampaign(plan.campaignId);
+      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+      
+      // TODO: Check if user is a player in this campaign
+      
+      // Create the comment
+      const validatedData = insertPartyPlanCommentSchema.parse({
+        ...req.body,
+        userId: req.user.id
+      });
+      
+      const comment = await storage.createPartyPlanComment(validatedData);
+      
+      // Get the commenter's username for broadcasting to other clients
+      const commenter = await storage.getUser(req.user.id);
+      
+      // Broadcast to other clients via WebSocket
+      connections[plan.campaignId]?.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'planning',
+            action: 'comment_added',
+            campaignId: plan.campaignId,
+            planId,
+            itemId,
+            userId: req.user.id,
+            username: commenter?.username || 'Unknown',
+            timestamp: new Date()
+          }));
+        }
+      });
+      
+      res.status(201).json(comment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
+      }
+      
+      console.error("Error adding comment to party plan item:", error);
+      res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+
   // System stats logging
   app.post("/api/stats", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });

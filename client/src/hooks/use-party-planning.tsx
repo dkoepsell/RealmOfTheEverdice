@@ -1,371 +1,272 @@
-import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { InsertPartyPlan, InsertPartyPlanItem, InsertPartyPlanComment, PartyPlan, PartyPlanItem } from "@shared/schema";
 
-// Types for party planning
-interface PartyPlan {
-  id: number;
-  campaignId: number;
-  title: string;
-  description: string | null;
-  createdById: number;
-  createdAt: string;
-  updatedAt: string | null;
-  items: PartyPlanItem[];
-}
-
-interface PartyPlanItem {
-  id: number;
-  planId: number;
-  content: string;
-  type: string;
-  status: string;
-  position: number;
-  createdById: number;
-  assignedToId: number | null;
-  createdAt: string;
-  updatedAt: string | null;
-  comments?: PartyPlanComment[];
-}
-
-interface PartyPlanComment {
-  id: number;
-  itemId: number;
-  userId: number;
-  content: string;
-  createdAt: string;
-  user?: {
-    username: string;
-  };
-}
-
-// Define parameter and return types
-interface UsePartyPlanningOptions {
-  enabled?: boolean;
-}
-
-interface UsePartyPlanningReturn {
-  plans: PartyPlan[];
-  currentPlan: PartyPlan | null;
-  isLoading: boolean;
-  error: Error | null;
-  createPlan: (plan: Omit<PartyPlan, "id" | "createdAt" | "updatedAt" | "items">) => Promise<PartyPlan>;
-  deletePlan: (id: number) => Promise<void>;
-  createPlanItem: (item: Omit<PartyPlanItem, "id" | "createdAt" | "updatedAt" | "comments" | "status"> & { status?: string }) => Promise<PartyPlanItem>;
-  updatePlanItem: (id: number, updates: Partial<PartyPlanItem>) => Promise<void>;
-  deletePlanItem: (id: number) => Promise<void>;
-  addComment: (comment: Omit<PartyPlanComment, "id" | "createdAt" | "user">) => Promise<PartyPlanComment>;
-  setActivePlan: (planId: number) => void;
-  connected: boolean;
-}
-
-/**
- * Hook for managing party planning functionality with WebSocket integration
- */
-export function usePartyPlanning(
-  campaignId: number,
-  options: UsePartyPlanningOptions = {}
-): UsePartyPlanningReturn {
+export function usePartyPlanning(campaignId: number) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [currentPlanId, setCurrentPlanId] = useState<number | null>(null);
-  const [connected, setConnected] = useState(false);
-  const socketRef = useRef<WebSocket | null>(null);
-  
-  // Query for fetching all plans
-  const { 
-    data: plans = [], 
-    isLoading, 
-    error 
-  } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/plans`],
-    enabled: options.enabled !== false
+
+  // Get all party plans for a campaign
+  const {
+    data: partyPlans = [],
+    isLoading: isLoadingPlans,
+    error: plansError,
+    refetch: refetchPlans
+  } = useQuery<PartyPlan[]>({
+    queryKey: ['/api/campaigns', campaignId, 'party-plans'],
+    enabled: !!campaignId,
   });
-  
-  // Find the current plan
-  const currentPlan = plans.find(p => p.id === currentPlanId) || null;
-  
-  // Mutations for CRUD operations
+
+  // Get items for a specific plan
+  const getPartyPlanItems = (planId: number) => {
+    return useQuery<PartyPlanItem[]>({
+      queryKey: ['/api/party-plans', planId, 'items'],
+      enabled: !!planId,
+    });
+  };
+
+  // Create a new party plan
   const createPlanMutation = useMutation({
-    mutationFn: async (plan: Omit<PartyPlan, "id" | "createdAt" | "updatedAt" | "items">) => {
-      const response = await apiRequest(
-        "POST", 
-        `/api/campaigns/${campaignId}/plans`, 
-        plan
-      );
+    mutationFn: async (plan: InsertPartyPlan) => {
+      const response = await apiRequest('POST', `/api/campaigns/${campaignId}/party-plans`, plan);
       return await response.json();
-    },
-    onSuccess: (newPlan) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
-      setCurrentPlanId(newPlan.id);
-    }
-  });
-  
-  const deletePlanMutation = useMutation({
-    mutationFn: async (planId: number) => {
-      await apiRequest(
-        "DELETE", 
-        `/api/campaigns/${campaignId}/plans/${planId}`
-      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
-      if (plans.length > 0 && currentPlanId) {
-        // Set to another plan if available
-        const otherPlan = plans.find(p => p.id !== currentPlanId);
-        if (otherPlan) {
-          setCurrentPlanId(otherPlan.id);
-        } else {
-          setCurrentPlanId(null);
-        }
-      }
-    }
-  });
-  
-  const createPlanItemMutation = useMutation({
-    mutationFn: async (item: Omit<PartyPlanItem, "id" | "createdAt" | "updatedAt" | "comments" | "status"> & { status?: string }) => {
-      const itemWithStatus = {
-        ...item,
-        status: item.status || "pending"
-      };
-      
-      const response = await apiRequest(
-        "POST", 
-        `/api/campaigns/${campaignId}/plans/${item.planId}/items`, 
-        itemWithStatus
-      );
-      return await response.json();
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'party-plans'] });
+      toast({
+        title: "Plan Created",
+        description: "Your party plan has been created successfully.",
+      });
     },
-    onSuccess: (newItem) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
-      
-      // Send WebSocket update
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({
-          type: "ITEM_CREATED",
-          data: {
-            campaignId,
-            planId: newItem.planId,
-            item: newItem
-          }
-        }));
-      }
-    }
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to create party plan: ${error.message}`,
+        variant: "destructive",
+      });
+    },
   });
-  
-  const updatePlanItemMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: number, updates: Partial<PartyPlanItem> }) => {
-      await apiRequest(
-        "PATCH", 
-        `/api/campaigns/${campaignId}/plans/items/${id}`, 
-        updates
-      );
+
+  // Update an existing party plan
+  const updatePlanMutation = useMutation({
+    mutationFn: async ({ planId, data }: { planId: number; data: Partial<PartyPlan> }) => {
+      const response = await apiRequest('PUT', `/api/party-plans/${planId}`, data);
+      return await response.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
-      
-      // Find the item to get its planId
-      const plan = plans.find(p => p.items.some(item => item.id === variables.id));
-      if (plan && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({
-          type: "ITEM_UPDATED",
-          data: {
-            campaignId,
-            planId: plan.id,
-            itemId: variables.id,
-            updates: variables.updates
-          }
-        }));
-      }
-    }
-  });
-  
-  const deletePlanItemMutation = useMutation({
-    mutationFn: async (itemId: number) => {
-      await apiRequest(
-        "DELETE", 
-        `/api/campaigns/${campaignId}/plans/items/${itemId}`
-      );
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'party-plans'] });
+      toast({
+        title: "Plan Updated",
+        description: "The party plan has been updated successfully.",
+      });
     },
-    onSuccess: (_, itemId) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
-      
-      // Find the item to get its planId
-      const plan = plans.find(p => p.items.some(item => item.id === itemId));
-      if (plan && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({
-          type: "ITEM_DELETED",
-          data: {
-            campaignId,
-            planId: plan.id,
-            itemId
-          }
-        }));
-      }
-    }
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update party plan: ${error.message}`,
+        variant: "destructive",
+      });
+    },
   });
-  
-  const addCommentMutation = useMutation({
-    mutationFn: async (comment: Omit<PartyPlanComment, "id" | "createdAt" | "user">) => {
-      const response = await apiRequest(
-        "POST", 
-        `/api/campaigns/${campaignId}/plans/items/${comment.itemId}/comments`, 
-        comment
-      );
+
+  // Delete a party plan
+  const deletePlanMutation = useMutation({
+    mutationFn: async (planId: number) => {
+      await apiRequest('DELETE', `/api/party-plans/${planId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'party-plans'] });
+      toast({
+        title: "Plan Deleted",
+        description: "The party plan has been deleted successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete party plan: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create a party plan item
+  const createItemMutation = useMutation({
+    mutationFn: async ({ planId, item }: { planId: number; item: InsertPartyPlanItem }) => {
+      const response = await apiRequest('POST', `/api/party-plans/${planId}/items`, item);
       return await response.json();
     },
-    onSuccess: (newComment) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/party-plans', variables.planId, 'items'] });
       
-      // Find the item to get its planId
-      const plan = plans.find(p => p.items.some(item => item.id === newComment.itemId));
-      if (plan && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({
-          type: "COMMENT_ADDED",
-          data: {
-            campaignId,
-            planId: plan.id,
-            itemId: newComment.itemId,
-            comment: newComment
-          }
+      // Send real-time update via WebSocket
+      if (window.partyPlanningSocket?.readyState === WebSocket.OPEN) {
+        window.partyPlanningSocket.send(JSON.stringify({
+          type: 'planning',
+          action: 'item_created',
+          campaignId,
+          planId: variables.planId,
+          timestamp: new Date()
         }));
       }
-    }
+      
+      toast({
+        title: "Item Added",
+        description: "New item added to the party plan.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to add item: ${error.message}`,
+        variant: "destructive",
+      });
+    },
   });
-  
-  // WebSocket connection setup
-  useEffect(() => {
-    if (!campaignId) return;
-    
-    const setupSocket = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const socket = new WebSocket(`${protocol}//${host}/ws`);
+
+  // Update a party plan item
+  const updateItemMutation = useMutation({
+    mutationFn: async ({ 
+      planId, 
+      itemId, 
+      data 
+    }: { 
+      planId: number; 
+      itemId: number; 
+      data: Partial<PartyPlanItem> 
+    }) => {
+      const response = await apiRequest('PUT', `/api/party-plans/${planId}/items/${itemId}`, data);
+      return await response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/party-plans', variables.planId, 'items'] });
       
-      socket.onopen = () => {
-        console.log('WebSocket connected for party planning');
-        setConnected(true);
-        
-        // Join the campaign's party planning room
-        socket.send(JSON.stringify({
-          type: 'JOIN_CAMPAIGN',
-          data: { campaignId }
+      // Send real-time update via WebSocket
+      if (window.partyPlanningSocket?.readyState === WebSocket.OPEN) {
+        window.partyPlanningSocket.send(JSON.stringify({
+          type: 'planning',
+          action: 'item_updated',
+          campaignId,
+          planId: variables.planId,
+          itemId: variables.itemId,
+          timestamp: new Date()
         }));
-      };
-      
-      socket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          
-          // Handle different message types
-          switch (message.type) {
-            case 'ITEM_CREATED':
-            case 'ITEM_UPDATED':
-            case 'ITEM_DELETED':
-            case 'COMMENT_ADDED':
-              // Invalidate the query to refetch the plans
-              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/plans`] });
-              break;
-              
-            default:
-              break;
-          }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
-        }
-      };
-      
-      socket.onclose = () => {
-        console.log('WebSocket disconnected');
-        setConnected(false);
-        
-        // Attempt to reconnect after a delay
-        setTimeout(() => {
-          if (socketRef.current?.readyState !== WebSocket.OPEN) {
-            setupSocket();
-          }
-        }, 3000);
-      };
-      
-      socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        socket.close();
-      };
-      
-      socketRef.current = socket;
-    };
-    
-    setupSocket();
-    
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
       }
-    };
-  }, [campaignId, queryClient]);
-  
-  // Wrapper functions for the mutations
-  const createPlan = useCallback(
-    async (plan: Omit<PartyPlan, "id" | "createdAt" | "updatedAt" | "items">) => {
-      return await createPlanMutation.mutateAsync(plan);
+      
+      toast({
+        title: "Item Updated",
+        description: "The item has been updated successfully.",
+      });
     },
-    [createPlanMutation]
-  );
-  
-  const deletePlan = useCallback(
-    async (id: number) => {
-      await deletePlanMutation.mutateAsync(id);
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update item: ${error.message}`,
+        variant: "destructive",
+      });
     },
-    [deletePlanMutation]
-  );
-  
-  const createPlanItem = useCallback(
-    async (item: Omit<PartyPlanItem, "id" | "createdAt" | "updatedAt" | "comments" | "status"> & { status?: string }) => {
-      return await createPlanItemMutation.mutateAsync(item);
+  });
+
+  // Delete a party plan item
+  const deleteItemMutation = useMutation({
+    mutationFn: async ({ planId, itemId }: { planId: number; itemId: number }) => {
+      await apiRequest('DELETE', `/api/party-plans/${planId}/items/${itemId}`);
     },
-    [createPlanItemMutation]
-  );
-  
-  const updatePlanItem = useCallback(
-    async (id: number, updates: Partial<PartyPlanItem>) => {
-      await updatePlanItemMutation.mutateAsync({ id, updates });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/party-plans', variables.planId, 'items'] });
+      
+      // Send real-time update via WebSocket
+      if (window.partyPlanningSocket?.readyState === WebSocket.OPEN) {
+        window.partyPlanningSocket.send(JSON.stringify({
+          type: 'planning',
+          action: 'item_deleted',
+          campaignId,
+          planId: variables.planId,
+          itemId: variables.itemId,
+          timestamp: new Date()
+        }));
+      }
+      
+      toast({
+        title: "Item Deleted",
+        description: "The item has been removed from the party plan.",
+      });
     },
-    [updatePlanItemMutation]
-  );
-  
-  const deletePlanItem = useCallback(
-    async (id: number) => {
-      await deletePlanItemMutation.mutateAsync(id);
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete item: ${error.message}`,
+        variant: "destructive",
+      });
     },
-    [deletePlanItemMutation]
-  );
-  
-  const addComment = useCallback(
-    async (comment: Omit<PartyPlanComment, "id" | "createdAt" | "user">) => {
-      return await addCommentMutation.mutateAsync(comment);
+  });
+
+  // Add a comment to an item
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ 
+      planId, 
+      itemId, 
+      comment 
+    }: { 
+      planId: number; 
+      itemId: number; 
+      comment: InsertPartyPlanComment 
+    }) => {
+      const response = await apiRequest('POST', `/api/party-plans/${planId}/items/${itemId}/comments`, comment);
+      return await response.json();
     },
-    [addCommentMutation]
-  );
-  
-  const setActivePlan = useCallback((planId: number) => {
-    setCurrentPlanId(planId);
-  }, []);
-  
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/party-plans', variables.planId, 'items'] });
+      
+      // Send real-time update via WebSocket
+      if (window.partyPlanningSocket?.readyState === WebSocket.OPEN) {
+        window.partyPlanningSocket.send(JSON.stringify({
+          type: 'planning',
+          action: 'comment_added',
+          campaignId,
+          planId: variables.planId,
+          itemId: variables.itemId,
+          timestamp: new Date()
+        }));
+      }
+      
+      toast({
+        title: "Comment Added",
+        description: "Your comment has been added to the item.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to add comment: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
-    plans,
-    currentPlan,
-    isLoading,
-    error,
-    createPlan,
-    deletePlan,
-    createPlanItem,
-    updatePlanItem,
-    deletePlanItem,
-    addComment,
-    setActivePlan,
-    connected
+    // Queries
+    partyPlans,
+    isLoadingPlans,
+    plansError,
+    refetchPlans,
+    getPartyPlanItems,
+    
+    // Mutations
+    createPlanMutation,
+    updatePlanMutation,
+    deletePlanMutation,
+    createItemMutation,
+    updateItemMutation,
+    deleteItemMutation,
+    addCommentMutation,
   };
+}
+
+// Add property to Window interface for TypeScript
+declare global {
+  interface Window {
+    partyPlanningSocket?: WebSocket;
+  }
 }
