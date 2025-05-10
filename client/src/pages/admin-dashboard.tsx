@@ -163,6 +163,44 @@ export default function AdminDashboard() {
       setWorldLoading(false);
     }
   };
+  
+  // Create a new world
+  const handleCreateWorld = async () => {
+    if (!worldName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "World name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await createWorld({
+        name: worldName,
+        description: worldDescription || null,
+        isMainWorld: isMainWorld
+      });
+      
+      // Reset form
+      setWorldName("");
+      setWorldDescription("");
+      setIsMainWorld(false);
+      setShowCreateWorldDialog(false);
+      
+      toast({
+        title: "Success",
+        description: "World created successfully",
+      });
+    } catch (error) {
+      console.error("Create world error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create world",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Send message to user
   const handleSendMessage = async () => {
