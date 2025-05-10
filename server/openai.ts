@@ -390,7 +390,51 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
 
 export async function generateWorldMap(campaignId: number, campaignInfo: any, everdiceWorld = null) {
   try {
-    // First, extract key geographical features from the campaign description
+    // Define default continents in the Everdice world if none provided
+    const defaultEverdiceWorldContinents = [
+      {
+        name: "The Northern Reaches",
+        terrainTypes: ["tundra", "taiga", "mountains", "fjords"],
+        cultures: ["norse-inspired", "tribal", "isolationist"]
+      },
+      {
+        name: "Mystara",
+        terrainTypes: ["forests", "plains", "hills", "lakes"],
+        cultures: ["feudal", "elven", "mixed humanoid races"]
+      },
+      {
+        name: "The Solaran Peninsula",
+        terrainTypes: ["mediterranean coast", "islands", "olive groves", "rocky hills"],
+        cultures: ["city-states", "merchants", "philosophers"]
+      },
+      {
+        name: "Eldramir",
+        terrainTypes: ["ancient forests", "misty valleys", "enchanted lakes", "crystalline mountains"],
+        cultures: ["magical academies", "elven kingdoms", "fey-touched"]
+      },
+      {
+        name: "The Burning Sands",
+        terrainTypes: ["vast deserts", "oases", "canyons", "salt flats"],
+        cultures: ["nomadic tribes", "trade caravans", "ancient buried kingdoms"]
+      },
+      {
+        name: "The Shattered Isles",
+        terrainTypes: ["archipelagos", "volcanic islands", "coral reefs", "deep trenches"],
+        cultures: ["seafarers", "pirates", "isolated island kingdoms"]
+      },
+      {
+        name: "The Jade Expanse",
+        terrainTypes: ["bamboo forests", "terraced mountains", "misty rivers", "cherry groves"],
+        cultures: ["honor-bound clans", "monastic orders", "imperial court"]
+      }
+    ];
+    
+    // Extract the Everdice continents information
+    const everdiceDetails = everdiceWorld ? 
+      (everdiceWorld.continents || defaultEverdiceWorldContinents) :
+      defaultEverdiceWorldContinents;
+      
+    // First, extract key geographical features from the campaign description while ensuring it fits into the Everdice world
     const geographyAnalysis = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
@@ -399,7 +443,7 @@ export async function generateWorldMap(campaignId: number, campaignInfo: any, ev
           content: `You are an expert geographical analyzer specializing in extracting landforms, terrain features, and spatial relationships from fantasy world descriptions. 
           Your task is to carefully analyze campaign descriptions and identify ALL explicit and implied geographical features that should be represented on a map.
           
-          This campaign takes place in the greater world of Everdice - a vast realm containing numerous continents, nations, and regions. Each campaign exists within a specific region of Everdice.`
+          This campaign takes place in the greater world of Everdice - a vast realm containing numerous continents, nations, and regions. Each campaign exists within a specific region of Everdice, and you must determine which continent would be most appropriate based on the campaign's theme and description.`
         },
         {
           role: "user",
@@ -409,8 +453,11 @@ export async function generateWorldMap(campaignId: number, campaignInfo: any, ev
           Setting Type: ${campaignInfo.setting || "fantasy world"}
           Campaign Description: ${campaignInfo.description || "An epic adventure in a fantasy realm."}
           
+          Here are the continents of Everdice, select the most appropriate one for this campaign:
+          ${JSON.stringify(everdiceDetails, null, 2)}
+          
           Format your response as a JSON object with these fields:
-          - everdiceContinent: Which continent of Everdice this region would logically belong to (e.g., "The Northern Reaches", "Mystara", "Solaran Peninsula", etc.)
+          - everdiceContinent: Which continent of Everdice this region would logically belong to (must be one of the existing continents)
           - regionName: A name for this specific region within the continent
           - regionType: The type of region (e.g., "island chain", "mountain valley", "coastal kingdom", "desert emirate", etc.)
           - primaryLandforms: Array of the dominant geographical features (e.g., "peninsula", "mountain range", "archipelago", "desert", etc.)
@@ -420,29 +467,36 @@ export async function generateWorldMap(campaignId: number, campaignInfo: any, ev
           - waterBodies: Any oceans, seas, lakes, or rivers mentioned
           - settlements: Major cities, towns, or other settlements mentioned
           - regionLayout: Brief description of how regions are arranged relative to each other
-          - connectionToEverdice: How this region connects to or relates to the broader world of Everdice`
+          - connectionToEverdice: How this region connects to or relates to the broader world of Everdice
+          - position: [latitude, longitude] approximate position coordinates within Everdice (latitude: -90 to 90, longitude: -180 to 180)
+          - bounds: [[minLat, minLong], [maxLat, maxLong]] the approximate boundaries of this region`
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1000,
+      max_tokens: 1200,
       temperature: 0.3, // Lower temperature for more precise analysis
     });
     
     const geographyData = safeJsonParse(geographyAnalysis.choices[0].message.content);
     
     // Now, generate more detailed world information informed by the geographical analysis
+    // making sure it aligns with Everdice's existing lore
     const worldDetails = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
           content: `You are an expert fantasy cartographer and worldbuilder specializing in D&D campaign worlds.
-          Generate rich geographical and cultural details for a unique campaign world that will be used to create a detailed map.
-          You MUST ensure the world you create accurately reflects ALL geographical features identified in the analysis.`
+          Generate rich geographical and cultural details for a unique campaign region that fits seamlessly within the existing world of Everdice.
+          You MUST ensure the region you create:
+          1. Accurately reflects ALL geographical features identified in the analysis
+          2. Is consistent with the terrain and cultural expectations of its parent continent in Everdice
+          3. Has connections and references to the broader Everdice world
+          4. Maintains internal consistency in climate, cultures, and geography`
         },
         {
           role: "user",
-          content: `Create a detailed fantasy world for this D&D campaign, ensuring it precisely matches the geographical analysis:
+          content: `Create a detailed fantasy region within the Everdice world for this D&D campaign, ensuring it precisely matches the geographical analysis and fits within its assigned continent:
           
           Campaign Name: "${campaignInfo.name}"
           Setting Type: ${campaignInfo.setting || "fantasy world"}
@@ -451,16 +505,21 @@ export async function generateWorldMap(campaignId: number, campaignInfo: any, ev
           Geographical Analysis:
           ${JSON.stringify(geographyData, null, 2)}
           
+          This region exists within the continent of "${geographyData.everdiceContinent}" in the world of Everdice.
+          
           Format your response as a JSON object with these fields:
           - geographicalFeatures: Array of unique landforms, bodies of water, and natural landmarks THAT MATCH the geography analysis
           - majorKingdoms: Array of 3-5 realms/nations with their characteristics and geographical positions
           - pointsOfInterest: Array of 6-8 specific notable locations (cities, dungeons, ruins, magical sites)
-          - magicalElements: Unique magical aspects of this world that might appear on a map
+          - magicalElements: Unique magical aspects of this region that might appear on a map
+          - regionalHistory: Brief history of how this region developed within the Everdice world
+          - continentalConnections: How this region interacts with other regions in its continent
+          - majorRaces: The predominant intelligent species that inhabit this region
           - aestheticTheme: The visual style/theme that should inform the map's appearance`
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1200,
+      max_tokens: 1500,
       temperature: 0.7,
     });
     
