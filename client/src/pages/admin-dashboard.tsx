@@ -93,7 +93,9 @@ const AdminDashboard = () => {
     refetchCampaignRegions,
     sendMessage,
     promoteUser,
-    promoteUserLoading
+    promoteUserLoading,
+    regenerateWorldMap,
+    regenerateWorldMapLoading
   } = useAdmin();
   
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -581,6 +583,20 @@ const AdminDashboard = () => {
                           </div>
                         </dl>
                       </CardContent>
+                      <CardFooter>
+                        <Button 
+                          variant="outline"
+                          className="w-full flex items-center justify-center"
+                          onClick={() => {
+                            if (window.confirm("Are you sure you want to regenerate the Everdice world map? This will reset the map but keep all region data intact.")) {
+                              regenerateWorldMap();
+                            }
+                          }}
+                        >
+                          <Map className="h-4 w-4 mr-2" />
+                          Regenerate World Map
+                        </Button>
+                      </CardFooter>
                     </Card>
                     
                     <Card className="bg-muted">
