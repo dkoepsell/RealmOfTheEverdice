@@ -538,23 +538,30 @@ export class DatabaseStorage implements IStorage {
       
       const campaignsWithRegions = await this.executeRawQuery(query);
       
-      // Use the campaign setting as fallback for region name
-      const uniqueRegions = campaignsWithRegions
-        .map((campaign: any) => campaign.effectiveRegion)
-        .filter((region: string | null) => region !== null)
-        .filter((region: string, index: number, self: string[]) => 
-          self.indexOf(region) === index
-        );
+      // Ensure campaignsWithRegions is an array
+      const campaigns = Array.isArray(campaignsWithRegions) ? campaignsWithRegions : [];
       
-      // Update the campaigns to use effectiveRegion as the regionName if regionName is null
-      const processedCampaigns = campaignsWithRegions.map((campaign: any) => ({
-        ...campaign,
-        regionName: campaign.regionName || campaign.effectiveRegion
-      }));
+      // Extract unique region names
+      const uniqueRegions: string[] = [];
+      
+      if (campaigns.length > 0) {
+        // Collect all effective regions
+        campaigns.forEach((campaign: any) => {
+          const regionName = campaign.effectiveRegion || campaign.regionName || campaign.setting || 'Unknown Region';
+          if (regionName && !uniqueRegions.includes(regionName)) {
+            uniqueRegions.push(regionName);
+          }
+        });
+        
+        // Update the campaigns to use effectiveRegion as the regionName if regionName is null
+        campaigns.forEach((campaign: any) => {
+          campaign.regionName = campaign.regionName || campaign.effectiveRegion || campaign.setting || 'Unknown Region';
+        });
+      }
       
       return {
-        campaigns: processedCampaigns || [],
-        uniqueRegions: uniqueRegions || []
+        campaigns: campaigns,
+        uniqueRegions: uniqueRegions
       };
     } catch (error) {
       console.error("Error getting campaign regions:", error);

@@ -163,6 +163,28 @@ export function useAdmin() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
     },
   });
+  
+  // Regenerate world map
+  const regenerateWorldMapMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/regenerate-world-map");
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "World map regenerated",
+        description: "The Everdice world map has been successfully regenerated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/everdice"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to regenerate world map",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   return {
     isSuperuser,
@@ -191,5 +213,7 @@ export function useAdmin() {
     promoteUser: promoteUserMutation.mutate,
     promoteUserLoading: promoteUserMutation.isPending,
     logStat: logStatMutation.mutate,
+    regenerateWorldMap: regenerateWorldMapMutation.mutate,
+    regenerateWorldMapLoading: regenerateWorldMapMutation.isPending,
   };
 }

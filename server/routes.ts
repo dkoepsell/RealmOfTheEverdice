@@ -118,6 +118,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Regenerate world map for superadmins
+  app.post("/api/admin/regenerate-world-map", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (req.user!.role !== "superuser") return res.status(403).json({ message: "Not authorized" });
+    
+    try {
+      // Get existing world data
+      const everdiceWorld = await storage.getEverdiceWorld();
+      
+      if (!everdiceWorld) {
+        return res.status(404).json({ message: "Everdice world not found" });
+      }
+      
+      // Use a local placeholder map that we know exists
+      const mapUrl = "/assets/placeholder-map.jpg";
+      
+      // Update the world with the new map URL
+      const updatedWorld = await storage.createOrUpdateEverdiceWorld({
+        ...everdiceWorld,
+        mapUrl,
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedWorld);
+    } catch (error) {
+      console.error("Error regenerating world map:", error);
+      res.status(500).json({ message: "Failed to regenerate world map" });
+    }
+  });
+  
   app.get("/api/admin/campaign-regions", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
