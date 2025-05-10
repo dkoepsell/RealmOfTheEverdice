@@ -1467,6 +1467,75 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Grant Access Dialog */}
+      <Dialog open={showGrantAccessDialog} onOpenChange={setShowGrantAccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Grant World Access</DialogTitle>
+            <DialogDescription>
+              Grant access to a user for this Everdice world.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="userId">Select User</Label>
+              <Select
+                value={accessUserId?.toString() || ""}
+                onValueChange={(value) => setAccessUserId(parseInt(value))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map(user => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      {user.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="accessLevel">Access Level</Label>
+              <Select
+                value={accessLevel}
+                onValueChange={(value) => setAccessLevel(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="player">Player</SelectItem>
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowGrantAccessDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleGrantAccess}
+              disabled={!accessUserId || grantWorldAccessLoading}
+            >
+              {grantWorldAccessLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Granting...
+                </>
+              ) : (
+                <>Grant Access</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
