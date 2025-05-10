@@ -119,6 +119,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all Everdice worlds for admin
+  app.get("/api/admin/worlds", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user.isAdmin && !req.user.isSuperAdmin) return res.status(403).json({ message: "Not authorized" });
+    
+    try {
+      const worlds = await storage.getAllEverdiceWorlds();
+      res.json(worlds);
+    } catch (error) {
+      console.error("Error retrieving worlds:", error);
+      res.status(500).json({ error: "Error retrieving worlds" });
+    }
+  });
+  
+  // Create a new Everdice world
+  app.post("/api/admin/worlds/create", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    
+    try {
+      const worldData = {
+        ...req.body,
+        createdBy: req.user.id
+      };
+      
+      const world = await storage.createOrUpdateEverdiceWorld(worldData);
+      
+      // Add creator as admin to the world
+      await storage.createWorldAccess(world.id, req.user.id, "admin");
+      
+      res.status(201).json(world);
+    } catch (error) {
+      console.error("Error creating world:", error);
+      res.status(500).json({ error: "Error creating world" });
+    }
+  });
+  
+  // Update an existing Everdice world
+  app.put("/api/admin/worlds/:worldId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    
+    try {
+      const worldId = parseInt(req.params.worldId);
+      const worldData = {
+        ...req.body,
+        id: worldId
+      };
+      
+      const world = await storage.createOrUpdateEverdiceWorld(worldData);
+      res.json(world);
+    } catch (error) {
+      console.error("Error updating world:", error);
+      res.status(500).json({ error: "Error updating world" });
+    }
+  });
+  
+  // Get world access list
+  app.get("/api/admin/worlds/:worldId/access", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user.isAdmin && !req.user.isSuperAdmin) return res.status(403).json({ message: "Not authorized" });
+    
+    try {
+      const worldId = parseInt(req.params.worldId);
+      const users = await storage.getWorldUsers(worldId);
+      res.json(users);
+    } catch (error) {
+      console.error("Error retrieving world users:", error);
+      res.status(500).json({ error: "Error retrieving world users" });
+    }
+  });
+  
+  // Grant access to a world
+  app.post("/api/admin/worlds/:worldId/access", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    
+    try {
+      const worldId = parseInt(req.params.worldId);
+      const { userId, accessLevel } = req.body;
+      
+      const access = await storage.createWorldAccess(worldId, userId, accessLevel);
+      res.status(201).json(access);
+    } catch (error) {
+      console.error("Error granting world access:", error);
+      res.status(500).json({ error: "Error granting world access" });
+    }
+  });
+  
+  // Update world access
+  app.put("/api/admin/worlds/:worldId/access/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    
+    try {
+      const worldId = parseInt(req.params.worldId);
+      const userId = parseInt(req.params.userId);
+      const { accessLevel } = req.body;
+      
+      const access = await storage.updateWorldAccess(worldId, userId, accessLevel);
+      res.json(access);
+    } catch (error) {
+      console.error("Error updating world access:", error);
+      res.status(500).json({ error: "Error updating world access" });
+    }
+  });
+  
+  // Remove access to a world
+  app.delete("/api/admin/worlds/:worldId/access/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    
+    try {
+      const worldId = parseInt(req.params.worldId);
+      const userId = parseInt(req.params.userId);
+      
+      const success = await storage.deleteWorldAccess(worldId, userId);
+      
+      if (success) {
+        res.status(204).send();
+      } else {
+        res.status(404).json({ error: "Access not found" });
+      }
+    } catch (error) {
+      console.error("Error removing world access:", error);
+      res.status(500).json({ error: "Error removing world access" });
+    }
+  });
+  
   // Public endpoint for Everdice world data (used by campaign pages)
   app.get("/api/everdice/world", async (req, res) => {    
     try {

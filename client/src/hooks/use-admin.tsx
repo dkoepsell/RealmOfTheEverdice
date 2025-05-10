@@ -2,12 +2,16 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "./use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "./use-toast";
+import { useState } from "react";
 
 export function useAdmin() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isSuperAdmin = user?.isSuperAdmin;
   const isAdmin = user?.isAdmin;
+  
+  // State for world management
+  const [selectedWorldId, setSelectedWorldId] = useState<number | null>(null);
 
   // Get all users
   const {
