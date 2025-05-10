@@ -1254,6 +1254,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true
       });
       
+      // Check if this is the first character in the campaign and there are no logs yet
+      const existingLogs = await storage.getGameLogsByCampaignId(campaignId);
+      
+      // If there are no logs, generate an introduction
+      if (existingLogs.length === 0) {
+        try {
+          // Generate a campaign introduction based on the campaign and character details
+          let introText = `# Welcome to ${campaign.title}\n\n`;
+          
+          if (campaign.description) {
+            introText += `${campaign.description}\n\n`;
+          }
+          
+          introText += `As ${character.name}, a level ${character.level} ${character.race} ${character.class}, you stand at the beginning of an epic journey in the world of Everdice. The path ahead is filled with danger, mystery, and opportunity.\n\n`;
+          
+          if (campaign.setting) {
+            introText += `The lands of ${campaign.setting} stretch before you, filled with wonders and perils alike.\n\n`;
+          }
+          
+          introText += "Your adventure begins now. What will you do first?";
+
+          // Add the introduction to game logs
+          await storage.createGameLog({
+            campaignId,
+            content: introText,
+            type: "narrative",
+            timestamp: new Date()
+          });
+        } catch (introError) {
+          console.error("Error generating introduction:", introError);
+          // Failure to generate an intro shouldn't block the character addition
+        }
+      }
+      
       res.status(201).json(campaignCharacter);
     } catch (error) {
       res.status(500).json({ message: "Failed to add character to campaign" });
@@ -1449,7 +1483,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       
       if (!campaign) return res.status(404).json({ message: "Campaign not found" });
-      if (campaign.dmId !== req.user.id) {
+      
+      // Allow both DM and players to add logs
+      const userCharacters = await storage.getCharactersByCampaignId(campaignId);
+      const isPlayerInCampaign = userCharacters.some(char => char.userId === req.user.id);
+      
+      if (campaign.dmId !== req.user.id && !isPlayerInCampaign) {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -1469,7 +1508,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(gameLog);
     } catch (error) {
+      console.error("Error creating game log:", error);
       res.status(500).json({ message: "Failed to create game log" });
+    }
+  });
+  
+  // Add the missing narrative generation endpoint
+  app.post("/api/campaigns/:id/generate-response", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      if (isNaN(campaignId)) {
+        return res.status(400).json({ message: "Invalid campaign ID" });
+      }
+      
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Get user's character in the campaign
+      const characters = await storage.getCharactersByCampaignId(campaignId);
+      const userCharacter = characters.find(char => char.userId === req.user.id);
+      
+      if (!userCharacter && campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Get all game logs for context
+      const gameLogs = await storage.getGameLogsByCampaignId(campaignId);
+      
+      // Format logs for context
+      const context = gameLogs.map(log => {
+        return `${log.type.toUpperCase()}: ${log.content}`;
+      }).join("\n");
+      
+      // Get player action from request
+      const { playerAction, isAutoAdvance = false } = req.body;
+      
+      if (!playerAction) {
+        return res.status(400).json({ message: "Player action is required" });
+      }
+      
+      try {
+        // Use OpenAI to generate a response
+        const narrativeResponse = await generateGameNarration(
+          context, 
+          playerAction,
+          isAutoAdvance
+        );
+        
+        // Add the narrative response to the game logs
+        const narrativeLog = await storage.createGameLog({
+          campaignId,
+          content: narrativeResponse,
+          type: "narrative",
+          timestamp: new Date()
+        });
+        
+        res.json({ success: true, response: narrativeResponse, logId: narrativeLog.id });
+      } catch (aiError) {
+        console.error("AI generation error:", aiError);
+        
+        // Fallback narrative in case OpenAI fails
+        const fallbackNarrative = `The Dungeon Master pauses for a moment, considering your action. "That's an interesting approach! Let me think about how that plays out..." (There was an issue generating the AI response, but your action was recorded successfully. Try again in a moment.)`;
+        
+        // Add the fallback narrative to the game logs
+        const fallbackLog = await storage.createGameLog({
+          campaignId,
+          content: fallbackNarrative,
+          type: "narrative",
+          timestamp: new Date()
+        });
+        
+        res.json({ 
+          success: true, 
+          response: fallbackNarrative, 
+          logId: fallbackLog.id,
+          error: "AI generation failed, using fallback response" 
+        });
+      }
+    } catch (error) {
+      console.error("Error generating response:", error);
+      res.status(500).json({ 
+        message: "Failed to generate response",
+        error: error.message
+      });
     }
   });
 

@@ -192,15 +192,45 @@ export default function CampaignPage() {
             }
           );
           
-          return await dmResponse.json();
+          const responseData = await dmResponse.json();
+          
+          // Refresh logs again to get the narrative response
+          await queryClient.invalidateQueries({
+            queryKey: [`/api/campaigns/${campaignId}/logs`],
+          });
+          
+          return responseData;
         } catch (dmError) {
           console.error("Error generating DM response:", dmError);
-          // Even if DM response fails, we still added the player action successfully
-          // Return a minimal response that won't break the UI
-          return { success: false, error: dmError.message };
+          
+          // Create a fallback message and add it directly to the frontend logs
+          setGameLogs(prev => [
+            ...prev,
+            {
+              id: Date.now(), // Temporary ID
+              campaignId: parseInt(campaignId as string),
+              content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
+              type: "narrative",
+              timestamp: new Date()
+            }
+          ]);
+          
+          // Return a fallback response
+          return { 
+            success: false, 
+            error: dmError instanceof Error ? dmError.message : "Unknown error" 
+          };
         }
       } catch (error) {
-        console.error("Error in player action:", error);
+        console.error("Error in player action:", error instanceof Error ? error.message : error);
+        
+        // Show toast notification
+        toast({
+          title: "Action Failed",
+          description: "There was an error submitting your action. Please try again.",
+          variant: "destructive",
+        });
+        
         throw error;
       } finally {
         setIsProcessing(false);
