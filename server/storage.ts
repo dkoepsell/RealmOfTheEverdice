@@ -1246,18 +1246,50 @@ export class DatabaseStorage implements IStorage {
             
             if (columnCheck && columnCheck.length > 0) {
               const columnName = columnCheck[0].column_name;
-              // Delete party plan comments first with correct column name
-              await this.executeRawQuery(
-                `DELETE FROM party_plan_comments 
-                 WHERE ${columnName} IN (
-                   SELECT id FROM party_plan_items 
-                   WHERE plan_id IN (
-                     SELECT id FROM party_plans WHERE campaign_id = $1
-                   )
-                 )`,
-                [id]
+              
+              // Check if plan_id or planId exists in party_plan_items
+              const planIdCheck = await this.executeRawQuery(
+                `SELECT column_name FROM information_schema.columns 
+                 WHERE table_name='party_plan_items' AND column_name IN ('plan_id', 'planId')`,
+                []
               );
-              console.log(`Deleted party plan comments for campaign ${id} using column ${columnName}`);
+              
+              if (planIdCheck && planIdCheck.length > 0) {
+                const planIdColumn = planIdCheck[0].column_name;
+                
+                // Check if campaign_id or campaignId exists in party_plans
+                const campaignIdCheck = await this.executeRawQuery(
+                  `SELECT column_name FROM information_schema.columns 
+                   WHERE table_name='party_plans' AND column_name IN ('campaign_id', 'campaignId')`,
+                  []
+                );
+                
+                if (campaignIdCheck && campaignIdCheck.length > 0) {
+                  const campaignIdColumn = campaignIdCheck[0].column_name;
+                  
+                  // Delete party plan comments first with correct column names
+                  try {
+                    await this.executeRawQuery(
+                      `DELETE FROM party_plan_comments 
+                       WHERE ${columnName} IN (
+                         SELECT id FROM party_plan_items 
+                         WHERE ${planIdColumn} IN (
+                           SELECT id FROM party_plans WHERE ${campaignIdColumn} = $1
+                         )
+                       )`,
+                      [id]
+                    );
+                    console.log(`Deleted party plan comments for campaign ${id} using columns ${columnName}, ${planIdColumn}, ${campaignIdColumn}`);
+                  } catch (commentsError) {
+                    console.error(`Error deleting party plan comments: ${commentsError.message}`);
+                    // Continue with rest of deletion process
+                  }
+                } else {
+                  console.log(`No campaign_id or campaignId column found in party_plans, skipping comments deletion`);
+                }
+              } else {
+                console.log(`No plan_id or planId column found in party_plan_items, skipping comments deletion`);
+              }
             } else {
               console.log(`No item_id or itemId column found in party_plan_comments, skipping deletion`);
             }
@@ -1280,21 +1312,40 @@ export class DatabaseStorage implements IStorage {
           
           if (itemsTableExists && itemsTableExists.length > 0 && itemsTableExists[0].exists) {
             // Check for correct column name (plan_id or planId)
-            const columnCheck = await this.executeRawQuery(
+            const planIdColumnCheck = await this.executeRawQuery(
               `SELECT column_name FROM information_schema.columns 
                WHERE table_name='party_plan_items' AND column_name IN ('plan_id', 'planId')`,
               []
             );
             
-            if (columnCheck && columnCheck.length > 0) {
-              const columnName = columnCheck[0].column_name;
-              // Delete party plan items with correct column name
-              await this.executeRawQuery(
-                `DELETE FROM party_plan_items 
-                 WHERE ${columnName} IN (SELECT id FROM party_plans WHERE campaign_id = $1)`,
-                [id]
+            if (planIdColumnCheck && planIdColumnCheck.length > 0) {
+              const planIdColumn = planIdColumnCheck[0].column_name;
+              
+              // Check if campaign_id or campaignId exists in party_plans
+              const campaignIdCheck = await this.executeRawQuery(
+                `SELECT column_name FROM information_schema.columns 
+                 WHERE table_name='party_plans' AND column_name IN ('campaign_id', 'campaignId')`,
+                []
               );
-              console.log(`Deleted party plan items for campaign ${id} using column ${columnName}`);
+              
+              if (campaignIdCheck && campaignIdCheck.length > 0) {
+                const campaignIdColumn = campaignIdCheck[0].column_name;
+                
+                // Delete party plan items with correct column names
+                try {
+                  await this.executeRawQuery(
+                    `DELETE FROM party_plan_items 
+                     WHERE ${planIdColumn} IN (SELECT id FROM party_plans WHERE ${campaignIdColumn} = $1)`,
+                    [id]
+                  );
+                  console.log(`Deleted party plan items for campaign ${id} using columns ${planIdColumn}, ${campaignIdColumn}`);
+                } catch (itemsError) {
+                  console.error(`Error deleting party plan items: ${itemsError.message}`);
+                  // Continue with rest of deletion process
+                }
+              } else {
+                console.log(`No campaign_id or campaignId column found in party_plans, skipping items deletion`);
+              }
             } else {
               console.log(`No plan_id or planId column found in party_plan_items, skipping deletion`);
             }
