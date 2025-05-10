@@ -387,6 +387,364 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
 
+        <TabsContent value="users">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>All Users</CardTitle>
+                <CardDescription>
+                  Complete list of registered users
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="relative overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Last Active</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoadingUsers ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        users.map((user: any) => (
+                          <TableRow key={user.id}>
+                            <TableCell>{user.username}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                {user.role === "admin" ? (
+                                  <Shield className="h-4 w-4 mr-1 text-primary" />
+                                ) : (
+                                  <User className="h-4 w-4 mr-1 text-muted-foreground" />
+                                )}
+                                {user.role}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <div className={`h-2 w-2 rounded-full mr-2 ${
+                                  user.isOnline ? "bg-green-500" : "bg-gray-300"
+                                }`} />
+                                {user.isOnline ? "Now" : user.lastActive || "Unknown"}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setIsDialogOpen(true);
+                                  }}
+                                >
+                                  <Mail className="h-4 w-4" />
+                                </Button>
+                                {user.role !== "admin" && isSuperAdmin && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsPromoteDialogOpen(true);
+                                    }}
+                                  >
+                                    <Shield className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="worldmap">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Everdice World Map</CardTitle>
+                    <CardDescription>
+                      The master world map for all campaigns
+                    </CardDescription>
+                  </div>
+                  {isSuperAdmin && (
+                    <Button
+                      onClick={handleRegenerateWorld}
+                      disabled={worldLoading}
+                      size="sm"
+                    >
+                      {worldLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="mr-2 h-4 w-4" />
+                          Regenerate World
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoadingEverdiceWorld ? (
+                  <div className="h-[400px] flex justify-center items-center">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="rounded-md overflow-hidden border">
+                    {everdiceWorld?.mapUrl ? (
+                      <div className="relative h-[400px] w-full">
+                        <img 
+                          src={everdiceWorld.mapUrl} 
+                          alt="Everdice World Map" 
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder-map.jpg";
+                          }}
+                        />
+                        {/* Overlay of campaign regions */}
+                        {!isLoadingCampaignRegions && campaignRegions?.uniqueRegions?.length > 0 && (
+                          <div className="absolute inset-0">
+                            {campaignRegions.uniqueRegions.map((region: any, index: number) => (
+                              <div 
+                                key={index}
+                                className="absolute w-3 h-3 rounded-full bg-primary animate-pulse"
+                                style={{
+                                  left: `${(region.position?.[0] || 50) * 100}%`,
+                                  top: `${(region.position?.[1] || 50) * 100}%`
+                                }}
+                                title={region.regionName || "Unnamed region"}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-[400px] flex justify-center items-center bg-muted">
+                        <p>No world map available</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Campaign Regions</CardTitle>
+                <CardDescription>
+                  Regions with active campaigns
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingCampaignRegions ? (
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {campaignRegions?.uniqueRegions?.length > 0 ? (
+                      campaignRegions.uniqueRegions.map((region: any, index: number) => (
+                        <div key={index} className="p-4 border rounded-md">
+                          <h4 className="font-medium">{region.regionName || "Unnamed region"}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {region.campaignCount || 0} {region.campaignCount === 1 ? 'campaign' : 'campaigns'} in this region
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground">No active campaign regions found</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="system">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>System Activity</CardTitle>
+                <CardDescription>
+                  Recent system events
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingLoginActivity ? (
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {loginActivity?.length > 0 ? (
+                      loginActivity.map((activity: any, index: number) => (
+                        <div key={index} className="flex justify-between items-center p-2 border-b last:border-0">
+                          <div>
+                            <p className="font-medium">{activity.username || 'Unknown user'}</p>
+                            <p className="text-sm text-muted-foreground">{activity.action}</p>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {activity.timestamp || 'Unknown time'}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground">No recent activity</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Campaign Stats</CardTitle>
+                <CardDescription>
+                  Overview of campaign activity
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingCampaigns ? (
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-md border p-4">
+                        <div className="text-2xl font-bold">{campaigns?.length || 0}</div>
+                        <div className="text-sm text-muted-foreground">Total Campaigns</div>
+                      </div>
+                      <div className="rounded-md border p-4">
+                        <div className="text-2xl font-bold">
+                          {campaigns?.filter((c: any) => c.isActive)?.length || 0}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Active Campaigns</div>
+                      </div>
+                    </div>
+                    
+                    <h4 className="text-sm font-medium pt-2">Recent Campaigns</h4>
+                    {campaigns?.length > 0 ? (
+                      campaigns.slice(0, 5).map((campaign: any) => (
+                        <div key={campaign.id} className="flex justify-between items-center p-2 border-b last:border-0">
+                          <div>
+                            <p className="font-medium">{campaign.name || 'Unnamed campaign'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {campaign.playerCount || 0} {campaign.playerCount === 1 ? 'player' : 'players'}
+                            </p>
+                          </div>
+                          <div className={`px-2 py-1 text-xs rounded-full ${
+                            campaign.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {campaign.isActive ? 'Active' : 'Inactive'}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground">No campaigns found</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle>System Settings</CardTitle>
+                <CardDescription>
+                  Configure system-wide settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="playerLimit">Player Limit Per Campaign</Label>
+                    <div className="flex space-x-2">
+                      <Input
+                        id="playerLimit"
+                        type="number"
+                        placeholder="e.g. 6"
+                        min={1}
+                        max={20}
+                        defaultValue={6}
+                      />
+                      <Button>Save</Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Maximum number of players allowed in a single campaign.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="aiSettings">AI Narrative Settings</Label>
+                    <Select defaultValue="balanced">
+                      <SelectTrigger id="aiSettings">
+                        <SelectValue placeholder="Select a setting" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="creative">Creative (more varied, less consistent)</SelectItem>
+                        <SelectItem value="balanced">Balanced (default)</SelectItem>
+                        <SelectItem value="consistent">Consistent (less varied, more consistent)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Controls the creativity vs. consistency balance in AI narration.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2 pt-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="maintenance">Maintenance Mode</Label>
+                      <Button variant="outline" size="sm">
+                        Enable
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      When enabled, only administrators can access the system.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="border-t p-6">
+                <Button onClick={() => {
+                  toast({
+                    title: "Settings Saved",
+                    description: "System settings have been updated successfully.",
+                  });
+                }}>
+                  Save All Settings
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </TabsContent>
+
       </Tabs>
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -192,6 +192,38 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
               </div>
             </Link>
           ))}
+          
+          {/* Additional mobile menu items */}
+          <Link href="/profile">
+            <div
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                location === "/profile"
+                  ? "bg-primary text-parchment"
+                  : "text-parchment hover:bg-secondary hover:text-white"
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <User className="inline-block mr-1 h-4 w-4" />My Profile
+            </div>
+          </Link>
+          
+          {(user?.role === "admin" || user?.isAdmin || user?.isSuperAdmin) && (
+            <Link href="/admin">
+              <div
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  location === "/admin"
+                    ? "bg-primary text-parchment"
+                    : "text-parchment hover:bg-secondary hover:text-white"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg className="inline-block mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                Admin Dashboard
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </nav>
