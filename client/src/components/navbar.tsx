@@ -92,8 +92,8 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
           </div>
 
           {/* Right side icons - theme toggle, notifications, and profile */}
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-            <div className="mr-2">
+          <div className="absolute inset-y-0 right-0 flex items-center space-x-3 pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+            <div>
               <ThemeToggle />
             </div>
             <Button
@@ -106,7 +106,7 @@ export const Navbar = ({ showBackButton = false }: NavbarProps) => {
             </Button>
 
             {/* Profile dropdown */}
-            <div className="ml-3 relative">
+            <div className="relative">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="bg-accent rounded-full">
