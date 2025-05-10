@@ -79,7 +79,7 @@ import { DndQuickReference } from "@/components/dnd-quick-reference";
 import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
 import { InventoryManagement } from "@/components/inventory-management";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
-import BattleTracker from "@/components/battle-tracker";
+import { BattleTracker } from "@/components/battle-tracker";
 import { useCombatDetection } from "@/hooks/use-combat-detection";
 
 export default function CampaignPage() {
@@ -1254,8 +1254,9 @@ export default function CampaignPage() {
                       
                       <BattleTracker
                         inCombat={inCombat}
-                        round={combatRound}
-                        participants={combatParticipants}
+                        combatRound={combatRound}
+                        combatTurn={combatTurn}
+                        combatParticipants={combatParticipants}
                         onNextTurn={onNextTurn}
                         onEndCombat={onEndCombat}
                         onAddParticipant={onAddParticipant}
@@ -1264,7 +1265,7 @@ export default function CampaignPage() {
                         onAddCondition={onAddCondition}
                         onRemoveCondition={onRemoveCondition}
                         onDiceRoll={onDiceRoll}
-                        characters={campaignCharacters || []}
+                        partyCharacters={campaignCharacters || []}
                       />
                     </div>
                   )}
