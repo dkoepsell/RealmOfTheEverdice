@@ -1064,10 +1064,7 @@ export class DatabaseStorage implements IStorage {
           setting TEXT,
           is_ai_dm BOOLEAN DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          map_url TEXT,
-          lore TEXT,
-          continents JSONB,
-          metadata JSONB
+          current_turn_id INTEGER
         )
       `, []);
       
