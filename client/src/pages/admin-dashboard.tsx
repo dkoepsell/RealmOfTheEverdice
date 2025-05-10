@@ -93,6 +93,7 @@ export default function AdminDashboard() {
   const [messageContent, setMessageContent] = useState("");
   const [worldLoading, setWorldLoading] = useState(false);
   const [showCreateWorldDialog, setShowCreateWorldDialog] = useState(false);
+  const [showRegenerateWorldDialog, setShowRegenerateWorldDialog] = useState(false);
 
   // Regenerate world map
   const handleRegenerateWorld = async () => {
