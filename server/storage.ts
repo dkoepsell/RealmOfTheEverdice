@@ -22,10 +22,11 @@ import {
   SystemStat, InsertSystemStat,
   UserMessage, InsertUserMessage,
   EverdiceWorld, InsertEverdiceWorld,
+  WorldAccess, InsertWorldAccess,
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
   friendships, userSessions, chatMessages, campaignInvitations, mapLocations, journeyPaths,
   campaignWorldMaps, partyPlans, partyPlanItems, partyPlanComments, tavernNotices, tavernNoticeReplies,
-  systemStats, userMessages, everdiceWorld
+  systemStats, userMessages, everdiceWorld, worldAccess
 } from "@shared/schema";
 
 // Define our own Campaign type without partyName since it's not in the DB yet
@@ -235,6 +236,20 @@ export interface IStorage {
   getUserMessages(userId: number): Promise<any[]>;
   createUserMessage(message: any): Promise<any>;
   getChatMessages(campaignId: number): Promise<ChatMessage[]>;
+  
+  // Everdice World methods
+  getEverdiceWorld(worldId?: number): Promise<EverdiceWorld | undefined>;
+  getAllEverdiceWorlds(): Promise<EverdiceWorld[]>;
+  getMainEverdiceWorld(): Promise<EverdiceWorld | undefined>;
+  saveEverdiceWorld(worldData: any): Promise<EverdiceWorld>;
+  createOrUpdateEverdiceWorld(world: Partial<InsertEverdiceWorld>): Promise<EverdiceWorld>;
+  
+  // World Access methods
+  createWorldAccess(worldId: number, userId: number, accessLevel: string): Promise<any>;
+  getWorldAccessForUser(userId: number): Promise<any[]>;
+  getWorldUsers(worldId: number): Promise<any[]>;
+  updateWorldAccess(worldId: number, userId: number, accessLevel: string): Promise<any>;
+  deleteWorldAccess(worldId: number, userId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {

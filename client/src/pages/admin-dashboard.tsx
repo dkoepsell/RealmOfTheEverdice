@@ -821,19 +821,23 @@ export default function AdminDashboard() {
               )}
             </div>
             
-            {isLoadingEverdiceWorld ? (
+            {worldsLoading ? (
               <div className="flex justify-center py-6">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {everdiceWorld && (
-                  <Card key={everdiceWorld.id} className="overflow-hidden border-primary border-2">
+                {worlds.map(world => (
+                  <Card 
+                    key={world.id} 
+                    className={`overflow-hidden ${selectedWorldId === world.id ? 'border-primary border-2' : 'border'}`}
+                    onClick={() => setSelectedWorldId(world.id)}
+                  >
                     <div className="relative aspect-video w-full overflow-hidden">
-                      {everdiceWorld.mapUrl ? (
+                      {world.mapUrl ? (
                         <img
-                          src={everdiceWorld.mapUrl}
-                          alt={everdiceWorld.name}
+                          src={world.mapUrl}
+                          alt={world.name}
                           className="object-cover w-full h-full"
                         />
                       ) : (
@@ -841,26 +845,28 @@ export default function AdminDashboard() {
                           <Map className="h-16 w-16 text-accent/50" />
                         </div>
                       )}
-                      <div className="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
-                        Main World
-                      </div>
+                      {world.isMainWorld && (
+                        <div className="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
+                          Main World
+                        </div>
+                      )}
                     </div>
                     <CardHeader>
                       <CardTitle className="flex items-center">
-                        {everdiceWorld.name} 
+                        {world.name} 
                       </CardTitle>
                       <CardDescription>
-                        Created {new Date(everdiceWorld.createdAt).toLocaleDateString()}
+                        Created {new Date(world.createdAt).toLocaleDateString()}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm line-clamp-3 mb-2">
-                        {everdiceWorld.description || "No description available."}
+                        {world.description || "No description available."}
                       </p>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <span className="flex items-center">
                           <Map className="h-4 w-4 mr-1" />
-                          {everdiceWorld.continents?.length || 0} continents
+                          {world.continents?.length || 0} continents
                         </span>
                       </div>
                     </CardContent>
@@ -892,9 +898,9 @@ export default function AdminDashboard() {
                       )}
                     </CardFooter>
                   </Card>
-                )}
+                ))}
                 
-                {!everdiceWorld && (
+                {worlds.length === 0 && (
                   <div className="col-span-2 text-center py-12 bg-accent/5 rounded-lg border border-accent/20">
                     <Map className="h-12 w-12 mx-auto text-accent/40 mb-4" />
                     <h3 className="text-xl font-medium mb-2">No World Available</h3>
