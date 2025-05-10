@@ -176,25 +176,29 @@ export default function CampaignPage() {
           }
         );
         
-        if (!actionResponse.ok) {
-          throw new Error("Failed to add player action");
-        }
+        // Refresh the logs after adding player action
+        await queryClient.invalidateQueries({
+          queryKey: [`/api/campaigns/${campaignId}/logs`],
+        });
         
         // Generate DM response
-        const dmResponse = await apiRequest(
-          "POST",
-          `/api/campaigns/${campaignId}/generate-response`,
-          { 
-            playerAction: input,
-            isAutoAdvance: isAutoDmMode
-          }
-        );
-        
-        if (!dmResponse.ok) {
-          throw new Error("Failed to generate DM response");
+        try {
+          const dmResponse = await apiRequest(
+            "POST",
+            `/api/campaigns/${campaignId}/generate-response`,
+            { 
+              playerAction: input,
+              isAutoAdvance: isAutoDmMode
+            }
+          );
+          
+          return await dmResponse.json();
+        } catch (dmError) {
+          console.error("Error generating DM response:", dmError);
+          // Even if DM response fails, we still added the player action successfully
+          // Return a minimal response that won't break the UI
+          return { success: false, error: dmError.message };
         }
-        
-        return await dmResponse.json();
       } catch (error) {
         console.error("Error in player action:", error);
         throw error;
@@ -256,6 +260,9 @@ export default function CampaignPage() {
     localStorage.setItem('narrativeFontSize', fontSizeMultiplier.toString());
   }, [fontSizeMultiplier]);
   
+  // Function to handle the player input submission is already defined elsewhere
+  // in the file, no need to redefine it
+  
   // Save auto roll setting to local storage when it changes
   useEffect(() => {
     localStorage.setItem('autoRollEnabled', isAutoRollEnabled.toString());
@@ -284,9 +291,36 @@ export default function CampaignPage() {
     }
     
     try {
-      await playerActionMutation.mutateAsync(playerInput);
+      // Store current input and clear immediately for better UX
+      const currentInput = playerInput;
+      setPlayerInput(""); // Clear input immediately
+      
+      // Submit action
+      const result = await playerActionMutation.mutateAsync(currentInput);
+      
+      // Handle potential errors from the DM response
+      if (result && !result.success) {
+        console.warn("DM response had an error:", result.error);
+        toast({
+          variant: "warning",
+          title: "Action Recorded",
+          description: "Your action was recorded, but the DM response had an issue. The story will continue when you submit your next action.",
+        });
+      }
+      
+      // Scroll to bottom after a short delay to allow rendering
+      setTimeout(() => {
+        if (narrativeRef.current) {
+          narrativeRef.current.scrollTop = narrativeRef.current.scrollHeight;
+        }
+      }, 100);
     } catch (error) {
       console.error("Action submission error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to process your action. Please try again.",
+      });
     }
   };
 
@@ -922,6 +956,53 @@ export default function CampaignPage() {
                     })}
                   </div>
                 </div>
+              </div>
+            </div>
+            
+            {/* Mobile action button bar - Only visible on small screens */}
+            <div className="md:hidden flex items-center justify-between p-2 bg-amber-100/80 border-t border-amber-200">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleToggleRightPanel("characters")}
+                  className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "characters" ? "bg-amber-200" : ""}`}
+                >
+                  <Users className="h-4 w-4" /> 
+                  <span className="ml-1 text-xs">Party</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleToggleRightPanel("inventory")}
+                  className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "inventory" ? "bg-amber-200" : ""}`}
+                >
+                  <Backpack className="h-4 w-4" />
+                  <span className="ml-1 text-xs">Items</span>
+                </Button>
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleToggleRightPanel("map")}
+                  className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "map" ? "bg-amber-200" : ""}`}
+                >
+                  <Map className="h-4 w-4" />
+                  <span className="ml-1 text-xs">Map</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleToggleRightPanel("roll")}
+                  className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "roll" ? "bg-amber-200" : ""}`}
+                >
+                  <Dices className="h-4 w-4" />
+                  <span className="ml-1 text-xs">Roll</span>
+                </Button>
               </div>
             </div>
             
