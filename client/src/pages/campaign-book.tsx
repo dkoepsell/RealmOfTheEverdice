@@ -92,14 +92,22 @@ export default function CampaignPage() {
     enabled: !!campaignId
   });
 
-  // Campaign game logs query
+  // Campaign game logs query with improved error handling
   const {
     data: gameLogs = [],
     isLoading: logsLoading,
     error: logsError,
+    refetch: refetchLogs
   } = useQuery({
     queryKey: [`/api/campaigns/${campaignId}/logs`],
-    enabled: !!campaignId
+    enabled: !!campaignId,
+    retry: 3,
+    retryDelay: 1000,
+    onError: (error) => {
+      console.error("Failed to fetch game logs:", error);
+      // Don't show the toast so we don't disrupt the user experience
+      // The GameArea component will handle the empty state gracefully
+    }
   });
 
   // Get user's player character in this campaign

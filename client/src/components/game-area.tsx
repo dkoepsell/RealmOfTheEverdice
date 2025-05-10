@@ -245,6 +245,21 @@ export const GameArea = ({
           
           {/* Game Logs - DM Narration and Player Actions - Displayed in chronological order */}
           <div className="space-y-6">
+            {/* Display default message if no logs available */}
+            {gameLogs.length === 0 && (
+              <div className="mb-8 leading-relaxed">
+                <div className="border-4 border-double border-amber-800/60 bg-amber-50/30 p-6 rounded-lg shadow-inner">
+                  <h3 className="text-xl font-medieval text-primary-800 mb-4">Begin Your Adventure</h3>
+                  <p className="mb-3 font-serif italic first-letter:text-3xl first-letter:font-bold first-letter:mr-1 first-letter:float-left first-letter:text-primary-900">
+                    Your adventure is about to begin in the realm of Everdice. To get started, describe your first action in the text box below and click "Submit Action". The Dungeon Master will respond with a narrative that continues your story.
+                  </p>
+                  <p className="text-sm font-medium text-primary-700 mt-4">
+                    Tip: Try simple actions like "I look around the tavern" or "I approach the nearest person and introduce myself" to begin.
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* First show intro narrative if present */}
             {gameLogs.filter(log => log.type === "narrative_introduction").map((log, index) => (
               <div key={`intro-${index}`} className="mb-8 leading-relaxed">
@@ -258,7 +273,7 @@ export const GameArea = ({
             ))}
             
             {/* Then show all logs except intro in chronological order */}
-            {gameLogs.filter(log => log.type !== "narrative_introduction").map((log, index) => {
+            {gameLogs.length > 0 && gameLogs.filter(log => log.type !== "narrative_introduction").map((log, index) => {
               if (log.type === "narrative" || log.type === "narrative_introduction") {
                 // Special styling for the introduction narrative
                 if (log.type === "narrative_introduction") {
@@ -329,7 +344,7 @@ export const GameArea = ({
           </div>
           
           {/* Interactive Dice Suggestions based on the latest narrative */}
-          {gameLogs.length > 0 && (gameLogs[gameLogs.length - 1].type === "narrative" || gameLogs[gameLogs.length - 1].type === "narrative_introduction") && (
+          {gameLogs.length > 0 && gameLogs[gameLogs.length - 1] && (gameLogs[gameLogs.length - 1].type === "narrative" || gameLogs[gameLogs.length - 1].type === "narrative_introduction") && (
             <InteractiveDiceSuggestions 
               narrative={gameLogs[gameLogs.length - 1].content} 
               character={currentCharacter}
