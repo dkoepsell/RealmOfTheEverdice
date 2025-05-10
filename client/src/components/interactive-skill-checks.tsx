@@ -83,8 +83,9 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
       return;
     }
     
-    // Pattern to match skill checks like "Persuasion check", "check for Stealth", etc.
-    // Also detects DCs like "DC 15 Wisdom (Perception) check"
+    // Pattern to match skill checks like "Persuasion check", "check for Stealth", "Intelligence check", etc.
+    // Also detects DCs like "DC 15 Wisdom (Perception) check" 
+    // Improved to better capture standalone ability checks like "Intelligence check"
     const skillCheckRegex = /(?:(DC\s*(\d+))?\s*(?:([A-Za-z]+)\s*\()?([A-Za-z]+(?:\s+[A-Za-z]+)*)\)?(?:\s*check|\s*saving\s*throw))/gi;
     
     // Find all skill checks in the content
@@ -180,7 +181,7 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className="inline text-primary font-medium hover:underline cursor-pointer"
+                    className="inline text-primary font-medium bg-primary/10 px-1 rounded hover:bg-primary/20 cursor-pointer border-b border-dashed border-primary"
                     onClick={() => handleSkillCheckClick(check)}
                   >
                     {checkText}
@@ -206,9 +207,13 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
   const handleSkillCheckClick = (check: SkillCheck) => {
     setSelectedSkillCheck(check);
     
-    // Auto-roll now means "auto-advance after roll" not "auto-roll without clicking"
-    // So we always perform the roll when a player clicks on a check
-    performSkillCheck(check);
+    // If autoRoll is enabled, perform the skill check immediately
+    // Otherwise, show the dialog for manual rolling
+    if (autoRoll) {
+      performSkillCheck(check);
+    } else {
+      setShowDiceDialog(true);
+    }
   };
   
   const getAbilityModifier = (ability: string): number => {
@@ -355,36 +360,89 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
                     )}
                   </div>
                   
-                  <div className="flex justify-center items-center h-32 mt-4">
-                    {isRolling || dieResult ? (
-                      <div className="text-4xl font-bold">
-                        {dieResult}
-                      </div>
-                    ) : (
-                      <Button onClick={handleManualRoll} className="mt-2">
-                        <DicesIcon className="mr-2 h-4 w-4" />
-                        Roll d20
-                      </Button>
-                    )}
-                  </div>
-                  
-                  {dieResult && selectedSkillCheck.dc && (
-                    <div className="flex justify-center items-center mt-2">
-                      <div className="flex items-center">
-                        <span className="text-lg mr-2">
-                          {dieResult} + {getSkillModifier(selectedSkillCheck.skill)} =&nbsp;
-                          <span className="font-bold">
-                            {dieResult + getSkillModifier(selectedSkillCheck.skill)}
+                  <div className="flex flex-col justify-center items-center mt-4">
+                    <div className="h-32 flex justify-center items-center">
+                      {isRolling || dieResult ? (
+                        <div className="text-5xl font-bold">
+                          {dieResult}
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground mb-2">Click to roll your virtual d20</p>
+                          <Button 
+                            onClick={handleManualRoll} 
+                            className="px-8 py-6 h-auto animate-pulse bg-primary/10 hover:bg-primary/80 hover:text-white transition-all"
+                          >
+                            <DicesIcon className="mr-2 h-5 w-5" />
+                            Roll d20
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {dieResult && (
+                      <div className="flex flex-col items-center mt-4 bg-muted/50 p-3 rounded-md w-full">
+                        <div className="flex items-center mb-1">
+                          <span className="text-lg mr-2">
+                            {dieResult} + {getSkillModifier(selectedSkillCheck.skill)} =&nbsp;
+                            <span className="font-bold text-xl">
+                              {dieResult + getSkillModifier(selectedSkillCheck.skill)}
+                            </span>
                           </span>
-                        </span>
-                        {dieResult + getSkillModifier(selectedSkillCheck.skill) >= selectedSkillCheck.dc ? (
-                          <Check className="text-green-500 h-6 w-6" />
-                        ) : (
-                          <X className="text-red-500 h-6 w-6" />
+                          {selectedSkillCheck.dc && (
+                            <>
+                              {dieResult + getSkillModifier(selectedSkillCheck.skill) >= selectedSkillCheck.dc ? (
+                                <Check className="text-green-500 h-6 w-6" />
+                              ) : (
+                                <X className="text-red-500 h-6 w-6" />
+                              )}
+                            </>
+                          )}
+                        </div>
+                        
+                        {selectedSkillCheck.dc && (
+                          <p className="text-sm text-muted-foreground">
+                            {dieResult + getSkillModifier(selectedSkillCheck.skill) >= selectedSkillCheck.dc ? 
+                              "Success! You passed the check." : 
+                              `Failed. You didn't meet the DC ${selectedSkillCheck.dc}.`}
+                          </p>
+                        )}
+                        
+                        {dieResult && !isRolling && (
+                          <Button 
+                            onClick={() => {
+                              setShowDiceDialog(false);
+                              
+                              // If auto-roll is enabled, we'll auto-advance after the roll
+                              if (autoRoll) {
+                                // Extract campaign ID from URL path
+                                const pathParts = location.split('/');
+                                const campaignIndex = pathParts.findIndex(part => part === 'campaigns');
+                                
+                                if (campaignIndex !== -1 && pathParts.length > campaignIndex + 1) {
+                                  const campaignId = pathParts[campaignIndex + 1];
+                                  console.log('Advancing narrative after manual roll with auto-advance enabled');
+                                  
+                                  // Submit a special action to advance the narrative
+                                  apiRequest(
+                                    "POST",
+                                    `/api/campaigns/${campaignId}/action`,
+                                    { action: "continue" }
+                                  ).catch(error => {
+                                    console.error('Error auto-advancing narrative:', error);
+                                  });
+                                }
+                              }
+                            }}
+                            className="mt-4 w-full"
+                            variant="default"
+                          >
+                            Continue Adventure
+                          </Button>
                         )}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </>
               )}
             </DialogDescription>
