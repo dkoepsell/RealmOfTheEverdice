@@ -356,8 +356,8 @@ export default function CampaignPage() {
             <Button variant="outline" onClick={() => window.location.reload()}>
               Try Again
             </Button>
-            <Button onClick={() => setLocation("/campaigns")}>
-              Back to Campaigns
+            <Button onClick={() => setLocation("/")}>
+              Back to Home
             </Button>
           </div>
         </div>
@@ -374,10 +374,10 @@ export default function CampaignPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLocation("/campaigns")}
+              onClick={() => setLocation("/")}
               className="text-amber-900 hover:text-amber-700 hover:bg-amber-100"
             >
-              &larr; Back
+              &larr; Back to Home
             </Button>
             <h1 className="text-lg md:text-xl font-bold text-amber-900 truncate">
               {campaign?.title || "Campaign"}
