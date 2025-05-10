@@ -303,6 +303,8 @@ export const everdiceWorld = pgTable("everdice_world", {
     bounds: [[number, number], [number, number]]; // Northeast and Southwest corners
   }>>(),
   metadata: json("metadata"),
+  isActive: boolean("is_active").default(true),
+  isMainWorld: boolean("is_main_world").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });

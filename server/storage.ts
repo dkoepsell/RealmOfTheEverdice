@@ -172,10 +172,12 @@ export interface IStorage {
   createOrUpdateCampaignWorldMap(worldMap: InsertCampaignWorldMap): Promise<CampaignWorldMap>;
   
   // Everdice World methods
-  getEverdiceWorld(): Promise<EverdiceWorld | undefined>;
+  getEverdiceWorld(worldId?: number): Promise<EverdiceWorld | undefined>;
+  getAllEverdiceWorlds(): Promise<EverdiceWorld[]>;
+  getMainEverdiceWorld(): Promise<EverdiceWorld | undefined>;
   saveEverdiceWorld(worldData: any): Promise<EverdiceWorld>;
   createOrUpdateEverdiceWorld(world: Partial<InsertEverdiceWorld>): Promise<EverdiceWorld>;
-  addContinentToEverdiceWorld(continent: { id: string; name: string; description: string; position: [number, number]; bounds: [[number, number], [number, number]]; }): Promise<EverdiceWorld>;
+  addContinentToEverdiceWorld(continent: { id: string; name: string; description: string; position: [number, number]; bounds: [[number, number], [number, number]]; }, worldId?: number): Promise<EverdiceWorld>;
   getCampaignRegions(): Promise<{ campaigns: any[], uniqueRegions: string[] }>;
   
   // Campaign permissions
@@ -647,12 +649,53 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Everdice World methods
-  async getEverdiceWorld(): Promise<EverdiceWorld | undefined> {
+  async getEverdiceWorld(worldId?: number): Promise<EverdiceWorld | undefined> {
     try {
-      const [world] = await db.select().from(everdiceWorld).limit(1);
-      return world;
+      if (worldId) {
+        const [world] = await db.select().from(everdiceWorld).where(eq(everdiceWorld.id, worldId));
+        return world;
+      } else {
+        // Return the main world or first active world if no ID specified
+        const [world] = await db.select().from(everdiceWorld)
+          .where(eq(everdiceWorld.isActive, true))
+          .orderBy(desc(everdiceWorld.isMainWorld))
+          .limit(1);
+        return world;
+      }
     } catch (error) {
       console.error("Error getting Everdice world:", error);
+      return undefined;
+    }
+  }
+  
+  async getAllEverdiceWorlds(): Promise<EverdiceWorld[]> {
+    try {
+      const worlds = await db.select().from(everdiceWorld).orderBy(desc(everdiceWorld.isMainWorld));
+      return worlds;
+    } catch (error) {
+      console.error("Error getting all Everdice worlds:", error);
+      return [];
+    }
+  }
+  
+  async getMainEverdiceWorld(): Promise<EverdiceWorld | undefined> {
+    try {
+      const [world] = await db.select().from(everdiceWorld)
+        .where(eq(everdiceWorld.isMainWorld, true))
+        .limit(1);
+        
+      if (world) {
+        return world;
+      }
+      
+      // If no main world, return the first active world
+      const [activeWorld] = await db.select().from(everdiceWorld)
+        .where(eq(everdiceWorld.isActive, true))
+        .limit(1);
+        
+      return activeWorld;
+    } catch (error) {
+      console.error("Error getting main Everdice world:", error);
       return undefined;
     }
   }

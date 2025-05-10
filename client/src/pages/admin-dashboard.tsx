@@ -497,23 +497,65 @@ export default function AdminDashboard() {
                     </CardDescription>
                   </div>
                   {isSuperAdmin && (
-                    <Button
-                      onClick={handleRegenerateWorld}
-                      disabled={worldLoading}
-                      size="sm"
-                    >
-                      {worldLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <MapPin className="mr-2 h-4 w-4" />
-                          Regenerate World
-                        </>
-                      )}
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          disabled={worldLoading}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          {worldLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="mr-2 h-4 w-4" />
+                              Regenerate World
+                            </>
+                          )}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Regenerate Everdice World</DialogTitle>
+                          <DialogDescription>
+                            <p className="mt-2">
+                              This will create a completely new Everdice world map with new continents and regions.
+                            </p>
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                              <h4 className="text-amber-800 font-semibold flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+                                Warning
+                              </h4>
+                              <p className="text-amber-700 text-sm mt-1">
+                                All existing campaigns are linked to the current world map. Regenerating the world map will break these connections, and campaign region placements will no longer accurately reflect their position in the Everdice world.
+                              </p>
+                              {campaigns.length > 0 && (
+                                <p className="text-amber-800 font-medium text-sm mt-2">
+                                  There are currently {campaigns.length} active campaigns that will be affected.
+                                </p>
+                              )}
+                            </div>
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => document.querySelector<HTMLElement>('[role="dialog"] button.close')?.click()}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            onClick={() => {
+                              handleRegenerateWorld();
+                              document.querySelector<HTMLElement>('[role="dialog"] button.close')?.click();
+                            }}
+                          >
+                            Yes, Regenerate World
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </div>
               </CardHeader>
