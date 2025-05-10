@@ -284,9 +284,17 @@ These alignments should be presented as nuanced positions, not just simple label
 }
 
 export async function generateDialogue(npcInfo: string, context: string, playerPrompt?: string) {
+  // Check for API key first
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "missing_key") {
+    console.error("OpenAI API key is missing. Cannot generate dialogue.");
+    throw new Error("API key is missing. Please configure OpenAI API key.");
+  }
+
   try {
+    console.log("Generating dialogue for NPC with prompt:", playerPrompt ? playerPrompt.substring(0, 50) + "..." : "[initial greeting]");
+    
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
       messages: [
         {
           role: "system",
@@ -296,13 +304,40 @@ export async function generateDialogue(npcInfo: string, context: string, playerP
           role: "user",
           content: `NPC Information: ${npcInfo}\n\nContext: ${context}\n\n${playerPrompt ? `Player says: ${playerPrompt}` : "Generate an initial NPC greeting or reaction based on the context."}\n\nProvide only the NPC's dialogue response. Make it feel authentic to the character and setting.`
         }
-      ]
+      ],
+      max_tokens: 300, // Limit token output for faster responses
+      temperature: 0.7 // Slightly lower temperature for more consistent responses
     });
 
+    // Verify we got a valid response
+    if (!response.choices || !response.choices.length || !response.choices[0].message.content) {
+      console.error("Invalid or empty response from OpenAI", response);
+      throw new Error("AI generated an empty response. Please try again.");
+    }
+
     return response.choices[0].message.content;
-  } catch (error) {
-    console.error("Error generating dialogue:", error);
-    throw new Error("Failed to generate NPC dialogue");
+  } catch (error: any) {
+    // Enhanced error logging with more details
+    console.error("Error generating dialogue:", {
+      errorMessage: error.message,
+      errorName: error.name,
+      errorCode: error.code,
+      errorStatus: error.status,
+      npcInfoLength: npcInfo?.length,
+      contextLength: context?.length,
+      promptLength: playerPrompt?.length
+    });
+    
+    // Provide more specific error messages based on type
+    if (error.status === 401) {
+      throw new Error("Authentication error: Invalid API key");
+    } else if (error.status === 429) {
+      throw new Error("Rate limit exceeded: Too many requests to AI service");
+    } else if (error.status === 500) {
+      throw new Error("AI service error: Please try again later");
+    } else {
+      throw new Error(`Failed to generate NPC dialogue: ${error.message}`);
+    }
   }
 }
 

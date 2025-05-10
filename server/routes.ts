@@ -1744,19 +1744,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/bot-companion/query", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
+    // Create a log ID for this request to enable better error tracking
+    const requestId = Date.now().toString();
+    console.log(`[${requestId}] Bot companion query received`);
+    
     try {
       const { query, companionId, campaignId } = req.body;
+      
+      // Log request details
+      console.log(`[${requestId}] Request params:`, {
+        queryLength: query?.length || 0,
+        companionId,
+        campaignId,
+        userId: req.user.id
+      });
       
       if (!query) {
         return res.status(400).json({ message: "Query is required" });
       }
       
+      // Check for OpenAI API key
+      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "missing_key") {
+        console.error(`[${requestId}] Missing OpenAI API key`);
+        return res.status(503).json({ 
+          message: "API service unavailable", 
+          detail: "The AI service is not properly configured. Please contact an administrator."
+        });
+      }
+      
       // Get the bot companion
       const companion = await storage.getCharacter(parseInt(companionId));
       
-      if (!companion || !companion.isBot) {
+      if (!companion) {
+        console.error(`[${requestId}] Bot companion not found: ${companionId}`);
         return res.status(404).json({ message: "Bot companion not found" });
       }
+      
+      if (!companion.isBot) {
+        console.error(`[${requestId}] Character is not a bot: ${companionId}`);
+        return res.status(400).json({ message: "The selected character is not a bot companion" });
+      }
+      
+      console.log(`[${requestId}] Found bot companion: ${companion.name}`);
       
       // Get campaign context if available
       let context = "";
@@ -1771,48 +1800,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (recentLogs.length > 0) {
             context += "Recent events:\n" + recentLogs.map(log => `- ${log.content}`).join("\n");
           }
+          
+          console.log(`[${requestId}] Added campaign context from ${campaign.name}, with ${recentLogs.length} log entries`);
         }
       }
       
-      // Create bot character info string
-      const botInfo = `${companion.name} is a ${companion.race} ${companion.class}. ${companion.background || ""}`;
+      // Create bot character info string with improved details
+      const botInfo = `${companion.name} is a ${companion.race} ${companion.class}. ${companion.background || ""} 
+      Personality: ${companion.personality || "Helpful and wise."} 
+      Specialties: D&D rules, mechanics, and lore.`;
       
-      // Generate dialogue response
-      const response = await generateDialogue(botInfo, context, query);
+      console.log(`[${requestId}] Generating dialogue using OpenAI...`);
+      
+      // Generate dialogue response with timeout handling
+      let response;
+      try {
+        // Set a timeout for the OpenAI request (15 seconds)
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("AI response timeout")), 15000);
+        });
+        
+        // Race between the actual request and the timeout
+        response = await Promise.race([
+          generateDialogue(botInfo, context, query),
+          timeoutPromise
+        ]);
+        
+        console.log(`[${requestId}] Received AI response successfully`);
+      } catch (dialogueError: any) {
+        console.error(`[${requestId}] Error generating dialogue:`, dialogueError);
+        
+        // Create a user-friendly error message based on the specific error
+        let errorMessage = "Failed to get bot companion response";
+        if (dialogueError.message.includes("API key")) {
+          errorMessage = "AI service authentication error";
+        } else if (dialogueError.message.includes("timeout")) {
+          errorMessage = "AI response timed out - please try again";
+        } else if (dialogueError.status === 429) {
+          errorMessage = "AI service is currently at capacity - please try again later";
+        }
+        
+        // Return a specific error with helpful details
+        return res.status(503).json({ 
+          message: errorMessage,
+          detail: dialogueError.message,
+          requestId: requestId
+        });
+      }
       
       // Create a structured response with the answer and references
       const botResponse = {
-        answer: response,
+        message: response,
+        answer: response, // For backward compatibility
         references: [
           {
             title: "Player's Handbook",
             source: "Wizards of the Coast",
             page: Math.floor(Math.random() * 300) + 1
           }
-        ]
+        ],
+        requestId: requestId
       };
       
       // If this was from a campaign, add the dialogue to game logs
       if (campaignId) {
-        // Log the player's question
-        await storage.createGameLog({
-          campaignId: parseInt(campaignId),
-          content: query,
-          type: "player"
-        });
-        
-        // Log the bot's response
-        await storage.createGameLog({
-          campaignId: parseInt(campaignId),
-          content: response || "No response from companion",
-          type: "companion"
-        });
+        try {
+          // Log the player's question
+          await storage.createGameLog({
+            campaignId: parseInt(campaignId),
+            content: query,
+            type: "player"
+          });
+          
+          // Log the bot's response
+          await storage.createGameLog({
+            campaignId: parseInt(campaignId),
+            content: response || "No response from companion",
+            type: "companion"
+          });
+          
+          console.log(`[${requestId}] Added dialogue to game logs`);
+        } catch (logError) {
+          // Non-fatal error - just log it and continue
+          console.error(`[${requestId}] Error adding dialogue to game logs:`, logError);
+        }
       }
       
+      console.log(`[${requestId}] Bot companion query completed successfully`);
       return res.json(botResponse);
-    } catch (error) {
-      console.error("Error getting bot companion response:", error);
-      return res.status(500).json({ message: "Failed to get bot companion response" });
+    } catch (error: any) {
+      console.error(`[${requestId}] Unhandled error in bot companion query:`, error);
+      
+      // Create a more detailed error response with request ID for tracking
+      return res.status(500).json({ 
+        message: "Failed to get bot companion response", 
+        detail: error.message || "Unknown error",
+        requestId: requestId
+      });
     }
   });
   
