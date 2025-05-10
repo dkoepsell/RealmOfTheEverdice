@@ -504,9 +504,13 @@ export function AdventureMapPanel({
     typeof mapData.metadata === 'string' ? JSON.parse(mapData.metadata) : mapData.metadata
   ) : {};
   
+  // Extract world and Everdice data from metadata
+  const worldData = metadata?.worldData || {};
+  const everdiceData = metadata?.everdiceData || {};
+  
   // Extract region and continent names with better fallbacks
-  const regionName = metadata?.region?.name || mapData.regionName || "Unknown Region";
-  const continentName = metadata?.region?.continent || mapData.continentName || "Everdice World";
+  const regionName = everdiceData?.regionName || worldData?.regionName || mapData.regionName || "Unknown Region";
+  const continentName = everdiceData?.continent || worldData?.continent || mapData.continentName || "Everdice World";
   
   // Update worldMap state when the query data changes
   useEffect(() => {
