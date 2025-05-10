@@ -1485,8 +1485,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return res.status(404).json({ message: "Campaign not found" });
       
       // Allow both DM and players to add logs
-      const userCharacters = await storage.getCharactersByCampaignId(campaignId);
-      const isPlayerInCampaign = userCharacters.some(char => char.userId === req.user.id);
+      const campaignCharacters = await storage.getCampaignCharacters(campaignId);
+      
+      // Get the characters in this campaign
+      const characterPromises = campaignCharacters.map(cc => storage.getCharacter(cc.characterId));
+      const characters = await Promise.all(characterPromises);
+      
+      // Check if this user owns any of the characters in the campaign
+      const isPlayerInCampaign = characters.some(char => char && char.userId === req.user.id);
       
       if (campaign.dmId !== req.user.id && !isPlayerInCampaign) {
         return res.status(403).json({ message: "Forbidden" });
