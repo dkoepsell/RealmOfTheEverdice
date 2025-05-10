@@ -393,17 +393,31 @@ export class DatabaseStorage implements IStorage {
     try {
       const existing = await this.getEverdiceWorld();
       
+      // Extract continents if they exist, to handle them properly
+      const { continents, ...worldData } = world as any;
+      
       if (existing) {
+        // Update existing world, but handle continents separately
         const [updated] = await db
           .update(everdiceWorld)
           .set({
-            ...world,
+            ...worldData,
+            // Only update these fields if they're provided
+            name: world.name !== undefined ? world.name : existing.name,
+            description: world.description !== undefined ? world.description : existing.description,
+            mapUrl: world.mapUrl !== undefined ? world.mapUrl : existing.mapUrl,
+            lore: world.lore !== undefined ? world.lore : existing.lore,
+            metadata: world.metadata !== undefined ? world.metadata : existing.metadata,
             updatedAt: new Date()
           })
           .where(eq(everdiceWorld.id, existing.id))
           .returning();
-          
-        return updated;
+        
+        // Combine the updated data with the original continents if not provided in the update
+        return {
+          ...updated,
+          continents: continents || existing.continents
+        };
       } else {
         // Create a new Everdice world
         const [created] = await db
@@ -412,11 +426,15 @@ export class DatabaseStorage implements IStorage {
             name: "Everdice",
             description: "The mystical realm of Everdice, where all adventures take place.",
             lore: "Everdice is a realm of magic and wonder, where countless adventures unfold across its varied landscapes. From the mist-shrouded peaks of the Dragonspine Mountains to the sun-dappled shores of the Sapphire Coast, every corner of this vast world holds untold stories waiting to be discovered.",
-            ...world
+            ...worldData
           })
           .returning();
           
-        return created;
+        // Add continents to the new world if provided
+        return {
+          ...created,
+          continents: continents || null
+        };
       }
     } catch (error) {
       console.error("Error creating/updating Everdice world:", error);
@@ -749,16 +767,61 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
-    const [campaign] = await db.insert(campaigns).values(insertCampaign).returning();
+    // Make sure we only include fields that exist in the database
+    const fieldsToInsert: any = {
+      name: insertCampaign.name,
+      description: insertCampaign.description,
+      dmId: insertCampaign.dmId,
+      status: insertCampaign.status || 'active',
+      setting: insertCampaign.setting,
+      isAiDm: insertCampaign.isAiDm !== undefined ? insertCampaign.isAiDm : false
+    };
+    
+    // Avoid using currentTurnId which might not exist in the database yet
+    
+    const [campaign] = await db.insert(campaigns)
+      .values(fieldsToInsert)
+      .returning({
+        id: campaigns.id,
+        name: campaigns.name,
+        description: campaigns.description,
+        dmId: campaigns.dmId,
+        status: campaigns.status,
+        setting: campaigns.setting,
+        isAiDm: campaigns.isAiDm,
+        createdAt: campaigns.createdAt
+      });
+    
     return campaign;
   }
 
   async updateCampaign(id: number, campaignUpdate: Partial<Campaign>): Promise<Campaign | undefined> {
+    // Make sure we only update fields that exist in the database
+    const fieldsToUpdate: any = {};
+    
+    if (campaignUpdate.name !== undefined) fieldsToUpdate.name = campaignUpdate.name;
+    if (campaignUpdate.description !== undefined) fieldsToUpdate.description = campaignUpdate.description;
+    if (campaignUpdate.dmId !== undefined) fieldsToUpdate.dmId = campaignUpdate.dmId;
+    if (campaignUpdate.status !== undefined) fieldsToUpdate.status = campaignUpdate.status;
+    if (campaignUpdate.setting !== undefined) fieldsToUpdate.setting = campaignUpdate.setting;
+    if (campaignUpdate.isAiDm !== undefined) fieldsToUpdate.isAiDm = campaignUpdate.isAiDm;
+    
+    // Avoid using currentTurnId which might not exist in the database yet
+    
     const [updatedCampaign] = await db
       .update(campaigns)
-      .set(campaignUpdate)
+      .set(fieldsToUpdate)
       .where(eq(campaigns.id, id))
-      .returning();
+      .returning({
+        id: campaigns.id,
+        name: campaigns.name,
+        description: campaigns.description,
+        dmId: campaigns.dmId,
+        status: campaigns.status,
+        setting: campaigns.setting,
+        isAiDm: campaigns.isAiDm,
+        createdAt: campaigns.createdAt
+      });
     return updatedCampaign;
   }
 
