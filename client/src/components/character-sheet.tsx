@@ -12,10 +12,11 @@ interface CharacterSheetProps {
 }
 
 export const CharacterSheet = ({ character, onUpdateCharacter }: CharacterSheetProps) => {
-  const stats = character.stats as CharacterStats;
-  const equipment = character.equipment as CharacterEquipment;
-  const spells = character.spells as CharacterSpell[];
-  const abilities = character.abilities as CharacterAbility[];
+  const stats = character.stats as CharacterStats || {};
+  const equipment = character.equipment as CharacterEquipment || {};
+  const spells = character.spells as CharacterSpell[] || [];
+  // Make sure abilities is either an array or an empty array to prevent map errors
+  const abilities = Array.isArray(character.abilities) ? character.abilities as CharacterAbility[] : [];
   
   const getStatModifier = (statValue: number) => {
     return calculateModifier(statValue);

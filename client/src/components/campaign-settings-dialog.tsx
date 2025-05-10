@@ -29,16 +29,21 @@ export function CampaignSettingsDialog({
 }: CampaignSettingsDialogProps) {
   const { toast } = useToast();
   
-  const [title, setTitle] = useState(campaign?.title || "");
+  const [title, setTitle] = useState(campaign?.name || campaign?.title || "");
   const [description, setDescription] = useState(campaign?.description || "");
   
   // Update campaign mutation
   const updateCampaignMutation = useMutation({
     mutationFn: async () => {
+      // Send name or title depending on what the API expects
+      const requestData = campaign.hasOwnProperty('name') 
+        ? { name: title, description } 
+        : { title, description };
+        
       const res = await apiRequest(
         "PUT",
         `/api/campaigns/${campaign.id}`,
-        { title, description }
+        requestData
       );
       
       if (!res.ok) {
@@ -76,7 +81,7 @@ export function CampaignSettingsDialog({
   // Reset form when dialog opens
   const handleOpenChange = (open: boolean) => {
     if (open) {
-      setTitle(campaign?.title || "");
+      setTitle(campaign?.name || campaign?.title || "");
       setDescription(campaign?.description || "");
     }
     onOpenChange(open);
