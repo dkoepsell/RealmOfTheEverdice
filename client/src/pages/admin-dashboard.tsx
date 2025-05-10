@@ -540,13 +540,42 @@ export default function AdminDashboard() {
                             {campaignRegions.uniqueRegions.map((region: any, index: number) => (
                               <div 
                                 key={index}
-                                className="absolute w-3 h-3 rounded-full bg-primary animate-pulse"
+                                className="absolute"
                                 style={{
                                   left: `${(region.position?.[0] || 50) * 100}%`,
-                                  top: `${(region.position?.[1] || 50) * 100}%`
+                                  top: `${(region.position?.[1] || 50) * 100}%`,
+                                  transform: 'translate(-50%, -50%)'
                                 }}
-                                title={region.regionName || "Unnamed region"}
-                              />
+                              >
+                                {/* Region marker */}
+                                <div 
+                                  className="w-4 h-4 rounded-full bg-primary animate-pulse ring-2 ring-white shadow-lg"
+                                  title={`${region.regionName || "Unnamed region"} - ${region.campaignName || ""}`}
+                                />
+                                
+                                {/* Optional: small boundary to indicate region area */}
+                                <div 
+                                  className="absolute -inset-3 border-2 border-dashed border-primary/40 rounded-md opacity-70"
+                                  style={{
+                                    width: '35px',
+                                    height: '35px',
+                                    top: '-17.5px',
+                                    left: '-17.5px'
+                                  }}
+                                />
+                                
+                                {/* Region name label */}
+                                <div 
+                                  className="absolute whitespace-nowrap text-xs font-semibold bg-white/90 text-primary px-1 rounded shadow-sm"
+                                  style={{
+                                    top: '10px',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)'
+                                  }}
+                                >
+                                  {region.regionName || "Unknown Region"}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         )}

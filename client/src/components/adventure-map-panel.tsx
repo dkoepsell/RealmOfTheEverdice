@@ -421,7 +421,7 @@ export function AdventureMapPanel({
   // Get all paths
   const journeyPaths: JourneyPath[] = Array.isArray(pathsQuery.data) ? pathsQuery.data : [];
   
-  // Fetch world map from the API using React Query for better caching
+  // Fetch world map and region data from the API using React Query
   const worldMapQuery = useQuery({
     queryKey: [`/api/campaigns/${campaignId}/world-map`],
     queryFn: async () => {
@@ -451,22 +451,8 @@ export function AdventureMapPanel({
           return null;
         }
         
-        // Return the URL from the response
-        if (data.mapUrl) {
-          console.log("Using mapUrl from response:", data.mapUrl);
-          return data.mapUrl;
-        } else if ('url' in data) {
-          console.log("Using url from response:", data.url);
-          return data.url;
-        } else {
-          console.error("No map URL found in response data:", data);
-          toast({
-            title: "Map data issue",
-            description: "The map data is in an unexpected format",
-            variant: "destructive"
-          });
-          return null;
-        }
+        // Return the full data object with mapUrl and region metadata
+        return data;
       } catch (error) {
         console.error("Error fetching world map:", error);
         toast({
@@ -485,10 +471,43 @@ export function AdventureMapPanel({
     retryDelay: (attempt) => Math.min(attempt > 1 ? 2 ** attempt * 1000 : 1000, 30 * 1000)
   });
   
+  // Retrieve Everdice world map to show context
+  const everdiceWorldQuery = useQuery({
+    queryKey: ['/api/everdice/world'],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest('GET', '/api/everdice/world');
+        
+        if (!response.ok) {
+          console.error("Failed to fetch Everdice world map");
+          return null;
+        }
+        
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Error fetching Everdice world map:", error);
+        return null;
+      }
+    },
+    staleTime: 10 * 60 * 1000, // Consider data fresh for 10 minutes
+    retry: 2
+  });
+  
+  // Extract campaign region metadata from the world map response
+  const mapData = worldMapQuery.data || {};
+  const regionName = mapData.regionName || "Unknown Region";
+  const continentName = mapData.continentId || "Unknown Continent";
+  const metadata = mapData.metadata ? (
+    typeof mapData.metadata === 'string' ? JSON.parse(mapData.metadata) : mapData.metadata
+  ) : {};
+  
   // Update worldMap state when the query data changes
   useEffect(() => {
-    if (worldMapQuery.data) {
-      setWorldMap(worldMapQuery.data);
+    if (worldMapQuery.data?.mapUrl) {
+      setWorldMap(worldMapQuery.data.mapUrl);
+    } else if (worldMapQuery.data?.url) {
+      setWorldMap(worldMapQuery.data.url);
     }
   }, [worldMapQuery.data]);
   
@@ -642,14 +661,26 @@ export function AdventureMapPanel({
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Adventure Map</DialogTitle>
-            <DialogDescription>
-              Explore locations and plan your journey in this campaign.
+            <DialogDescription className="flex justify-between items-center">
+              <span>Explore locations and plan your journey in this campaign.</span>
+              {regionName && (
+                <Badge variant="outline" className="ml-2">
+                  Region: {regionName} of {continentName}
+                </Badge>
+              )}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Brief explanation of Everdice relationship */}
+            <div className="px-4 py-2 bg-muted/30 text-sm rounded-md mb-2">
+              <p className="text-muted-foreground">
+                This campaign takes place in <strong>{regionName}</strong>, a region within the <strong>{continentName}</strong> area of the world of Everdice. All campaigns in the realm share this common world.
+              </p>
+            </div>
+            
             {/* Left panel: Map */}
-            <div className="flex-1 h-[60vh] relative border rounded-md overflow-hidden">
+            <div className="flex-1 h-[55vh] relative border rounded-md overflow-hidden">
               <MapContainer
                 center={mapCenter}
                 zoom={zoom}
@@ -658,13 +689,45 @@ export function AdventureMapPanel({
                 className="fantasy-map-container border-4 border-amber-800/50 rounded-lg shadow-inner"
               >
                 {/* Fantasy Map Image Overlay */}
-                {worldMap ? (
+                {/* Add Everdice world map as background context if available */}
+                {everdiceWorldQuery.data?.mapUrl && (
                   <ImageOverlay
-                    url={worldMap}
+                    url={everdiceWorldQuery.data.mapUrl}
                     bounds={[[-85, -180], [85, 180]]}
-                    opacity={1.0}
-                    zIndex={10}
+                    opacity={0.3}
+                    zIndex={5}
                   />
+                )}
+                
+                {/* Main campaign map */}
+                {worldMap ? (
+                  <>
+                    <ImageOverlay
+                      url={worldMap}
+                      bounds={[[-85, -180], [85, 180]]}
+                      opacity={1.0}
+                      zIndex={10}
+                    />
+                    
+                    {/* Region indicator frame to show this is a portion of the Everdice world */}
+                    <Rectangle 
+                      bounds={[[-85, -180], [85, 180]]}
+                      pathOptions={{ 
+                        color: '#9333ea', 
+                        weight: 3, 
+                        opacity: 0.7,
+                        dashArray: '10, 10',
+                        fillOpacity: 0
+                      }}
+                      zIndex={15}
+                    >
+                      <Tooltip direction="center" permanent opacity={0.9}>
+                        <div className="text-xs font-semibold p-1">
+                          {regionName} - Part of {continentName}
+                        </div>
+                      </Tooltip>
+                    </Rectangle>
+                  </>
                 ) : (
                   <ImageOverlay
                     url="https://cdna.artstation.com/p/assets/images/images/018/066/339/large/anastasia-shabalina-.jpg"
