@@ -1053,7 +1053,8 @@ export class DatabaseStorage implements IStorage {
 
   async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
     try {
-      // First check if the campaigns table exists
+      // First check if the campaigns table exists and create it with all possible columns
+      // to avoid issues with missing columns when inserting data
       const tableExists = await this.executeRawQuery(
         `SELECT EXISTS (
            SELECT FROM information_schema.tables 
@@ -1078,17 +1079,64 @@ export class DatabaseStorage implements IStorage {
             lore TEXT,
             continents JSONB,
             metadata JSONB,
-            updated_at TIMESTAMP
+            updated_at TIMESTAMP,
+            difficulty TEXT,
+            level_range TEXT,
+            player_count INTEGER,
+            session_length TEXT,
+            campaign_type TEXT,
+            theme TEXT,
+            custom_rules TEXT,
+            privacy TEXT,
+            custom_backgrounds BOOLEAN DEFAULT FALSE
           )
         `, []);
+      } else {
+        // Check if we need to add any missing columns
+        const columnsToCheck = [
+          'difficulty', 'level_range', 'player_count', 'session_length', 'campaign_type',
+          'theme', 'custom_rules', 'privacy', 'custom_backgrounds', 'map_url', 'lore',
+          'continents', 'metadata', 'updated_at'
+        ];
+        
+        for (const column of columnsToCheck) {
+          try {
+            const columnExists = await this.executeRawQuery(
+              `SELECT EXISTS (
+                 SELECT FROM information_schema.columns
+                 WHERE table_name = 'campaigns' AND column_name = $1
+               )`,
+              [column]
+            );
+            
+            if (!columnExists || !columnExists[0].exists) {
+              console.log(`Adding missing column ${column} to campaigns table`);
+              
+              let dataType = 'TEXT';
+              if (column === 'player_count') dataType = 'INTEGER';
+              if (column === 'custom_backgrounds') dataType = 'BOOLEAN DEFAULT FALSE';
+              if (column === 'is_ai_dm') dataType = 'BOOLEAN DEFAULT FALSE';
+              if (column === 'created_at' || column === 'updated_at') dataType = 'TIMESTAMP';
+              if (column === 'continents' || column === 'metadata') dataType = 'JSONB';
+              
+              await this.executeRawQuery(
+                `ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS ${column} ${dataType}`,
+                []
+              );
+            }
+          } catch (columnError) {
+            console.error(`Error checking/adding column ${column}:`, columnError);
+            // Continue with other columns
+          }
+        }
       }
       
-      // Use raw SQL to avoid schema mismatches
+      // Use raw SQL to avoid schema mismatches - with improved column handling
       const insertQuery = `
         INSERT INTO campaigns
-        (name, description, dm_id, status, setting, is_ai_dm)
+        (name, description, dm_id, status, setting, is_ai_dm, difficulty, level_range, player_count, session_length, campaign_type, theme, custom_rules, privacy, custom_backgrounds, updated_at)
         VALUES
-        ($1, $2, $3, $4, $5, $6)
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
         RETURNING 
           id, 
           name, 
@@ -1097,7 +1145,17 @@ export class DatabaseStorage implements IStorage {
           status, 
           setting, 
           is_ai_dm as "isAiDm", 
-          created_at as "createdAt"
+          created_at as "createdAt",
+          difficulty,
+          level_range as "levelRange",
+          player_count as "playerCount",
+          session_length as "sessionLength",
+          campaign_type as "campaignType",
+          theme,
+          custom_rules as "customRules",
+          privacy,
+          custom_backgrounds as "customBackgrounds",
+          updated_at as "updatedAt"
       `;
       
       const values = [
@@ -1106,18 +1164,70 @@ export class DatabaseStorage implements IStorage {
         insertCampaign.dmId,
         insertCampaign.status || 'active',
         insertCampaign.setting,
-        insertCampaign.isAiDm !== undefined ? insertCampaign.isAiDm : false
+        insertCampaign.isAiDm !== undefined ? insertCampaign.isAiDm : false,
+        insertCampaign.difficulty || null,
+        insertCampaign.levelRange || null,
+        insertCampaign.playerCount || null,
+        insertCampaign.sessionLength || null,
+        insertCampaign.campaignType || null,
+        insertCampaign.theme || null,
+        insertCampaign.customRules || null,
+        insertCampaign.privacy || 'private',
+        insertCampaign.customBackgrounds !== undefined ? insertCampaign.customBackgrounds : false
       ];
       
       console.log("Executing campaign insert with values:", JSON.stringify(values, null, 2));
-      const result = await this.executeRawQuery(insertQuery, values);
       
-      if (!result || result.length === 0) {
-        throw new Error("Failed to create campaign - no rows returned");
+      let rawCampaign;
+      
+      try {
+        const result = await this.executeRawQuery(insertQuery, values);
+        
+        if (!result || result.length === 0) {
+          throw new Error("Failed to create campaign - no rows returned");
+        }
+        
+        // Handle date conversion explicitly
+        rawCampaign = result[0];
+      
+      } catch (insertError) {
+        console.error("Error with full campaign insert:", insertError);
+        
+        // Fall back to minimal insert if the full one fails
+        console.log("Attempting minimal campaign insert as fallback");
+        const minimalInsertQuery = `
+          INSERT INTO campaigns
+          (name, description, dm_id, status, is_ai_dm, updated_at)
+          VALUES
+          ($1, $2, $3, $4, $5, NOW())
+          RETURNING 
+            id, 
+            name, 
+            description, 
+            dm_id as "dmId", 
+            status, 
+            is_ai_dm as "isAiDm", 
+            created_at as "createdAt"
+        `;
+        
+        const minimalValues = [
+          insertCampaign.name,
+          insertCampaign.description,
+          insertCampaign.dmId,
+          insertCampaign.status || 'active',
+          insertCampaign.isAiDm !== undefined ? insertCampaign.isAiDm : false
+        ];
+        
+        const result = await this.executeRawQuery(minimalInsertQuery, minimalValues);
+        
+        if (!result || result.length === 0) {
+          throw new Error("Failed to create campaign with minimal insert - no rows returned");
+        }
+        
+        // Handle date conversion explicitly
+        rawCampaign = result[0];
       }
       
-      // Handle date conversion explicitly
-      const rawCampaign = result[0];
       console.log("Raw campaign from DB:", rawCampaign);
       
       if (!rawCampaign || typeof rawCampaign.id === 'undefined') {
@@ -1128,12 +1238,24 @@ export class DatabaseStorage implements IStorage {
       const campaign: Campaign = {
         id: rawCampaign.id,
         name: rawCampaign.name || "",
-        description: rawCampaign.description || "",
-        dmId: rawCampaign.dmId || insertCampaign.dmId,
-        status: rawCampaign.status,
-        setting: rawCampaign.setting,
-        isAiDm: rawCampaign.isAiDm,
-        createdAt: rawCampaign.createdAt ? new Date(rawCampaign.createdAt) : null
+        description: rawCampaign.description || null,
+        dmId: rawCampaign.dmId || insertCampaign.dmId, 
+        status: rawCampaign.status || 'active',
+        setting: rawCampaign.setting || null,
+        isAiDm: !!rawCampaign.isAiDm,
+        createdAt: rawCampaign.createdAt ? new Date(rawCampaign.createdAt) : null,
+        // Add additional fields with null fallbacks
+        updatedAt: rawCampaign.updatedAt ? new Date(rawCampaign.updatedAt) : null,
+        difficulty: rawCampaign.difficulty || null,
+        levelRange: rawCampaign.levelRange || null,
+        playerCount: typeof rawCampaign.playerCount === 'number' ? rawCampaign.playerCount : null,
+        sessionLength: rawCampaign.sessionLength || null,
+        campaignType: rawCampaign.campaignType || null,
+        theme: rawCampaign.theme || null,
+        customRules: rawCampaign.customRules || null,
+        privacy: rawCampaign.privacy || 'private',
+        customBackgrounds: !!rawCampaign.customBackgrounds,
+        currentTurnId: rawCampaign.currentTurnId || null
       };
       
       console.log("Returning campaign object:", JSON.stringify(campaign, null, 2));
@@ -1851,7 +1973,63 @@ export class DatabaseStorage implements IStorage {
   
   async deletePartyPlan(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(partyPlans).where(eq(partyPlans.id, id)).returning();
+      // Make sure the party plan exists before performing cascading delete
+      const plan = await this.getPartyPlan(id);
+      if (!plan) {
+        console.warn(`Party plan with ID ${id} not found, nothing to delete`);
+        return false;
+      }
+      
+      // First check if the table for items exists
+      const itemsTableExists = await this.executeRawQuery(
+        `SELECT EXISTS (
+           SELECT FROM information_schema.tables 
+           WHERE table_name = 'party_plan_items'
+         )`,
+        []
+      );
+      
+      if (itemsTableExists && itemsTableExists[0].exists) {
+        // Get all items for this plan
+        const items = await this.getPartyPlanItemsByPlanId(id);
+        
+        // First check if comments table exists
+        const commentsTableExists = await this.executeRawQuery(
+          `SELECT EXISTS (
+             SELECT FROM information_schema.tables 
+             WHERE table_name = 'party_plan_comments'
+           )`,
+          []
+        );
+        
+        if (commentsTableExists && commentsTableExists[0].exists) {
+          // Delete all comments for each item first
+          for (const item of items) {
+            try {
+              await db.delete(partyPlanComments)
+                .where(eq(partyPlanComments.itemId, item.id));
+            } catch (commentError) {
+              console.error(`Error deleting comments for item ${item.id}:`, commentError);
+              // Continue with other items
+            }
+          }
+        }
+        
+        // Delete all items for this plan
+        try {
+          await db.delete(partyPlanItems)
+            .where(eq(partyPlanItems.planId, id));
+        } catch (itemsError) {
+          console.error(`Error deleting items for plan ${id}:`, itemsError);
+          // Continue with plan deletion
+        }
+      }
+      
+      // Finally delete the plan itself
+      const result = await db.delete(partyPlans)
+        .where(eq(partyPlans.id, id))
+        .returning();
+      
       return result.length > 0;
     } catch (error) {
       console.error("Error deleting party plan:", error);
