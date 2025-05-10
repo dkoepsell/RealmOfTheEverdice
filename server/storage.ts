@@ -333,33 +333,49 @@ export class DatabaseStorage implements IStorage {
   // Implement World Map methods
   async getCampaignWorldMap(campaignId: number): Promise<CampaignWorldMap | undefined> {
     try {
-      // Use explicit column selection to avoid issues with missing columns
-      // Note: This table doesn't have an 'id' column - campaignId is the primary key
-      const [worldMap] = await db.select({
-        campaignId: campaignWorldMaps.campaignId,
-        mapUrl: campaignWorldMaps.mapUrl,
-        regionName: campaignWorldMaps.regionName,
-        continentId: campaignWorldMaps.continentId,
-        position: campaignWorldMaps.position,
-        bounds: campaignWorldMaps.bounds,
-        metadata: campaignWorldMaps.metadata,
-        updatedAt: campaignWorldMaps.updatedAt
-      })
-      .from(campaignWorldMaps)
-      .where(eq(campaignWorldMaps.campaignId, campaignId));
+      // Fix: Using raw SQL query to avoid column compatibility issues
+      const query = `
+        SELECT 
+          campaign_id as "campaignId",
+          map_url as "mapUrl",
+          region_name as "regionName",
+          continent_id as "continentId",
+          position,
+          bounds,
+          metadata,
+          generated_at as "generatedAt",
+          updated_at as "updatedAt"
+        FROM campaign_world_maps
+        WHERE campaign_id = $1
+      `;
       
-      return worldMap;
+      const result = await this.executeRawQuery(query, [campaignId]);
+      
+      if (result && result.length > 0) {
+        return result[0];
+      }
+      
+      return undefined;
     } catch (error) {
       // If there's a column-related error, try a more minimal query
       try {
-        const [minimalWorldMap] = await db.select({
-          campaignId: campaignWorldMaps.campaignId,
-          mapUrl: campaignWorldMaps.mapUrl
-        })
-        .from(campaignWorldMaps)
-        .where(eq(campaignWorldMaps.campaignId, campaignId));
+        const minimalQuery = `
+          SELECT 
+            campaign_id as "campaignId", 
+            map_url as "mapUrl",
+            generated_at as "generatedAt",
+            updated_at as "updatedAt"
+          FROM campaign_world_maps 
+          WHERE campaign_id = $1
+        `;
         
-        return minimalWorldMap;
+        const result = await this.executeRawQuery(minimalQuery, [campaignId]);
+        
+        if (result && result.length > 0) {
+          return result[0];
+        }
+        
+        return undefined;
       } catch (fallbackError) {
         console.error("Error getting campaign world map (even with minimal query):", fallbackError);
         return undefined;
