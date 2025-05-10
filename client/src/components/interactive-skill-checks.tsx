@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { DicesIcon, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { useLocation } from 'wouter';
 
 interface SkillCheck {
   id: string;
@@ -71,6 +73,7 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
   const [isRolling, setIsRolling] = useState(false);
   const [dieResult, setDieResult] = useState<number | null>(null);
   const { toast } = useToast();
+  const [location] = useLocation();
   
   // Detect skill checks in content
   useEffect(() => {
@@ -191,25 +194,21 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
             </TooltipProvider>
           );
           
-          // If auto-roll is enabled, automatically roll for the first skill check
-          if (autoRoll && !isRolling && skillChecks.length > 0 && skillChecks[0].id === checkId) {
-            handleSkillCheckClick(check);
-          }
+          // Removed auto-roll trigger - now requires explicit click from player
+          // This aligns with the UX decision: players should click on suggested checks
         }
       }
     }
     
     setHighlightedContent(<>{elements}</>);
-  }, [skillChecks, autoRoll, isRolling, content]);
+  }, [skillChecks, content]);
   
   const handleSkillCheckClick = (check: SkillCheck) => {
     setSelectedSkillCheck(check);
     
-    if (autoRoll) {
-      performSkillCheck(check);
-    } else {
-      setShowDiceDialog(true);
-    }
+    // Auto-roll now means "auto-advance after roll" not "auto-roll without clicking"
+    // So we always perform the roll when a player clicks on a check
+    performSkillCheck(check);
   };
   
   const getAbilityModifier = (ability: string): number => {
@@ -290,6 +289,32 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
           setShowDiceDialog(false);
           setIsRolling(false);
           setSelectedSkillCheck(null);
+          
+          // If auto-roll is enabled, this means we should automatically
+          // advance the narrative after a skill check is completed
+          if (autoRoll) {
+            // Extract campaign ID from URL path, e.g., "/campaigns/123/adventure"
+            const pathParts = location.split('/');
+            const campaignIndex = pathParts.findIndex(part => part === 'campaigns');
+            
+            if (campaignIndex !== -1 && pathParts.length > campaignIndex + 1) {
+              const campaignId = pathParts[campaignIndex + 1];
+              console.log('Auto-advancing narrative after skill check with auto-roll enabled');
+              
+              // Submit a special action to advance the narrative
+              apiRequest(
+                "POST",
+                `/api/campaigns/${campaignId}/action`,
+                { action: "continue" }
+              ).then(() => {
+                console.log('Auto-advance successful');
+              }).catch(error => {
+                console.error('Error auto-advancing narrative:', error);
+              });
+            } else {
+              console.error('Could not extract campaign ID from path for auto-advance');
+            }
+          }
         }, 1500);
       }
     }, frameDuration);
