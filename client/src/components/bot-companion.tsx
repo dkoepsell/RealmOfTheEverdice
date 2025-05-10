@@ -32,10 +32,11 @@ interface BotCompanionProps {
 
 interface BotMessage {
   id: string;
-  sender: 'user' | 'bot';
+  sender: 'user' | 'bot' | 'system';
   content: string;
   timestamp: Date;
-  type: 'message' | 'info' | 'rule' | 'lore';
+  type: 'message' | 'info' | 'rule' | 'lore' | 'error';
+  requestId?: string;
 }
 
 // Example bot companions
@@ -72,12 +73,19 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
   const [activeTab, setActiveTab] = useState("chat");
   const { toast } = useToast();
   
-  // Sample message history
+  // Initial message history with system welcome and bot greeting
   const [messages, setMessages] = useState<BotMessage[]>([
+    {
+      id: "system-welcome",
+      sender: "system",
+      content: "Welcome to the D&D Bot Companion! I'm here to help with rules, lore, and campaign information.",
+      timestamp: new Date(),
+      type: "info"
+    },
     {
       id: "welcome",
       sender: "bot",
-      content: `Hello! I'm ${BOT_COMPANIONS[0].name}, your D&D ${BOT_COMPANIONS[0].role}. How can I assist you today?`,
+      content: `Hello! I'm ${BOT_COMPANIONS[0].name}, your D&D ${BOT_COMPANIONS[0].role}. You can ask me about D&D rules, lore, or for advice during your adventure.`,
       timestamp: new Date(),
       type: "message"
     }
@@ -116,34 +124,87 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
     },
   });
 
-  // Ask bot question mutation
+  // Ask bot question mutation with improved error handling
   const askBotMutation = useMutation({
     mutationFn: async (data: { message: string, botId: number, context: string }) => {
-      const res = await apiRequest("POST", "/api/bot-companion/query", {
-        query: data.message,
-        companionId: data.botId,
-        campaignId: campaignId
-      });
-      return await res.json();
+      // Add request retry logic for better resilience
+      let attempts = 0;
+      const maxAttempts = 2;
+      
+      while (attempts < maxAttempts) {
+        try {
+          attempts++;
+          const res = await apiRequest("POST", "/api/bot-companion/query", {
+            query: data.message,
+            companionId: data.botId,
+            campaignId: campaignId
+          });
+          
+          // Check if the response was ok
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || errorData.detail || "Failed to get bot response");
+          }
+          
+          return await res.json();
+        } catch (err: any) {
+          // Only retry on network errors, not on API errors
+          if (attempts >= maxAttempts || (err.message && !err.message.includes("fetch failed"))) {
+            throw err;
+          }
+          
+          // Wait before retrying (500ms, then 1000ms)
+          await new Promise(resolve => setTimeout(resolve, 500 * attempts));
+        }
+      }
+      
+      throw new Error("Request failed after multiple attempts");
     },
     onSuccess: (response) => {
+      // Add system message to show successful connection if this is first message
+      if (messages.length <= 1) {
+        const systemMessage: BotMessage = {
+          id: `system-${Date.now()}`,
+          sender: "system",
+          content: `Connected to ${selectedBot.name} successfully.`,
+          timestamp: new Date(),
+          type: "info"
+        };
+        setMessages(prev => [...prev, systemMessage]);
+      }
+      
       const newMessage: BotMessage = {
         id: Date.now().toString(),
         sender: "bot",
-        content: response.message || response.response || "I'm not sure how to answer that.",
+        content: response.message || response.answer || "I'm not sure how to answer that.",
         timestamp: new Date(),
-        type: response.type || "message"
+        type: response.type || "message",
+        requestId: response.requestId
       };
       
       setMessages(prev => [...prev, newMessage]);
       setMessage("");
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      // Add the error as a system message in the chat
+      const errorMessage: BotMessage = {
+        id: `error-${Date.now()}`,
+        sender: "system",
+        content: `Error: ${error.message || "Failed to get bot response"}. Please try again.`,
+        timestamp: new Date(),
+        type: "error"
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
+      // Also show a toast notification
       toast({
-        title: "Failed to get bot response",
-        description: error.message,
+        title: "Bot companion error",
+        description: error.message || "Failed to get response. Please try again.",
         variant: "destructive",
       });
+      
+      console.error("Bot companion error:", error);
     },
   });
 
@@ -254,19 +315,31 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
               {messages.map((msg) => (
                 <div 
                   key={msg.id} 
-                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${
+                    msg.sender === 'user' 
+                      ? 'justify-end' 
+                      : msg.sender === 'system' 
+                        ? 'justify-center' 
+                        : 'justify-start'
+                  }`}
                 >
                   <div 
-                    className={`max-w-[80%] px-3 py-2 rounded-lg ${
+                    className={`max-w-[90%] px-3 py-2 rounded-lg ${
                       msg.sender === 'user' 
                         ? 'bg-amber-200/70 text-amber-900' 
+                        : msg.sender === 'system'
+                          ? msg.type === 'error'
+                            ? 'bg-red-100 text-red-800 border border-red-200 px-4 py-1.5'
+                            : 'bg-amber-100 text-amber-800 border border-amber-200 px-4 py-1.5'
                         : msg.type === 'rule' 
                           ? 'bg-blue-100 text-blue-800 border border-blue-200' 
                           : msg.type === 'lore' 
                             ? 'bg-purple-100 text-purple-800 border border-purple-200'
                             : msg.type === 'info'
                               ? 'bg-green-100 text-green-800 border border-green-200'
-                              : 'bg-white/90 text-amber-900 border border-amber-200'
+                              : msg.type === 'error'
+                                ? 'bg-red-100 text-red-800 border border-red-200'
+                                : 'bg-white/90 text-amber-900 border border-amber-200'
                     }`}
                   >
                     {msg.type !== 'message' && (
@@ -274,14 +347,29 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
                         {msg.type === 'rule' && <Shield className="h-3.5 w-3.5 mr-1 text-blue-600" />}
                         {msg.type === 'lore' && <BookOpen className="h-3.5 w-3.5 mr-1 text-purple-600" />}
                         {msg.type === 'info' && <Info className="h-3.5 w-3.5 mr-1 text-green-600" />}
+                        {msg.type === 'error' && 
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-red-600" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                          </svg>
+                        }
                         <span className="text-xs font-semibold uppercase">
-                          {msg.type === 'rule' ? 'Rule Reference' : msg.type === 'lore' ? 'Lore' : 'Info'}
+                          {
+                            msg.type === 'rule' ? 'Rule Reference' : 
+                            msg.type === 'lore' ? 'Lore' : 
+                            msg.type === 'error' ? 'Error' : 
+                            'Info'
+                          }
                         </span>
                       </div>
                     )}
                     <p className="text-sm whitespace-pre-line">{msg.content}</p>
                     <div className="text-xs opacity-70 mt-1 text-right">
                       {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {msg.requestId && (
+                        <span className="ml-1 text-[10px] opacity-50">{msg.requestId.substring(0, 4)}</span>
+                      )}
                     </div>
                   </div>
                 </div>
