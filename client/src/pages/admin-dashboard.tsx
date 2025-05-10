@@ -704,42 +704,51 @@ const AdminDashboard = () => {
                                   />
                                   
                                   {/* Map region markers - highlight campaign regions */}
-                                  {campaignRegions && campaignRegions.campaigns && campaignRegions.campaigns.map((campaign: any, index: number) => (
-                                    <div 
-                                      key={`region-${campaign.id || index}`}
-                                      className="absolute flex items-center justify-center"
-                                      style={{
-                                        // Position randomly if no actual coordinates, since we're just prototyping this feature
-                                        left: `${Math.random() * 80 + 10}%`,
-                                        top: `${Math.random() * 80 + 10}%`,
-                                        transform: 'translate(-50%, -50%)'
-                                      }}
-                                    >
+                                  {campaignRegions && campaignRegions.uniqueRegions && campaignRegions.uniqueRegions.map((regionName: string, index: number) => {
+                                    // Create a mock campaign object for display purposes
+                                    const campaign = {
+                                      id: index + 1, // Generate a unique ID
+                                      region: regionName, // Use the region name
+                                      name: `Campaign in ${regionName}` // Generate a display name
+                                    };
+                                    
+                                    return (
                                       <div 
-                                        className="group relative"
-                                        onClick={() => {
-                                          // Show region edit dialog
-                                          setSelectedRegion(campaign);
-                                          setRegionNameDialog(true);
+                                        key={`region-${index}`}
+                                        className="absolute flex items-center justify-center"
+                                        style={{
+                                          // Position randomly if no actual coordinates, since we're just prototyping this feature
+                                          left: `${Math.random() * 80 + 10}%`,
+                                          top: `${Math.random() * 80 + 10}%`,
+                                          transform: 'translate(-50%, -50%)'
                                         }}
                                       >
-                                        {/* Pulsing region marker with improved visibility */}
-                                        <div className="absolute -inset-3 rounded-full bg-primary/30 animate-pulse group-hover:bg-primary/60 transition-all"></div>
-                                        <div className="absolute -inset-1 rounded-full bg-amber-400/50 group-hover:bg-amber-400/80"></div>
-                                        <button className="relative h-6 w-6 rounded-full bg-amber-600 shadow-md hover:bg-amber-700 transition-colors flex items-center justify-center">
-                                          <MapPin className="h-3 w-3 text-white" />
-                                        </button>
-                                        
-                                        {/* Enhanced tooltips */}
-                                        <div className="absolute opacity-0 group-hover:opacity-100 bottom-8 bg-background/90 shadow-md rounded-md px-3 py-2 text-xs transition-opacity whitespace-nowrap z-20 border border-amber-200">
-                                          <div className="font-semibold text-amber-900">{campaign.region || 'Unnamed Region'}</div>
-                                          <div className="text-[10px] text-muted-foreground mt-1">
-                                            {campaign.name || 'Campaign'} • Click to edit
+                                        <div 
+                                          className="group relative"
+                                          onClick={() => {
+                                            // Show region edit dialog
+                                            setSelectedRegion(campaign);
+                                            setRegionNameDialog(true);
+                                          }}
+                                        >
+                                          {/* Pulsing region marker with improved visibility */}
+                                          <div className="absolute -inset-3 rounded-full bg-primary/30 animate-pulse group-hover:bg-primary/60 transition-all"></div>
+                                          <div className="absolute -inset-1 rounded-full bg-amber-400/50 group-hover:bg-amber-400/80"></div>
+                                          <button className="relative h-6 w-6 rounded-full bg-amber-600 shadow-md hover:bg-amber-700 transition-colors flex items-center justify-center">
+                                            <MapPin className="h-3 w-3 text-white" />
+                                          </button>
+                                          
+                                          {/* Enhanced tooltips */}
+                                          <div className="absolute opacity-0 group-hover:opacity-100 bottom-8 bg-background/90 shadow-md rounded-md px-3 py-2 text-xs transition-opacity whitespace-nowrap z-20 border border-amber-200">
+                                            <div className="font-semibold text-amber-900">{campaign.region || 'Unnamed Region'}</div>
+                                            <div className="text-[10px] text-muted-foreground mt-1">
+                                              {campaign.name || 'Campaign'} • Click to edit
+                                            </div>
                                           </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                                 
                                 <div className="absolute bottom-2 right-2 bg-background/80 p-1 px-2 rounded text-xs">
@@ -934,9 +943,9 @@ const AdminDashboard = () => {
                           <CardContent className="pt-0">
                             <p className="text-sm text-muted-foreground">
                               {campaignRegions && continent.regions ? 
-                                `${campaignRegions.campaigns?.filter((c: any) => 
-                                  continent.regions.some((r: any) => r.name === c.region)).length || 0} active campaigns` :
-                                "0 active campaigns"}
+                                `${campaignRegions.uniqueRegions?.filter((regionName: string) => 
+                                  continent.regions.some((r: any) => r.name === regionName)).length || 0} active regions` :
+                                "0 active regions"}
                             </p>
                             {continent.regions && continent.regions.length > 0 && (
                               <div className="mt-2">
@@ -952,12 +961,12 @@ const AdminDashboard = () => {
                                       {continent.regions.map((region: any, i: number) => (
                                         <li key={i} className="flex items-center">
                                           <span className={campaignRegions && 
-                                            campaignRegions.campaigns?.some((c: any) => c.region === region.name) ? 
+                                            campaignRegions.uniqueRegions?.includes(region.name) ? 
                                             "text-amber-700 font-medium" : ""}>
                                             {region.name}
                                           </span>
                                           {campaignRegions && 
-                                            campaignRegions.campaigns?.some((c: any) => c.region === region.name) && (
+                                            campaignRegions.uniqueRegions?.includes(region.name) && (
                                             <Badge variant="outline" className="ml-2 h-5 text-[10px]">
                                               Active
                                             </Badge>
