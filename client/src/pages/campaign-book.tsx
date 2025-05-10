@@ -106,11 +106,19 @@ export default function CampaignPage() {
   const [playerInput, setPlayerInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasUnclaimedLoot, setHasUnclaimedLoot] = useState(false);
+  const [isAutoRollEnabled, setIsAutoRollEnabled] = useState(() => {
+    // Try to load saved auto-roll setting from local storage, default to true if not found
+    const savedSetting = localStorage.getItem('autoRollEnabled');
+    return savedSetting ? savedSetting === 'true' : true;
+  });
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState(() => {
     // Try to load saved font size from local storage, default to 1 if not found
     const savedSize = localStorage.getItem('narrativeFontSize');
     return savedSize ? parseFloat(savedSize) : 1;
   });
+  
+  // NPC characters that have joined the party
+  const [npcPartyMembers, setNpcPartyMembers] = useState<Character[]>([]);
   
 
   
@@ -327,6 +335,192 @@ export default function CampaignPage() {
     setCombatTurn(0);
     setCombatRound(1);
     setCombatParticipants([]);
+  };
+  
+  // Add a game log entry and persist it to the server
+  const addGameLog = async (log: { type: string; content: string; metadata?: any }) => {
+    try {
+      if (!campaignId) return;
+      
+      // Add to local state immediately for responsive UI
+      const newLog = {
+        id: uuidv4(),
+        campaignId: Number(campaignId),
+        type: log.type,
+        content: log.content,
+        timestamp: new Date(),
+        metadata: log.metadata
+      };
+      
+      setGameLogs(prev => [...prev, newLog]);
+      
+      // Persist to server
+      const response = await fetch(`/api/campaigns/${campaignId}/logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: log.type,
+          content: log.content,
+          metadata: log.metadata
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to save game log');
+      }
+      
+      return newLog;
+    } catch (error) {
+      console.error('Error adding game log:', error);
+      return null;
+    }
+  };
+  
+  // Detect NPCs that have joined the party in narrative text
+  const detectNPCCharactersInNarrative = (narrativeContent: string) => {
+    if (!narrativeContent) return;
+    
+    // Patterns to detect NPC companions joining the party
+    const npcJoinPatterns = [
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*) (?:joins|has joined|agrees to join|will accompany|accompanies|follows) (?:your party|the party|you|the group)/i,
+      /(?:your party|the party|the group) (?:is joined by|welcomes|gains) ([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),? (?:a|an|the) ([a-z]+)(?: [a-z]+)* (?:joins|accompanies) (?:your party|the party|you|the group)/i
+    ];
+    
+    // Check for these patterns in the narrative
+    for (const pattern of npcJoinPatterns) {
+      const match = narrativeContent.match(pattern);
+      if (match) {
+        const npcName = match[1];
+        // Check if this NPC is already in the party
+        const isExistingMember = npcPartyMembers.some(member => member.name === npcName) || 
+                                  campaignCharacters?.some(character => character.name === npcName);
+        
+        if (!isExistingMember) {
+          // Create a basic NPC character
+          const npcClass = match[2] || deriveClassFromDescription(narrativeContent, npcName) || "Fighter";
+          
+          const newNpc: Character = {
+            id: -1 * (npcPartyMembers.length + 1), // Negative IDs for NPCs to distinguish from player characters
+            name: npcName,
+            race: "Human", // Default, could be refined with more analysis
+            class: npcClass,
+            level: currentCharacter?.level || 1,
+            background: null,
+            appearance: null,
+            backstory: null,
+            stats: {
+              strength: 10,
+              dexterity: 10,
+              constitution: 10,
+              intelligence: 10,
+              wisdom: 10,
+              charisma: 10
+            },
+            hp: 10,
+            maxHp: 10,
+            equipment: {
+              items: []
+            },
+            userId: -1, // Indicates NPC
+            isBot: true,
+            createdAt: new Date()
+          };
+          
+          // Add the NPC to the party
+          setNpcPartyMembers(prev => [...prev, newNpc]);
+          
+          // Add a notification about the new party member
+          toast({
+            title: "NPC Joined Party",
+            description: `${npcName} has joined your adventure party!`,
+            variant: "default"
+          });
+          
+          // TODO: In a real implementation, we'd send this NPC to the server
+          // so they persist across sessions
+        }
+        break; // Found one match, stop looking
+      }
+    }
+  };
+  
+  // Helper function to try to determine character class from narrative description
+  const deriveClassFromDescription = (content: string, npcName: string): string | null => {
+    const classPatterns = [
+      { pattern: /wizard|mage|sorcerer|arcanist/i, class: "Wizard" },
+      { pattern: /cleric|priest|healer|acolyte/i, class: "Cleric" },
+      { pattern: /fighter|warrior|soldier|knight/i, class: "Fighter" },
+      { pattern: /rogue|thief|assassin|scout/i, class: "Rogue" },
+      { pattern: /ranger|hunter|archer|tracker/i, class: "Ranger" },
+      { pattern: /paladin|templar|holy warrior/i, class: "Paladin" },
+      { pattern: /bard|minstrel|musician|performer/i, class: "Bard" },
+      { pattern: /barbarian|berserker|savage/i, class: "Barbarian" },
+      { pattern: /druid|shaman|nature priest/i, class: "Druid" },
+      { pattern: /monk|martial artist|ascetic/i, class: "Monk" },
+      { pattern: /warlock|occultist|witch/i, class: "Warlock" }
+    ];
+    
+    // Look for class descriptions near the character name
+    const nameIndex = content.indexOf(npcName);
+    if (nameIndex !== -1) {
+      const surroundingContext = content.substring(
+        Math.max(0, nameIndex - 100), 
+        Math.min(content.length, nameIndex + 100)
+      );
+      
+      for (const { pattern, class: className } of classPatterns) {
+        if (pattern.test(surroundingContext)) {
+          return className;
+        }
+      }
+    }
+    
+    return null;
+  };
+  
+  const handleRollOutcome = async (skill: string, rollResult: number, success?: boolean) => {
+    try {
+      if (!campaignId || !currentCharacter) return;
+      
+      // Send the roll outcome to the API to continue the story
+      const response = await fetch(`/api/campaigns/${campaignId}/continue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: `rolled a ${skill} check and got ${rollResult}${success !== undefined ? success ? ' (Success)' : ' (Failure)' : ''}`,
+          characterId: currentCharacter.id
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to send roll outcome to API');
+      }
+      
+      const data = await response.json();
+      
+      // Add the narrative response based on the roll outcome
+      if (data.content) {
+        addGameLog({
+          type: "narrative",
+          content: data.content
+        });
+        
+        // Check for new NPCs or party members in the narrative
+        detectNPCCharactersInNarrative(data.content);
+      }
+    } catch (error) {
+      console.error('Error sending roll outcome:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to process roll outcome. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
   
   const onAddParticipant = (participant: any) => {
@@ -931,15 +1125,41 @@ export default function CampaignPage() {
                       
                       {log.type === "narrative" && (
                         <div className="prose prose-amber max-w-none">
-                          <p 
+                          <div 
                             className="mb-4" 
                             style={{ 
                               fontSize: `${1 * fontSizeMultiplier}rem`,
                               lineHeight: 1.5
                             }}
                           >
-                            {log.content}
-                          </p>
+                            <InteractiveSkillChecks
+                              content={log.content}
+                              autoRoll={isAutoRollEnabled}
+                              character={currentCharacter}
+                              onRollSkillCheck={(skill, roll, modifier, dc) => {
+                                // Add the roll to the campaign logs
+                                const rollResult = roll + modifier;
+                                const success = dc ? rollResult >= dc : undefined;
+                                const rollMessage = `${currentCharacter?.name || 'You'} rolled a ${skill} check: ${roll} + ${modifier} = ${rollResult}${dc ? ` vs DC ${dc}` : ''}${success !== undefined ? success ? ' (Success)' : ' (Failure)' : ''}`;
+                                
+                                addGameLog({
+                                  type: "roll",
+                                  content: rollMessage,
+                                  metadata: {
+                                    roll,
+                                    modifier,
+                                    total: rollResult,
+                                    dc,
+                                    success,
+                                    skill
+                                  }
+                                });
+                                
+                                // If this is part of the story progression, send to the API
+                                handleRollOutcome(skill, rollResult, success);
+                              }}
+                            />
+                          </div>
                         </div>
                       )}
                       
