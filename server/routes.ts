@@ -1534,11 +1534,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
       
-      // Get user's character in the campaign
-      const characters = await storage.getCharactersByCampaignId(campaignId);
-      const userCharacter = characters.find(char => char.userId === req.user.id);
+      // Get all characters in the campaign
+      const campaignCharacters = await storage.getCampaignCharacters(campaignId);
       
-      if (!userCharacter && campaign.dmId !== req.user.id) {
+      // Get full character details
+      const characterPromises = campaignCharacters.map(cc => 
+        storage.getCharacter(cc.characterId)
+      );
+      const characters = await Promise.all(characterPromises);
+      
+      // Find if user has a character in this campaign
+      const userCharacter = characters.find(char => char && char.userId === req.user.id);
+      
+      // Allow DM or players with characters to generate responses
+      if (campaign.dmId !== req.user.id && !userCharacter) {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -1557,6 +1566,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Player action is required" });
       }
       
+      // Always record the player's action first
+      const playerLog = await storage.createGameLog({
+        campaignId,
+        content: playerAction,
+        type: "player",
+        timestamp: new Date()
+      });
+      
       try {
         // Use OpenAI to generate a response
         const narrativeResponse = await generateGameNarration(
@@ -1573,12 +1590,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timestamp: new Date()
         });
         
-        res.json({ success: true, response: narrativeResponse, logId: narrativeLog.id });
+        res.json({ 
+          success: true, 
+          response: narrativeResponse, 
+          logId: narrativeLog.id,
+          playerLogId: playerLog.id
+        });
       } catch (aiError) {
         console.error("AI generation error:", aiError);
         
-        // Fallback narrative in case OpenAI fails
-        const fallbackNarrative = `The Dungeon Master pauses for a moment, considering your action. "That's an interesting approach! Let me think about how that plays out..." (There was an issue generating the AI response, but your action was recorded successfully. Try again in a moment.)`;
+        // Create a fallback response that acknowledges the player's action
+        let playerActionSummary = playerAction;
+        if (playerAction.length > 50) {
+          playerActionSummary = playerAction.substring(0, 47) + '...';
+        }
+        
+        const fallbackNarrative = `The Dungeon Master acknowledges your action: "${playerActionSummary}"\n\nThe DM pauses for a moment, considering your choices. "That's an interesting approach! Let me think about how that plays out..." (There was an issue generating the AI response, but your action was recorded successfully. Try again in a moment.)`;
         
         // Add the fallback narrative to the game logs
         const fallbackLog = await storage.createGameLog({
@@ -1592,13 +1619,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: true, 
           response: fallbackNarrative, 
           logId: fallbackLog.id,
+          playerLogId: playerLog.id,
           error: "AI generation failed, using fallback response" 
         });
       }
     } catch (error) {
       console.error("Error generating response:", error);
+      
+      // Try to at least record the player's action even if something else failed
+      try {
+        // Create a player log entry
+        await storage.createGameLog({
+          campaignId: parseInt(req.params.id),
+          content: req.body.playerAction || "Unknown action",
+          type: "player",
+          timestamp: new Date()
+        });
+        
+        // Create an error narrative
+        const errorNarrative = "There was an error processing your action. Please try again or contact support if the issue persists.";
+        await storage.createGameLog({
+          campaignId: parseInt(req.params.id),
+          content: errorNarrative,
+          type: "error",
+          timestamp: new Date()
+        });
+      } catch (logError) {
+        console.error("Failed to create fallback logs:", logError);
+      }
+      
       res.status(500).json({ 
-        message: "Failed to generate response",
+        message: "Failed to process your action. Please try again.",
         error: error.message
       });
     }
