@@ -809,15 +809,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a world map for the new campaign
       try {
         console.log("Generating world map for new campaign:", campaign.id);
-        const mapData = await generateWorldMap(campaign.id, campaign);
-        await storage.createOrUpdateCampaignWorldMap({
+        
+        // Get the Everdice world - if it doesn't exist, it will be created
+        let everdiceWorld = await storage.getEverdiceWorld();
+        if (!everdiceWorld) {
+          console.log("Everdice world not found, creating it");
+          everdiceWorld = await storage.createOrUpdateEverdiceWorld({
+            name: "Everdice",
+            description: "The mystical realm of Everdice, where all adventures take place.",
+            lore: "Everdice is a realm of magic and wonder, where countless adventures unfold across its varied landscapes. From the mist-shrouded peaks of the Dragonspine Mountains to the sun-dappled shores of the Sapphire Coast, every corner of this vast world holds untold stories waiting to be discovered."
+          });
+          console.log("Created Everdice world:", everdiceWorld);
+        } else {
+          console.log("Using existing Everdice world:", everdiceWorld);
+        }
+        
+        // Generate the world map with Everdice integration
+        const mapData = await generateWorldMap(campaign.id, campaign, everdiceWorld);
+        
+        // Create the world map data with Everdice integration
+        const worldMapData = {
           campaignId: campaign.id,
-          mapUrl: mapData.url
-        });
+          mapUrl: mapData.url,
+          regionName: mapData.everdiceData?.regionName || campaign.name,
+          continentId: mapData.everdiceData?.continent || "Unknown Continent",
+          metadata: JSON.stringify({
+            worldData: mapData.worldData || {},
+            everdiceData: mapData.everdiceData || {
+              continent: "Unknown Continent",
+              regionName: campaign.name,
+              regionType: "region",
+              connectionToEverdice: "This region exists within the world of Everdice."
+            }
+          })
+        };
+        
+        // Save the world map to the database with the metadata
+        await storage.createOrUpdateCampaignWorldMap(worldMapData);
         console.log("World map generated successfully for campaign:", campaign.id);
       } catch (mapError) {
         console.error("Failed to generate world map for new campaign:", mapError);
-        // Continue even if map generation fails - we'll just not have a map initially
+        console.error("Map generation error details:", mapError.message || "No additional details");
+        
+        // Create a default world map with placeholder data
+        try {
+          console.log("Creating fallback world map for campaign:", campaign.id);
+          const fallbackWorldMapData = {
+            campaignId: campaign.id,
+            mapUrl: "https://replit.com/cdn-cgi/image/width=3840,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg", // Default Everdice world map
+            regionName: campaign.name,
+            continentId: "Unknown Continent",
+            metadata: JSON.stringify({
+              worldData: {},
+              everdiceData: {
+                continent: "Unknown Continent",
+                regionName: campaign.name,
+                regionType: "region",
+                connectionToEverdice: "This region exists within the world of Everdice."
+              }
+            })
+          };
+          
+          await storage.createOrUpdateCampaignWorldMap(fallbackWorldMapData);
+          console.log("Created fallback world map for campaign:", campaign.id);
+        } catch (fallbackError) {
+          console.error("Failed to create fallback world map:", fallbackError);
+        }
       }
       
       // Generate and save campaign introduction narrative
@@ -1881,10 +1938,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Anyone in the campaign (DM or player) can view the world map
       const campaignId = campaign.id;
-      const worldMap = await storage.getCampaignWorldMap(campaignId);
+      let worldMap = await storage.getCampaignWorldMap(campaignId);
       
+      // If no world map exists, create a fallback one
       if (!worldMap) {
-        return res.status(404).json({ message: "World map not found" });
+        console.log(`No world map found for campaign ${campaignId}, creating fallback map`);
+        
+        // Create a default world map with placeholder data
+        try {
+          // Get the Everdice world
+          let everdiceWorld = await storage.getEverdiceWorld();
+          if (!everdiceWorld) {
+            console.log("Everdice world not found, creating it");
+            everdiceWorld = await storage.createOrUpdateEverdiceWorld({
+              name: "Everdice",
+              description: "The mystical realm of Everdice, where all adventures take place.",
+              lore: "Everdice is a realm of magic and wonder, where countless adventures unfold across its varied landscapes. From the mist-shrouded peaks of the Dragonspine Mountains to the sun-dappled shores of the Sapphire Coast, every corner of this vast world holds untold stories waiting to be discovered."
+            });
+          }
+          
+          const fallbackWorldMapData = {
+            campaignId: campaignId,
+            mapUrl: "https://replit.com/cdn-cgi/image/width=3840,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg", // Default Everdice world map
+            regionName: campaign.name,
+            continentId: "Unknown Continent",
+            metadata: JSON.stringify({
+              worldData: {},
+              everdiceData: {
+                continent: "Unknown Continent",
+                regionName: campaign.name,
+                regionType: "region",
+                connectionToEverdice: "This region exists within the world of Everdice."
+              }
+            })
+          };
+          
+          worldMap = await storage.createOrUpdateCampaignWorldMap(fallbackWorldMapData);
+          console.log("Created fallback world map for campaign:", campaignId);
+        } catch (fallbackError) {
+          console.error("Failed to create fallback world map:", fallbackError);
+          return res.status(404).json({ message: "World map not found and could not create fallback" });
+        }
       }
       
       // Get the Everdice world for context
@@ -1892,24 +1986,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Parse any JSON metadata
       let worldData = {};
-      let everdiceData = {};
+      let everdiceData = {
+        continent: worldMap.continentId || "Unknown Continent",
+        regionName: worldMap.regionName || campaign.name,
+        regionType: "region",
+        connectionToEverdice: "This region exists within the world of Everdice."
+      };
       
       if (worldMap.metadata) {
         try {
           const metadata = JSON.parse(worldMap.metadata);
           worldData = metadata.worldData || {};
-          everdiceData = metadata.everdiceData || {};
+          
+          // Only use metadata everdiceData if it's actually present
+          if (metadata.everdiceData && Object.keys(metadata.everdiceData).length > 0) {
+            everdiceData = {
+              ...everdiceData, // Keep defaults as fallback
+              ...metadata.everdiceData // Override with stored values
+            };
+          }
         } catch (e) {
           console.error("Error parsing world map metadata:", e);
         }
       }
       
+      console.log(`Returning world map for campaign ${campaignId}:`, {
+        mapUrl: worldMap.mapUrl,
+        continentId: worldMap.continentId,
+        regionName: worldMap.regionName
+      });
+      
       // Return in the format the client expects, with Everdice context
       res.json({
         campaignId: worldMap.campaignId,
         mapUrl: worldMap.mapUrl,
-        continentId: worldMap.continentId,
-        regionName: worldMap.regionName,
+        continentId: worldMap.continentId || everdiceData.continent,
+        regionName: worldMap.regionName || everdiceData.regionName,
         worldData: worldData,
         everdiceData: everdiceData,
         generatedAt: worldMap.generatedAt,
@@ -1917,11 +2029,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         everdiceWorld: everdiceWorld ? {
           name: everdiceWorld.name,
           continents: everdiceWorld.continents
-        } : null
+        } : {
+          name: "Everdice",
+          continents: []
+        }
       });
     } catch (error) {
       console.error("Error getting world map:", error);
-      res.status(500).json({ message: "Failed to get world map" });
+      
+      // Return a minimal fallback response so the client doesn't crash
+      res.status(200).json({
+        campaignId: parseInt(req.params.id),
+        mapUrl: "https://replit.com/cdn-cgi/image/width=3840,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg", // Default Everdice world map
+        continentId: "Unknown Continent",
+        regionName: "Unknown Region",
+        worldData: {},
+        everdiceData: {
+          continent: "Unknown Continent",
+          regionName: "Unknown Region",
+          regionType: "region",
+          connectionToEverdice: "This region exists within the world of Everdice."
+        },
+        generatedAt: new Date(),
+        updatedAt: new Date(),
+        everdiceWorld: {
+          name: "Everdice",
+          continents: []
+        }
+      });
     }
   });
   
