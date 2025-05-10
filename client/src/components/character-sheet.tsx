@@ -19,11 +19,17 @@ export const CharacterSheet = ({ character, onUpdateCharacter }: CharacterSheetP
   const abilities = Array.isArray(character.abilities) ? character.abilities as CharacterAbility[] : [];
   
   const getStatModifier = (statValue: number) => {
+    // Add null safety for undefined stats
+    if (statValue === undefined || statValue === null) {
+      return 0;
+    }
     return calculateModifier(statValue);
   };
   
-  // Calculate health percentage
-  const healthPercentage = (character.hp / character.maxHp) * 100;
+  // Calculate health percentage with null safety
+  const healthPercentage = character.hp && character.maxHp ? 
+    (character.hp / character.maxHp) * 100 : 
+    0;
   
   return (
     <Card className="bg-parchment border-accent">
