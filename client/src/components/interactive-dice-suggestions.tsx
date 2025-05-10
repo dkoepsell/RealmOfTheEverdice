@@ -369,43 +369,27 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
   // Track if we've already triggered an auto-advance for the current roll
   const [autoAdvanceTriggered, setAutoAdvanceTriggered] = useState(false);
   
-  // Auto-roll feature
-  useEffect(() => {
-    // Only auto-roll if there's a dice suggestion and it hasn't been auto-rolled yet
-    // and if the user has auto-roll enabled in their settings
-    const autoRollEnabled = localStorage.getItem('diceRollerAutoRoll') === 'true';
-    
-    if (diceSuggestions.length > 0 && !autoRolled && autoRollEnabled) {
-      // Get the first dice suggestion
-      const suggestion = diceSuggestions[0];
-      
-      // Set the current suggestion
-      setCurrentSuggestion(suggestion);
-      
-      // Automatically open the modal to show the roll
-      setIsModalOpen(true);
-      
-      // Mark as auto-rolled to prevent infinite loop
-      setAutoRolled(true);
-      setAutoAdvanceTriggered(false); // Reset auto-advance trigger state
-      
-      // Call the performRoll function after a short delay
-      const timer = setTimeout(() => {
-        performRoll();
-      }, 800);  // Delay for 800ms to allow the modal to render first
-      
-      return () => clearTimeout(timer);
-    }
-  }, [diceSuggestions, autoRolled]);
+  // Remove the auto-roll effect - we now require player clicks on suggestions
+  // This aligns with the intended behavior:
+  // 1. Players must click on the suggested checks in the narrative
+  // 2. Only if auto-roll is enabled, the narrative will advance after the roll
+  //
+  // Note: We've removed the effect that triggered automatic dice rolls
+  // The functionality is now fully controlled by player clicks on the suggestions
   
-  // Separate effect to handle auto-advancing after roll is complete
+  // Effect to handle auto-advancing after roll is complete
   useEffect(() => {
-    const autoAdvanceEnabled = localStorage.getItem('storyAutoAdvance') === 'true';
+    // Check for the auto-roll setting which should now be called isAutoRollEnabled
+    // for clarity that it's about auto-advancing the story after a roll
+    const isAutoRollEnabled = localStorage.getItem('autoRollEnabled') === 'true';
     
-    // Only trigger auto-advance if we have a roll result, auto-advance is enabled,
-    // and we haven't already triggered an auto-advance for this roll
-    if (rollResult && autoAdvanceEnabled && onAdvanceStory && !autoAdvanceTriggered) {
-      console.log("Auto-advance triggered based on roll result");
+    // Only trigger auto-advance if:
+    // 1. We have a roll result
+    // 2. Auto-roll is enabled (meaning auto-advance after rolls)
+    // 3. We have the advance story callback
+    // 4. We haven't already triggered an auto-advance for this roll
+    if (rollResult && isAutoRollEnabled && onAdvanceStory && !autoAdvanceTriggered) {
+      console.log("Auto-advance triggered based on roll result with auto-roll enabled");
       setAutoAdvanceTriggered(true); // Mark as triggered to prevent multiple advances
       
       // Wait a moment to show the roll result before advancing
@@ -421,6 +405,14 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
       }, 2500); // Show roll result for 2.5 seconds
       
       return () => clearTimeout(advanceTimer);
+    } else if (rollResult && !isAutoRollEnabled) {
+      // If auto-roll is disabled, we still want to close the modal after a delay
+      // but we won't auto-advance the story
+      const modalCloseTimer = setTimeout(() => {
+        setIsModalOpen(false);
+      }, 3000); // Show roll result for 3 seconds
+      
+      return () => clearTimeout(modalCloseTimer);
     }
   }, [rollResult, onAdvanceStory, autoAdvanceTriggered]);
 
