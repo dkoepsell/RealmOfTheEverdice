@@ -106,43 +106,62 @@ export default function CampaignCreation() {
         title: "Campaign Created",
         description: "Your campaign has been created successfully!",
       });
+      
+      // Log the entire campaign object for debugging
+      console.log("Full campaign object returned:", JSON.stringify(campaign));
+      
+      // Invalidate campaign queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       
-      // Verify campaign has an ID and store it
-      if (!campaign || !campaign.id) {
-        console.error("Created campaign is missing ID:", campaign);
+      // Verify campaign has an ID and store it with enhanced validation
+      if (!campaign) {
+        console.error("Created campaign is undefined or null");
         toast({
           title: "Warning",
-          description: "Campaign created but ID is missing. Please refresh the page.",
+          description: "Campaign created but response is invalid. Please refresh the page.",
           variant: "destructive"
         });
         return;
       }
       
-      console.log("Campaign created successfully:", campaign);
+      // Extract ID with more robust parsing
+      let parsedId: number | null = null;
       
-      // Update state with the new campaign ID with validation
-      const parsedId = campaign.id !== undefined && !isNaN(Number(campaign.id)) ? Number(campaign.id) : undefined;
-      if (parsedId && parsedId > 0) {
+      // Try multiple approaches to extract a valid ID
+      if (campaign.id !== undefined && campaign.id !== null) {
+        // Direct access if it exists
+        if (typeof campaign.id === 'number') {
+          parsedId = campaign.id;
+        } else if (typeof campaign.id === 'string') {
+          parsedId = parseInt(campaign.id, 10);
+        } else {
+          try {
+            // Final attempt to convert
+            parsedId = Number(campaign.id);
+          } catch (e) {
+            console.error("Failed to parse campaign ID:", e);
+          }
+        }
+      }
+      
+      // Validate the parsed ID
+      if (parsedId !== null && !isNaN(parsedId) && parsedId > 0) {
         console.log("Valid campaign ID received:", parsedId);
         setNewCampaignId(parsedId);
+        
+        // Add a delay to ensure state update before showing dialog
+        setTimeout(() => {
+          console.log("Opening add character dialog for campaign:", parsedId);
+          setShowAddCharacterDialog(true);
+        }, 500); // Increased delay for state to update
       } else {
         console.error("Invalid campaign ID received:", campaign.id, "parsed as:", parsedId);
         toast({
           title: "Error",
-          description: "Unable to get valid campaign ID. Please try again.",
+          description: "Unable to get valid campaign ID. Please try again or create a new campaign.",
           variant: "destructive",
         });
       }
-      
-      // Add a delay to ensure state update before showing dialog
-      setTimeout(() => {
-        // Only proceed if we have a valid campaign ID
-        if (parsedId && parsedId > 0) {
-          console.log("Opening add character dialog for campaign:", parsedId);
-          setShowAddCharacterDialog(true);
-        }
-      }, 250);
     },
     onError: (error) => {
       toast({
@@ -180,23 +199,10 @@ export default function CampaignCreation() {
   // Simplified campaign generation using templates instead of calling OpenAI
   const generateCampaignMutation = useMutation({
     mutationFn: async () => {
-      // Instead of calling the API, we'll use a local template to avoid timeout errors
-      try {
-        // Try to call the API first, but with a quick timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
-        
-        const res = await apiRequest("POST", "/api/generate/campaign", {}, { 
-          signal: controller.signal 
-        });
-        
-        clearTimeout(timeoutId);
-        return await res.json();
-      } catch (error) {
-        // If API fails or times out, fall back to a template
-        console.log("Using fallback template due to API error");
-        return campaignTemplates[Math.floor(Math.random() * campaignTemplates.length)];
-      }
+      // Use local templates to avoid timing out or hanging
+      console.log("Generating campaign template...");
+      // Skip API call completely and use templates directly for reliability
+      return campaignTemplates[Math.floor(Math.random() * campaignTemplates.length)];
     },
     onSuccess: (data) => {
       // Update form with generated data
@@ -242,28 +248,30 @@ export default function CampaignCreation() {
       <main className="flex-grow container mx-auto px-4 py-8">
         {/* Add Character Dialog - opens after campaign creation */}
         <AddCharacterDialog
-          campaignId={newCampaignId && newCampaignId > 0 ? newCampaignId : undefined}
+          campaignId={newCampaignId !== null && newCampaignId > 0 ? newCampaignId : undefined}
           open={showAddCharacterDialog}
           onOpenChange={(open) => {
             setShowAddCharacterDialog(open);
             // If dialog is closed without adding a character, navigate to campaign
-            if (!open && newCampaignId && newCampaignId > 0) {
-              console.log("Navigating to campaign page with ID:", newCampaignId);
-              navigate(`/campaigns/${newCampaignId}`);
-            } else if (!open) {
-              console.error("Cannot navigate: Invalid campaign ID:", newCampaignId);
-              toast({
-                title: "Navigation Error",
-                description: "Could not navigate to campaign due to invalid ID.",
-                variant: "destructive",
-              });
-              // Navigate back to campaigns list as fallback
-              navigate('/campaigns');
+            if (!open) {
+              if (newCampaignId !== null && newCampaignId > 0) {
+                console.log("Navigating to campaign page with ID:", newCampaignId);
+                navigate(`/campaigns/${newCampaignId}`);
+              } else {
+                console.error("Cannot navigate: Invalid campaign ID:", newCampaignId);
+                toast({
+                  title: "Navigation Error",
+                  description: "Could not navigate to campaign due to invalid ID.",
+                  variant: "destructive",
+                });
+                // Navigate back to campaigns list as fallback
+                navigate('/campaigns');
+              }
             }
           }}
           onCharacterAdded={() => {
             // Navigate to the new campaign after adding a character
-            if (newCampaignId && newCampaignId > 0) {
+            if (newCampaignId !== null && newCampaignId > 0) {
               console.log("Character added, navigating to campaign:", newCampaignId);
               navigate(`/campaigns/${newCampaignId}`);
             } else {

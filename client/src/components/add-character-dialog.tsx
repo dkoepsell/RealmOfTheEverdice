@@ -74,10 +74,30 @@ export function AddCharacterDialog({
   
   // Validate campaign ID whenever it changes
   useEffect(() => {
-    // Parse and validate the campaign ID
-    const parsedId = campaignId && !isNaN(Number(campaignId)) ? Number(campaignId) : 0;
+    // Directly log what we received to debug
+    console.log("AddCharacterDialog received campaignId:", campaignId, "type:", typeof campaignId);
     
-    if (parsedId <= 0) {
+    // Enhanced parsing with additional safety checks
+    let parsedId = 0;
+    
+    // Handle various campaign ID formats
+    if (campaignId !== undefined && campaignId !== null) {
+      if (typeof campaignId === 'number') {
+        parsedId = campaignId;
+      } else if (typeof campaignId === 'string') {
+        parsedId = parseInt(campaignId, 10);
+      } else {
+        try {
+          // Try converting to a number with fallback
+          parsedId = Number(campaignId) || 0;
+        } catch (e) {
+          console.error("Failed to parse campaign ID:", e);
+          parsedId = 0;
+        }
+      }
+    }
+    
+    if (parsedId <= 0 || isNaN(parsedId)) {
       console.error("Invalid campaign ID detected:", campaignId, "parsed as:", parsedId);
       setHasInvalidId(true);
       // Don't update the validCampaignId if it's invalid
