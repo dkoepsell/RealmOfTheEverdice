@@ -1053,6 +1053,36 @@ export class DatabaseStorage implements IStorage {
 
   async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
     try {
+      // First check if the campaigns table exists
+      const tableExists = await this.executeRawQuery(
+        `SELECT EXISTS (
+           SELECT FROM information_schema.tables 
+           WHERE table_name = 'campaigns'
+         )`,
+        []
+      );
+      
+      if (!tableExists || !tableExists[0].exists) {
+        console.log("Creating campaigns table as it doesn't exist");
+        await this.executeRawQuery(`
+          CREATE TABLE IF NOT EXISTS campaigns (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            dm_id INTEGER NOT NULL,
+            status TEXT,
+            setting TEXT,
+            is_ai_dm BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            map_url TEXT,
+            lore TEXT,
+            continents JSONB,
+            metadata JSONB,
+            updated_at TIMESTAMP
+          )
+        `, []);
+      }
+      
       // Use raw SQL to avoid schema mismatches
       const insertQuery = `
         INSERT INTO campaigns
@@ -1088,14 +1118,18 @@ export class DatabaseStorage implements IStorage {
       
       // Handle date conversion explicitly
       const rawCampaign = result[0];
-      console.log("Raw campaign from DB:", JSON.stringify(rawCampaign, null, 2));
+      console.log("Raw campaign from DB:", rawCampaign);
       
-      // Create a proper Campaign object with correct typing
+      if (!rawCampaign || typeof rawCampaign.id === 'undefined') {
+        throw new Error(`Invalid campaign data returned from database: ${JSON.stringify(rawCampaign)}`);
+      }
+      
+      // Create a proper Campaign object with correct typing - using default values for safety
       const campaign: Campaign = {
         id: rawCampaign.id,
-        name: rawCampaign.name,
-        description: rawCampaign.description,
-        dmId: rawCampaign.dmId,
+        name: rawCampaign.name || "",
+        description: rawCampaign.description || "",
+        dmId: rawCampaign.dmId || insertCampaign.dmId,
         status: rawCampaign.status,
         setting: rawCampaign.setting,
         isAiDm: rawCampaign.isAiDm,

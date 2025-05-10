@@ -137,7 +137,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let mapUrl;
       try {
         // Import the OpenAI generation function
-        const { generateGlobalMapImage } = require('./openai');
         const generatedMap = await generateGlobalMapImage();
         mapUrl = generatedMap?.url || "/assets/placeholder-map.jpg";
         console.log("Generated new world map:", mapUrl);
