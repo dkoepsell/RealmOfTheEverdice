@@ -40,6 +40,15 @@ const ABILITY_SCORE_MODIFIERS: Record<string, string> = {
   "charisma": "CHA"
 };
 
+const ABILITIES: Record<string, string> = {
+  "strength": "STR",
+  "dexterity": "DEX",
+  "constitution": "CON", 
+  "intelligence": "INT",
+  "wisdom": "WIS",
+  "charisma": "CHA"
+};
+
 const SKILL_TO_ABILITY: Record<string, string> = {
   "athletics": "strength",
   

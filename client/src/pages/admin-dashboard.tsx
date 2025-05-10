@@ -1305,8 +1305,8 @@ export default function AdminDashboard() {
                 <Input 
                   id="worldName" 
                   placeholder="Enter world name..." 
-                  value={newWorldName}
-                  onChange={(e) => setNewWorldName(e.target.value)}
+                  value={worldName}
+                  onChange={(e) => setWorldName(e.target.value)}
                 />
               </div>
               
@@ -1334,7 +1334,7 @@ export default function AdminDashboard() {
               </Button>
               <Button 
                 onClick={handleCreateWorld}
-                disabled={createWorldMutation.isPending || !newWorldName.trim()}
+                disabled={createWorldMutation.isPending || !worldName.trim()}
               >
                 {createWorldMutation.isPending ? (
                   <>
