@@ -126,8 +126,8 @@ export default function AdminDashboard() {
     if (!selectedUser || !messageSubject || !messageContent) return;
     
     try {
-      await sendUserMessage({
-        userId: selectedUser.id,
+      await sendMessage({
+        recipientId: selectedUser.id,
         subject: messageSubject,
         content: messageContent,
       });
@@ -150,8 +150,6 @@ export default function AdminDashboard() {
   };
 
   // Promote user to admin
-  const [promoteUserLoading, setPromoteUserLoading] = useState(false);
-  
   const handlePromoteUser = async () => {
     if (!selectedUser) return;
     
@@ -164,10 +162,8 @@ export default function AdminDashboard() {
       return;
     }
     
-    setPromoteUserLoading(true);
-    
     try {
-      await setUserRole(selectedUser.id, "admin");
+      await promoteUser(selectedUser.id);
       
       setIsPromoteDialogOpen(false);
       
@@ -181,8 +177,6 @@ export default function AdminDashboard() {
         description: "Failed to promote user.",
         variant: "destructive"
       });
-    } finally {
-      setPromoteUserLoading(false);
     }
   };
 
@@ -229,14 +223,14 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-4xl font-bold mb-2">
-                  {usersLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : users.length}
+                  {isLoadingUsers ? <Loader2 className="h-6 w-6 animate-spin" /> : users.length}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {usersLoading ? (
+                  {isLoadingUsers ? (
                     <Loader2 className="h-3 w-3 animate-spin inline mr-2" />
                   ) : (
                     <>
-                      <span className="font-medium">{users.filter(u => u.role === "admin").length}</span> admins
+                      <span className="font-medium">{users.filter((u: any) => u.role === "admin").length}</span> admins
                     </>
                   )}
                 </div>
@@ -257,7 +251,7 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {stats.slice(0, 3).map((stat, i) => (
+                    {stats.slice(0, 3).map((stat: {name: string, value: string}, i: number) => (
                       <div key={i} className="flex justify-between items-center">
                         <span className="text-sm">{stat.name}</span>
                         <span className="font-medium">{stat.value}</span>
@@ -322,14 +316,14 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {usersLoading ? (
+                    {isLoadingUsers ? (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center">
                           <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : (
-                      users.slice(0, 6).map((user) => (
+                      users.slice(0, 6).map((user: any) => (
                         <TableRow key={user.id}>
                           <TableCell>{user.username}</TableCell>
                           <TableCell>
@@ -382,7 +376,7 @@ export default function AdminDashboard() {
                   </TableBody>
                 </Table>
                 
-                {!usersLoading && users.length > 6 && (
+                {!isLoadingUsers && users.length > 6 && (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     + {users.length - 6} more users. Use the Users tab to see all users.
                   </div>
@@ -468,9 +462,8 @@ export default function AdminDashboard() {
             </Button>
             <Button
               onClick={handlePromoteUser}
-              disabled={promoteUserLoading}
             >
-              {promoteUserLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Shield className="h-4 w-4 mr-2" />
               Promote to Admin
             </Button>
           </DialogFooter>
