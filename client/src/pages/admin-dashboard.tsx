@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -57,7 +58,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Shield, Users, Settings, Mail, MapPin, Plus } from "lucide-react";
+import { Loader2, Send, User, Shield, Users, Settings, Mail, MapPin, Plus, Trash, Map } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAdmin } from "@/hooks/use-admin";
 
@@ -114,6 +115,9 @@ export default function AdminDashboard() {
   const [worldLoading, setWorldLoading] = useState(false);
   const [showCreateWorldDialog, setShowCreateWorldDialog] = useState(false);
   const [showRegenerateWorldDialog, setShowRegenerateWorldDialog] = useState(false);
+  const [worldName, setWorldName] = useState("");
+  const [worldDescription, setWorldDescription] = useState("");
+  const [isMainWorld, setIsMainWorld] = useState(false);
   
   // Set the initial selectedWorldId when worlds load
   useEffect(() => {
@@ -1312,6 +1316,79 @@ export default function AdminDashboard() {
               }}
             >
               Yes, Regenerate World
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Create World Dialog */}
+      <Dialog open={showCreateWorldDialog} onOpenChange={setShowCreateWorldDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Everdice World</DialogTitle>
+            <DialogDescription>
+              Create a new world within the Everdice cosmos.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="worldName">World Name</Label>
+              <Input 
+                id="worldName" 
+                placeholder="Enter world name..." 
+                className="w-full" 
+                value={worldName}
+                onChange={(e) => setWorldName(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="worldDescription">Description</Label>
+              <Textarea
+                id="worldDescription"
+                placeholder="Describe this world..."
+                className="min-h-[100px]"
+                value={worldDescription}
+                onChange={(e) => setWorldDescription(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="isMainWorld" 
+                checked={isMainWorld} 
+                onCheckedChange={(checked) => {
+                  if (typeof checked === 'boolean') {
+                    setIsMainWorld(checked)
+                  }
+                }}
+              />
+              <Label 
+                htmlFor="isMainWorld"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Set as Main World
+              </Label>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateWorldDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateWorld}
+              disabled={!worldName.trim() || createWorldLoading}
+            >
+              {createWorldLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>Create World</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
