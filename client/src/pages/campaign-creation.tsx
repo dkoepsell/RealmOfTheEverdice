@@ -108,8 +108,13 @@ export default function CampaignCreation() {
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       
       // Store the new campaign ID and show the character dialog
+      console.log("Campaign created successfully:", campaign);
       setNewCampaignId(campaign.id);
-      setShowAddCharacterDialog(true);
+      
+      // Add a small delay to ensure state update before showing dialog
+      setTimeout(() => {
+        setShowAddCharacterDialog(true);
+      }, 100);
     },
     onError: (error) => {
       toast({

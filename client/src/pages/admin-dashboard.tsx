@@ -525,12 +525,17 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="rounded-md overflow-hidden border">
                     {everdiceWorld?.mapUrl ? (
-                      <div className="relative h-[400px] w-full">
+                      <div className="relative h-[400px] w-full overflow-hidden">
                         <img 
                           src={everdiceWorld.mapUrl} 
                           alt="Everdice World Map" 
-                          className="object-contain md:object-cover w-full h-full"
-                          style={{ maxWidth: '100%', maxHeight: '100%' }}
+                          className="w-full h-full object-contain sm:object-cover"
+                          style={{ 
+                            maxWidth: '100%', 
+                            maxHeight: '100%',
+                            margin: '0 auto',
+                            display: 'block'
+                          }}
                           onError={(e) => {
                             e.currentTarget.src = "/placeholder-map.jpg";
                           }}
