@@ -102,9 +102,13 @@ export const DiceRoller = ({
   const [rollPurpose, setRollPurpose] = useState<string>("general");
   const [rollDC, setRollDC] = useState<number | undefined>(undefined);
   const [diceCount, setDiceCount] = useState<number>(1);
-  // Initialize autoRoll from localStorage if available
+  // Initialize autoRoll and autoAdvance from localStorage if available
   const [autoRollEnabled, setAutoRollEnabled] = useState<boolean>(() => {
     const savedValue = localStorage.getItem('diceRollerAutoRoll');
+    return savedValue === 'true';
+  });
+  const [autoAdvanceEnabled, setAutoAdvanceEnabled] = useState<boolean>(() => {
+    const savedValue = localStorage.getItem('storyAutoAdvance');
     return savedValue === 'true';
   });
   const [rollPrompt, setRollPrompt] = useState<string | null>(null);
@@ -355,6 +359,26 @@ export const DiceRoller = ({
             onCheckedChange={(value) => {
               setAutoRollEnabled(value);
               localStorage.setItem('diceRollerAutoRoll', value.toString());
+            }}
+          />
+        </div>
+        
+        {/* Auto-advance story toggle */}
+        <div className="mb-3 flex items-center justify-between space-x-2 p-2 bg-secondary/5 rounded-md">
+          <div className="flex flex-col">
+            <Label htmlFor="auto-advance" className="text-sm font-semibold">
+              Auto-Advance Story
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              Automatically continue story after dice rolls
+            </span>
+          </div>
+          <Switch 
+            id="auto-advance" 
+            checked={autoAdvanceEnabled} 
+            onCheckedChange={(value) => {
+              setAutoAdvanceEnabled(value);
+              localStorage.setItem('storyAutoAdvance', value.toString());
             }}
           />
         </div>
