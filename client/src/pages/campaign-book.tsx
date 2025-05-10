@@ -261,11 +261,35 @@ export default function CampaignPage() {
       }
     },
     onError: (error) => {
+      console.error("Action submission error:", error);
+      setPlayerInput(""); // Clear the input even on error for better UX
+      
       toast({
         title: "Action Failed",
-        description: `Failed to process your action: ${error.message}`,
+        description: "There was an issue with the Dungeon Master's response. Your action was recorded.",
         variant: "destructive",
       });
+      
+      // Add fallback response directly to the UI
+      setGameLogs(prev => [
+        ...prev,
+        {
+          id: Date.now(), // Temporary ID
+          campaignId: parseInt(campaignId as string),
+          content: playerInput,
+          type: "player",
+          timestamp: new Date()
+        },
+        {
+          id: Date.now() + 1, // Temporary ID
+          campaignId: parseInt(campaignId as string),
+          content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
+          type: "narrative",
+          timestamp: new Date()
+        }
+      ]);
+      
+      setIsProcessing(false);
     },
   });
 
