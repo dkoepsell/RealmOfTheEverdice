@@ -1257,6 +1257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
+      console.log("Adding character to campaign. Params:", req.params, "Body:", req.body);
       const campaignId = parseInt(req.params.id);
       if (isNaN(campaignId)) {
         return res.status(400).json({ message: "Invalid campaign ID" });
@@ -1282,20 +1283,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If there are no logs, generate an introduction
       if (existingLogs.length === 0) {
         try {
+          console.log("Generating welcome narrative for campaign:", campaignId);
+          
           // Generate a campaign introduction based on the campaign and character details
-          let introText = `# Welcome to ${campaign.title}\n\n`;
+          let introText = `# Welcome to ${campaign.name}\n\n`;
           
           if (campaign.description) {
             introText += `${campaign.description}\n\n`;
           }
           
-          introText += `As ${character.name}, a level ${character.level} ${character.race} ${character.class}, you stand at the beginning of an epic journey in the world of Everdice. The path ahead is filled with danger, mystery, and opportunity.\n\n`;
+          // Default level if not provided
+          const characterLevel = character.level || 1;
           
+          introText += `As ${character.name}, a level ${characterLevel} ${character.race} ${character.class}, you stand at the beginning of an epic journey in the world of Everdice. The path ahead is filled with danger, mystery, and opportunity.\n\n`;
+          
+          // Add setting-specific description if available
           if (campaign.setting) {
-            introText += `The lands of ${campaign.setting} stretch before you, filled with wonders and perils alike.\n\n`;
+            introText += `The land of ${campaign.setting} awaits your heroic deeds. What challenges will you face? What treasures will you discover? The adventure begins now.\n\n`;
+          } else {
+            introText += `This magical realm awaits your heroic deeds. What challenges will you face? What treasures will you discover? The adventure begins now.\n\n`;
           }
           
+          // Add gameplay hint
+          introText += `*Click the dice icons in the narrative to perform ability checks, or type your actions in the input field below to continue your journey.*\n\n`;
+          
+          // Add a final prompt to get the player started
           introText += "Your adventure begins now. What will you do first?";
+          
+          console.log("Generated welcome narrative:", introText);
 
           // Add the introduction to game logs
           await storage.createGameLog({
@@ -1312,7 +1327,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(campaignCharacter);
     } catch (error) {
-      res.status(500).json({ message: "Failed to add character to campaign" });
+      console.error("Error adding character to campaign:", error);
+      res.status(500).json({ 
+        message: "Failed to add character to campaign",
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
   

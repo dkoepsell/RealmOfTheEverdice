@@ -1051,6 +1051,73 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create World Dialog */}
+      {showCreateWorldDialog && (
+        <Dialog
+          open={showCreateWorldDialog}
+          onOpenChange={(open) => {
+            if (!open) setShowCreateWorldDialog(false);
+          }}
+        >
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Create New Everdice World</DialogTitle>
+              <DialogDescription>
+                Create a new alternate Everdice world for campaigns to take place in.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="worldName">World Name</Label>
+                <Input 
+                  id="worldName" 
+                  placeholder="Enter world name..." 
+                  value={newWorldName}
+                  onChange={(e) => setNewWorldName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="worldDescription">Description</Label>
+                <Textarea 
+                  id="worldDescription" 
+                  placeholder="Describe your world..." 
+                  className="min-h-[100px]"
+                  value={newWorldDescription}
+                  onChange={(e) => setNewWorldDescription(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Provide details about your world's history, magic system, or distinctive features.
+                </p>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateWorldDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateWorld}
+                disabled={createWorldMutation.isPending || !newWorldName.trim()}
+              >
+                {createWorldMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>Create World</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
