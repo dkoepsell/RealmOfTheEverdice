@@ -703,7 +703,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getCampaignRegions(): Promise<{ campaigns: any[], uniqueRegions: string[] }> {
+  async getCampaignRegions(): Promise<{ campaigns: any[], uniqueRegions: any[] }> {
     try {
       // Use raw SQL query to avoid column errors while database might be evolving
       const query = `
@@ -716,6 +716,9 @@ export class DatabaseStorage implements IStorage {
           c.setting,
           cwm.map_url as "mapUrl",
           cwm.region_name as "regionName",
+          cwm.continent_id as "continentId",
+          cwm.position,
+          cwm.metadata,
           COALESCE(
             cwm.region_name, 
             CASE 
@@ -725,6 +728,7 @@ export class DatabaseStorage implements IStorage {
           ) as "effectiveRegion"
         FROM campaigns c
         LEFT JOIN campaign_world_maps cwm ON c.id = cwm.campaign_id
+        WHERE c.status = 'active'
       `;
       
       const campaignsWithRegions = await this.executeRawQuery(query);
@@ -732,21 +736,78 @@ export class DatabaseStorage implements IStorage {
       // Ensure campaignsWithRegions is an array
       const campaigns = Array.isArray(campaignsWithRegions) ? campaignsWithRegions : [];
       
-      // Extract unique region names
-      const uniqueRegions: string[] = [];
+      // Extract unique regions with their data
+      const uniqueRegions: any[] = [];
+      const processedRegionNames: string[] = [];
+      
+      // Get Everdice world for continent information
+      const everdiceWorld = await this.getEverdiceWorld();
+      const continents = everdiceWorld?.continents || [];
       
       if (campaigns.length > 0) {
-        // Collect all effective regions
+        // Process each campaign to extract region data
         campaigns.forEach((campaign: any) => {
           const regionName = campaign.effectiveRegion || campaign.regionName || campaign.setting || 'Unknown Region';
-          if (regionName && !uniqueRegions.includes(regionName)) {
-            uniqueRegions.push(regionName);
+          
+          // Update the campaign's regionName if it's null
+          campaign.regionName = regionName;
+          
+          // Skip if we've already processed this region name
+          if (regionName && !processedRegionNames.includes(regionName)) {
+            processedRegionNames.push(regionName);
+            
+            // Parse metadata for additional information
+            let metadata = {};
+            let everdiceData = {};
+            let worldData = {};
+            
+            try {
+              if (campaign.metadata) {
+                metadata = JSON.parse(campaign.metadata);
+                everdiceData = metadata.everdiceData || {};
+                worldData = metadata.worldData || {};
+              }
+            } catch (e) {
+              console.error(`Error parsing metadata for campaign ${campaign.id}:`, e);
+            }
+            
+            // Generate a default position if none exists
+            // This assigns regions to random positions on the map when no specific position is available
+            let position: [number, number] = [Math.random() * 0.8 + 0.1, Math.random() * 0.8 + 0.1]; // Random position between 0.1 and 0.9
+            
+            // Try to get position from various sources
+            if (campaign.position) {
+              position = campaign.position;
+            } else {
+              // Look for continent information to place the region in the appropriate area
+              const continentId = campaign.continentId || (everdiceData as any).continent;
+              if (continentId) {
+                const continent = continents.find(c => c.id === continentId || c.name === continentId);
+                if (continent && continent.position) {
+                  // Place the region somewhere within the continent's boundaries
+                  // Add a small random offset to avoid stacking
+                  const offsetX = (Math.random() - 0.5) * 0.1;
+                  const offsetY = (Math.random() - 0.5) * 0.1;
+                  position = [
+                    continent.position[0] + offsetX,
+                    continent.position[1] + offsetY
+                  ];
+                }
+              }
+            }
+            
+            uniqueRegions.push({
+              regionName,
+              campaignId: campaign.id,
+              campaignName: campaign.name,
+              continentId: campaign.continentId || (everdiceData as any).continent || 'Unknown Continent',
+              position,
+              metadata: {
+                ...everdiceData,
+                ...worldData
+              }
+            });
           }
-        });
-        
-        // Update the campaigns to use effectiveRegion as the regionName if regionName is null
-        campaigns.forEach((campaign: any) => {
-          campaign.regionName = campaign.regionName || campaign.effectiveRegion || campaign.setting || 'Unknown Region';
         });
       }
       
