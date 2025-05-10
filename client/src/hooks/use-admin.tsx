@@ -6,7 +6,8 @@ import { useToast } from "./use-toast";
 export function useAdmin() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isSuperuser = user?.role === "superuser";
+  const isSuperAdmin = user?.isSuperAdmin;
+  const isAdmin = user?.isAdmin;
 
   // Get all users
   const {
@@ -16,11 +17,11 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/users"],
     queryFn: async () => {
-      if (!isSuperuser) return [];
+      if (!isAdmin) return [];
       const res = await apiRequest("GET", "/api/admin/users");
       return await res.json();
     },
-    enabled: !!isSuperuser,
+    enabled: !!isAdmin,
   });
 
   // Get system stats
@@ -31,11 +32,11 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/stats"],
     queryFn: async () => {
-      if (!isSuperuser) return [];
+      if (!isAdmin) return [];
       const res = await apiRequest("GET", "/api/admin/stats");
       return await res.json();
     },
-    enabled: !!isSuperuser,
+    enabled: !!isAdmin,
   });
   
   // Get all campaigns
@@ -46,11 +47,11 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/campaigns"],
     queryFn: async () => {
-      if (!isSuperuser) return [];
+      if (!isAdmin) return [];
       const res = await apiRequest("GET", "/api/admin/campaigns");
       return await res.json();
     },
-    enabled: !!isSuperuser,
+    enabled: !!isAdmin,
   });
   
   // Get unique login activity
@@ -61,11 +62,11 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/logins"],
     queryFn: async () => {
-      if (!isSuperuser) return [];
+      if (!isAdmin) return [];
       const res = await apiRequest("GET", "/api/admin/logins");
       return await res.json();
     },
-    enabled: !!isSuperuser,
+    enabled: !!isAdmin,
   });
   
   // Get Everdice world map data
@@ -77,11 +78,11 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/everdice"],
     queryFn: async () => {
-      if (!isSuperuser) return null;
+      if (!isSuperAdmin) return null;
       const res = await apiRequest("GET", "/api/admin/everdice");
       return await res.json();
     },
-    enabled: !!isSuperuser,
+    enabled: !!isSuperAdmin,
   });
   
   // Get all campaign regions within Everdice
@@ -93,11 +94,11 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/campaign-regions"],
     queryFn: async () => {
-      if (!isSuperuser) return { campaigns: [], uniqueRegions: [] };
+      if (!isSuperAdmin) return { campaigns: [], uniqueRegions: [] };
       const res = await apiRequest("GET", "/api/admin/campaign-regions");
       return await res.json();
     },
-    enabled: !!isSuperuser,
+    enabled: !!isSuperAdmin,
   });
 
   // Send admin message
@@ -187,7 +188,8 @@ export function useAdmin() {
   });
 
   return {
-    isSuperuser,
+    isAdmin,
+    isSuperAdmin,
     users,
     isLoadingUsers,
     usersError,
