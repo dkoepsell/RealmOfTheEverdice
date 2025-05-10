@@ -98,6 +98,7 @@ import {
   Settings2,
   Sparkles,
   Swords,
+  Globe2,
   Gem,
   UserCircle
 } from 'lucide-react';
@@ -499,11 +500,13 @@ export function AdventureMapPanel({
   
   // Extract campaign region metadata from the world map response
   const mapData = worldMapQuery.data || {};
-  const regionName = mapData.regionName || "Unknown Region";
-  const continentName = mapData.continentId || "Unknown Continent";
   const metadata = mapData.metadata ? (
     typeof mapData.metadata === 'string' ? JSON.parse(mapData.metadata) : mapData.metadata
   ) : {};
+  
+  // Extract region and continent names with better fallbacks
+  const regionName = metadata?.region?.name || mapData.regionName || "Unknown Region";
+  const continentName = metadata?.region?.continent || mapData.continentName || "Everdice World";
   
   // Update worldMap state when the query data changes
   useEffect(() => {
@@ -676,10 +679,20 @@ export function AdventureMapPanel({
           
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Brief explanation of Everdice relationship */}
-            <div className="px-4 py-2 bg-muted/30 text-sm rounded-md mb-2">
-              <p className="text-muted-foreground">
-                This campaign takes place in <strong>{regionName}</strong>, a region within the <strong>{continentName}</strong> area of the world of Everdice. All campaigns in the realm share this common world.
-              </p>
+            <div className="px-4 py-3 bg-muted/30 text-sm rounded-md mb-2 border border-border/50">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 mr-3">
+                  <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center">
+                    <Globe2 className="h-6 w-6 text-accent" />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-0.5">World of Everdice</h4>
+                  <p className="text-muted-foreground">
+                    This campaign takes place in <strong>{regionName}</strong>, a region within the <strong>{continentName}</strong> area of the world of Everdice. All campaigns in the realm share this common world.
+                  </p>
+                </div>
+              </div>
             </div>
             
             {/* Left panel: Map */}
