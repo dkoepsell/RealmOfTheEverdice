@@ -102,7 +102,11 @@ export const DiceRoller = ({
   const [rollPurpose, setRollPurpose] = useState<string>("general");
   const [rollDC, setRollDC] = useState<number | undefined>(undefined);
   const [diceCount, setDiceCount] = useState<number>(1);
-  const [autoRollEnabled, setAutoRollEnabled] = useState<boolean>(false);
+  // Initialize autoRoll from localStorage if available
+  const [autoRollEnabled, setAutoRollEnabled] = useState<boolean>(() => {
+    const savedValue = localStorage.getItem('diceRollerAutoRoll');
+    return savedValue === 'true';
+  });
   const [rollPrompt, setRollPrompt] = useState<string | null>(null);
   
   const diceTypes: DiceType[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
@@ -348,7 +352,10 @@ export const DiceRoller = ({
           <Switch 
             id="auto-roll" 
             checked={autoRollEnabled} 
-            onCheckedChange={setAutoRollEnabled}
+            onCheckedChange={(value) => {
+              setAutoRollEnabled(value);
+              localStorage.setItem('diceRollerAutoRoll', value.toString());
+            }}
           />
         </div>
         

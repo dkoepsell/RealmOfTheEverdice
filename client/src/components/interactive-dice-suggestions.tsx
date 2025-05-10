@@ -302,7 +302,10 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
   // Auto-roll feature
   useEffect(() => {
     // Only auto-roll if there's a dice suggestion and it hasn't been auto-rolled yet
-    if (diceSuggestions.length > 0 && !autoRolled) {
+    // and if the user has auto-roll enabled in their settings
+    const autoRollEnabled = localStorage.getItem('diceRollerAutoRoll') === 'true';
+    
+    if (diceSuggestions.length > 0 && !autoRolled && autoRollEnabled) {
       // Get the first dice suggestion
       const suggestion = diceSuggestions[0];
       
