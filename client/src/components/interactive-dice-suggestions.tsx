@@ -366,12 +366,14 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
     setRollResult(null);
   };
   
-  // Auto-roll feature with auto-advance
+  // Track if we've already triggered an auto-advance for the current roll
+  const [autoAdvanceTriggered, setAutoAdvanceTriggered] = useState(false);
+  
+  // Auto-roll feature
   useEffect(() => {
     // Only auto-roll if there's a dice suggestion and it hasn't been auto-rolled yet
     // and if the user has auto-roll enabled in their settings
     const autoRollEnabled = localStorage.getItem('diceRollerAutoRoll') === 'true';
-    const autoAdvanceEnabled = localStorage.getItem('storyAutoAdvance') === 'true';
     
     if (diceSuggestions.length > 0 && !autoRolled && autoRollEnabled) {
       // Get the first dice suggestion
@@ -385,33 +387,42 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
       
       // Mark as auto-rolled to prevent infinite loop
       setAutoRolled(true);
+      setAutoAdvanceTriggered(false); // Reset auto-advance trigger state
       
-      // Call the performRoll function after a short delay with a separate mechanism for story advancement
+      // Call the performRoll function after a short delay
       const timer = setTimeout(() => {
-        // First perform the roll
         performRoll();
-        
-        // Auto-advance only after the roll animation is complete and the user has seen the result
-        if (autoAdvanceEnabled && onAdvanceStory) {
-          // Show the roll result for a sufficient time before advancing (3.5 seconds total)
-          const advanceTimer = setTimeout(() => {
-            // Close the modal
-            setIsModalOpen(false);
-            
-            // Wait a moment after the modal closes before advancing
-            setTimeout(() => {
-              // Finally, advance the story
-              onAdvanceStory();
-            }, 500);
-          }, 3000); // Longer duration to ensure roll is complete
-          
-          return () => clearTimeout(advanceTimer);
-        }
       }, 800);  // Delay for 800ms to allow the modal to render first
       
       return () => clearTimeout(timer);
     }
-  }, [diceSuggestions, autoRolled, onAdvanceStory]);
+  }, [diceSuggestions, autoRolled]);
+  
+  // Separate effect to handle auto-advancing after roll is complete
+  useEffect(() => {
+    const autoAdvanceEnabled = localStorage.getItem('storyAutoAdvance') === 'true';
+    
+    // Only trigger auto-advance if we have a roll result, auto-advance is enabled,
+    // and we haven't already triggered an auto-advance for this roll
+    if (rollResult && autoAdvanceEnabled && onAdvanceStory && !autoAdvanceTriggered) {
+      console.log("Auto-advance triggered based on roll result");
+      setAutoAdvanceTriggered(true); // Mark as triggered to prevent multiple advances
+      
+      // Wait a moment to show the roll result before advancing
+      const advanceTimer = setTimeout(() => {
+        // Close the modal
+        setIsModalOpen(false);
+        
+        // Wait a brief moment after the modal closes before advancing the story
+        setTimeout(() => {
+          console.log("Calling onAdvanceStory to progress the narrative");
+          onAdvanceStory(); // This should trigger autoAdvanceMutation.mutate()
+        }, 500);
+      }, 2500); // Show roll result for 2.5 seconds
+      
+      return () => clearTimeout(advanceTimer);
+    }
+  }, [rollResult, onAdvanceStory, autoAdvanceTriggered]);
 
   if (diceSuggestions.length === 0) {
     return null;
