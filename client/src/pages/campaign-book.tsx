@@ -100,7 +100,7 @@ export default function CampaignPage() {
     isLoading: locationsLoading,
     error: locationsError,
   } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/map-locations`],
+    queryKey: [`/api/campaigns/${campaignId}/map/locations`],
     enabled: !!campaignId
   });
 
@@ -110,7 +110,7 @@ export default function CampaignPage() {
     isLoading: pathsLoading,
     error: pathsError,
   } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/map-paths`],
+    queryKey: [`/api/campaigns/${campaignId}/map/paths`],
     enabled: !!campaignId
   });
 
