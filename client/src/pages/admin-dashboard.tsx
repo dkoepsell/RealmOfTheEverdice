@@ -64,21 +64,23 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const {
+    isSuperuser,
     users,
-    usersLoading,
-    systemStats,
-    statsLoading,
-    messagesForUser,
-    messagesLoading,
-    sendUserMessage,
-    setUserRole,
-    regenerateWorldMap,
+    isLoadingUsers,
+    stats,
+    isLoadingStats,
+    campaigns,
+    isLoadingCampaigns,
+    loginActivity,
+    isLoadingLoginActivity,
     everdiceWorld,
-    everdiceWorldLoading,
-    getCampaignRegions,
+    isLoadingEverdiceWorld,
     campaignRegions,
-    campaignsWithRegions,
-    isLoadingRegions,
+    isLoadingCampaignRegions,
+    sendMessage,
+    promoteUser,
+    regenerateWorldMap,
+    regenerateWorldMapLoading
   } = useAdmin();
 
   const [activeTab, setActiveTab] = useState("overview");
@@ -249,13 +251,13 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {statsLoading ? (
+                {isLoadingStats ? (
                   <div className="flex justify-center">
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {systemStats.slice(0, 3).map((stat, i) => (
+                    {stats.slice(0, 3).map((stat, i) => (
                       <div key={i} className="flex justify-between items-center">
                         <span className="text-sm">{stat.name}</span>
                         <span className="font-medium">{stat.value}</span>
