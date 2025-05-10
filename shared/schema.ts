@@ -95,7 +95,12 @@ export const campaignCharacters = pgTable("campaign_characters", {
 });
 
 export const insertCampaignCharacterSchema = createInsertSchema(campaignCharacters).omit({
-  id: true
+  id: true,
+  lastActiveAt: true,
+  turnStatus: true,
+  isZombieMode: true,
+  zombieModeSince: true,
+  canTakeDamage: true
 });
 
 // Adventure model

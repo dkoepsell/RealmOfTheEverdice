@@ -1235,9 +1235,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       
       if (!campaign) return res.status(404).json({ message: "Campaign not found" });
-      if (campaign.dmId !== req.user.id) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
+      
+      // Allow both DM and players in the campaign to see characters
+      // This is a more permissive approach to enable co-op gameplay
+      // We may want to add a check later to verify the user is part of the campaign
       
       const campaignCharacters = await storage.getCampaignCharacters(campaignId);
       

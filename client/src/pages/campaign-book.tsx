@@ -341,16 +341,21 @@ export default function CampaignPage() {
         description: "You need to add a character to the campaign first!",
         variant: "destructive",
       });
+      setShowAddCharacterDialog(true);
       return;
     }
     
     try {
+      console.log("Submitting player action:", playerInput);
+      
       // Store current input and clear immediately for better UX
       const currentInput = playerInput;
       setPlayerInput(""); // Clear input immediately
       
       // Submit action
       const result = await playerActionMutation.mutateAsync(currentInput);
+      
+      console.log("Action submission result:", result);
       
       // Handle potential errors from the DM response
       if (result && !result.success) {
@@ -360,6 +365,8 @@ export default function CampaignPage() {
           title: "Action Recorded",
           description: "Your action was recorded, but the DM response had an issue. The story will continue when you submit your next action.",
         });
+      } else {
+        console.log("Action successfully processed");
       }
       
       // Scroll to bottom after a short delay to allow rendering
@@ -369,12 +376,19 @@ export default function CampaignPage() {
         }
       }, 100);
     } catch (error) {
-      console.error("Action submission error:", error);
+      console.error("Action submission error:", error instanceof Error ? error.message : String(error));
+      
+      // Show more detailed error message
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to process your action. Please try again.",
+        title: "Action Failed",
+        description: error instanceof Error 
+          ? `Error: ${error.message}. Please try again or refresh the page.`
+          : "Failed to process your action. Please try again or refresh the page.",
       });
+      
+      // Restore the input so the user doesn't lose their text
+      setPlayerInput(playerInput);
     }
   };
 
