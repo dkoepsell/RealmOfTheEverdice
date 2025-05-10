@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList } from "lucide-react";
+import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList, Backpack, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -1000,7 +1000,7 @@ export default function CampaignPage() {
                   onClick={() => handleToggleRightPanel("roll")}
                   className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "roll" ? "bg-amber-200" : ""}`}
                 >
-                  <Dices className="h-4 w-4" />
+                  <DicesIcon className="h-4 w-4" />
                   <span className="ml-1 text-xs">Roll</span>
                 </Button>
               </div>
