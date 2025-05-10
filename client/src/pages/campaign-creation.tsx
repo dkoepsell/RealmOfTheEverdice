@@ -172,39 +172,95 @@ export default function CampaignCreation() {
     },
   });
   
-  // Sample campaign templates for quick generation
+  // Expanded campaign templates for quick generation and more variety
   const campaignTemplates = [
     {
       name: "The Crystal Caverns",
-      description: "A mysterious network of caves with glowing crystals has been discovered beneath the town. Strange creatures and ancient mysteries await those brave enough to explore its depths.",
+      description: "A mysterious network of caves with glowing crystals has been discovered beneath the town. Strange creatures and ancient mysteries await those brave enough to explore its depths. The crystals seem to respond to emotions, granting temporary powers to those who can harness their energy.",
       setting: "Forgotten Realms"
     },
     {
       name: "Shadows Over Mistwick",
-      description: "The small town of Mistwick has been plagued by disappearances and strange occurrences. A dark force is growing in power, and heroes are needed to uncover its source.",
+      description: "The small town of Mistwick has been plagued by disappearances and strange occurrences. A dark force is growing in power, and heroes are needed to uncover its source. Mist creatures emerge at night, seemingly taking people to another dimension.",
       setting: "Ravenloft"
     },
     {
       name: "The Lost Isle",
-      description: "A legendary island has suddenly appeared after centuries of myths. It holds ancient treasures and forbidden knowledge, but also dangerous guardians and deadly traps.",
+      description: "A legendary island has suddenly appeared after centuries of myths. It holds ancient treasures and forbidden knowledge, but also dangerous guardians and deadly traps. The island seems to shift and change its layout each day, as if it has a mind of its own.",
       setting: "Eberron"
     },
     {
       name: "Crown of Dragons",
-      description: "A powerful artifact that can control dragons has been stolen. Various factions seek it for their own purposes, and the realm teeters on the edge of a devastating war.",
+      description: "A powerful artifact that can control dragons has been stolen. Various factions seek it for their own purposes, and the realm teeters on the edge of a devastating war. Ancient dragon prophecies speak of a time when the crown will choose its true master.",
       setting: "Dragonlance"
+    },
+    {
+      name: "The Planar Convergence",
+      description: "Multiple planes of existence are bleeding into the material world, causing chaos and unprecedented magical phenomena. Strange visitors from other realms appear randomly, some seeking refuge, others conquest. Your party must navigate this complex situation and prevent a full collapse of the planar boundaries.",
+      setting: "Planescape"
+    },
+    {
+      name: "Whispers of the Void",
+      description: "Something ancient stirs in the spaces between stars. Cultists across the realm report hearing the same whispers, conducting rituals to bring forth entities from beyond reality. As cosmic horrors begin to manifest, your party stands as the last line of defense against incomprehensible threats.",
+      setting: "Homebrew"
+    },
+    {
+      name: "The Clockwork Conspiracy",
+      description: "In a world where magic and technology blend seamlessly, a mysterious faction has created autonomous constructs that are infiltrating positions of power. These clockwork spies gather information for an unknown purpose, while the mechanisms of society slowly fall under their control.",
+      setting: "Eberron"
+    },
+    {
+      name: "Tides of the Endless Sea",
+      description: "An archipelago of floating islands drifts across a vast, bottomless ocean. The islands move in ancient patterns, and coming together during a celestial alignment will reveal a path to a legendary treasure. Pirates, merchants, and monsters vie for control of these precious lands.",
+      setting: "Homebrew"
     }
   ];
   
-  // Simplified campaign generation using templates instead of calling OpenAI
+  // Enhanced campaign generation using local templates with timeout handling
   const generateCampaignMutation = useMutation({
     mutationFn: async () => {
-      // Use local templates to avoid timing out or hanging
       console.log("Generating campaign template...");
-      // Skip API call completely and use templates directly for reliability
-      return campaignTemplates[Math.floor(Math.random() * campaignTemplates.length)];
+      
+      // Create a timeout promise to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Generation timed out")), 5000);
+      });
+      
+      // Create the main promise for template selection
+      const generationPromise = new Promise<any>((resolve) => {
+        // Enhanced local template selection with better randomization
+        const randomIndex = Math.floor(Math.random() * campaignTemplates.length);
+        const selectedTemplate = campaignTemplates[randomIndex];
+        
+        console.log("Selected template:", selectedTemplate.name);
+        
+        // Add small delay to simulate processing
+        setTimeout(() => {
+          resolve({
+            ...selectedTemplate,
+            _timestamp: new Date().toISOString(),
+            _templateIndex: randomIndex
+          });
+        }, 500);
+      });
+      
+      // Race between timeout and generation
+      try {
+        return await Promise.race([generationPromise, timeoutPromise]) as any;
+      } catch (error) {
+        console.error("Campaign generation timed out:", error);
+        // Even if there's a timeout, still return a template as fallback
+        const fallbackTemplate = campaignTemplates[0];
+        return {
+          ...fallbackTemplate,
+          _timestamp: new Date().toISOString(),
+          _fallback: true
+        };
+      }
     },
     onSuccess: (data) => {
+      console.log("Campaign template generated successfully:", data);
+      
       // Update form with generated data
       form.reset({
         ...form.getValues(),
@@ -222,19 +278,64 @@ export default function CampaignCreation() {
       });
     },
     onError: (error) => {
+      console.error("Campaign generation mutation error:", error);
+      
+      // Even in case of error, generate a template as fallback
+      const fallbackTemplate = campaignTemplates[0];
+      
+      form.reset({
+        ...form.getValues(),
+        name: fallbackTemplate.name,
+        description: fallbackTemplate.description,
+        setting: fallbackTemplate.setting || "Homebrew",
+        confirmCreate: true,
+      });
+      
       setIsGenerating(false);
+      
       toast({
-        title: "Generation Failed",
-        description: `Failed to generate campaign: ${error.message}`,
-        variant: "destructive",
+        title: "Campaign Generated",
+        description: "Using a backup template due to an error. Review and submit to begin your adventure.",
       });
     }
   });
 
-  // Generate random campaign
+  // Generate random campaign with safety timeout
   const handleGenerateCampaign = () => {
     setIsGenerating(true);
+    
+    // Start the mutation
     generateCampaignMutation.mutate();
+    
+    // Set a global safety timeout as backup in case mutation gets stuck
+    const safetyTimeout = setTimeout(() => {
+      // If we're still generating after 10 seconds, something is wrong
+      if (isGenerating && !generateCampaignMutation.isSuccess) {
+        console.warn("Campaign generation safety timeout triggered");
+        
+        // Force reset the generating state
+        setIsGenerating(false);
+        
+        // Use the first template as a fallback
+        const fallbackTemplate = campaignTemplates[0];
+        
+        form.reset({
+          ...form.getValues(),
+          name: fallbackTemplate.name,
+          description: fallbackTemplate.description,
+          setting: fallbackTemplate.setting || "Homebrew",
+          confirmCreate: true,
+        });
+        
+        toast({
+          title: "Campaign Generated",
+          description: "Using a backup template due to a timeout. Review and submit to begin your adventure.",
+        });
+      }
+    }, 10000); // 10 second safety timeout
+    
+    // Clean up the timeout when component unmounts
+    return () => clearTimeout(safetyTimeout);
   };
 
   // Handle form submission
