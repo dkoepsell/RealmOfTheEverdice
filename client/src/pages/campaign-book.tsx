@@ -880,6 +880,22 @@ export default function CampaignPage() {
                       </div>
                     )}
                     
+                    {/* Show default welcome message if no logs exist but character is selected */}
+                    {(!gameLogs || gameLogs.length === 0) && userCharacter && (
+                      <div className="relative pl-6 mb-6">
+                        <span className="absolute left-[-4px] top-2 h-2 w-2 rounded-full bg-amber-400"></span>
+                        
+                        <div className="mb-4">
+                          <div className="text-gray-800">
+                            <h3 className="text-xl font-bold mb-2 text-amber-800">Welcome to {campaign?.title || "Your Adventure"}!</h3>
+                            <p className="mb-4">The adventure is about to begin with {userCharacter.name}, a level {userCharacter.level} {userCharacter.race} {userCharacter.class}.</p>
+                            <p className="mb-4">You stand at the threshold of a grand adventure in the world of Everdice. The path ahead is filled with mystery, danger, and excitement. What will you do first?</p>
+                            <p className="italic text-amber-700">Use the text box below to begin your adventure. Describe your first action to start the story...</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Map logs to messages */}
                     {gameLogs && gameLogs.length > 0 && gameLogs.map((log, index, array) => {
                       // Calculate if this is a "new" entry (one of the 3 most recent narrative logs)
