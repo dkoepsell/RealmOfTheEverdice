@@ -106,6 +106,7 @@ const AdminDashboard = () => {
   // Map interaction state
   const [selectedRegion, setSelectedRegion] = useState<any>(null);
   const [regionNameDialog, setRegionNameDialog] = useState(false);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   
   // Redirect if not a superuser
   if (!user) {
@@ -591,13 +592,14 @@ const AdminDashboard = () => {
                         {everdiceWorld?.mapUrl ? (
                           <div className="relative">
                             <div className="overflow-hidden rounded-md">
-                              <div className="relative" style={{ height: "350px" }}>
-                                {/* Interactive zoom controls */}
-                                <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+                              <div className={`relative ${isMapFullscreen ? 'fixed inset-0 bg-background z-50 p-4' : ''}`} style={{ height: isMapFullscreen ? "100%" : "450px" }}>
+                                {/* Map controls toolbar with clear labeling */}
+                                <div className="absolute top-2 right-2 z-10 flex flex-col gap-2 bg-background/80 p-2 rounded-md shadow-lg border border-border">
+                                  <div className="text-xs font-medium mb-1 text-center">Map Controls</div>
                                   <Button 
                                     variant="outline" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-full bg-background/90 shadow-md"
+                                    size="sm"
+                                    className="flex items-center justify-between w-full"
                                     onClick={() => {
                                       const map = document.getElementById('everdice-map-container');
                                       if (map) {
@@ -608,12 +610,13 @@ const AdminDashboard = () => {
                                       }
                                     }}
                                   >
-                                    <ZoomIn className="h-4 w-4" />
+                                    <ZoomIn className="h-4 w-4 mr-1" />
+                                    Zoom In
                                   </Button>
                                   <Button 
                                     variant="outline" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-full bg-background/90 shadow-md"
+                                    size="sm"
+                                    className="flex items-center justify-between w-full"
                                     onClick={() => {
                                       const map = document.getElementById('everdice-map-container');
                                       if (map) {
@@ -624,12 +627,13 @@ const AdminDashboard = () => {
                                       }
                                     }}
                                   >
-                                    <ZoomOut className="h-4 w-4" />
+                                    <ZoomOut className="h-4 w-4 mr-1" />
+                                    Zoom Out
                                   </Button>
                                   <Button 
                                     variant="outline" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-full bg-background/90 shadow-md"
+                                    size="sm"
+                                    className="flex items-center justify-between w-full"
                                     onClick={() => {
                                       const map = document.getElementById('everdice-map-container');
                                       if (map) {
@@ -639,8 +643,27 @@ const AdminDashboard = () => {
                                       }
                                     }}
                                   >
-                                    <Maximize className="h-4 w-4" />
+                                    <Maximize className="h-4 w-4 mr-1" />
+                                    Reset View
                                   </Button>
+                                  <Button 
+                                    variant={isMapFullscreen ? "default" : "outline"}
+                                    size="sm"
+                                    className="flex items-center justify-between w-full mt-2"
+                                    onClick={() => setIsMapFullscreen(!isMapFullscreen)}
+                                  >
+                                    <Maximize className="h-4 w-4 mr-1" />
+                                    {isMapFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                                  </Button>
+                                </div>
+                                
+                                {/* Editing instructions notice */}
+                                <div className="absolute bottom-2 left-2 z-10 bg-amber-50 p-2 rounded-md shadow border border-amber-200 max-w-sm">
+                                  <div className="text-sm font-semibold mb-1 text-amber-900">Region Editing</div>
+                                  <div className="text-xs text-amber-800">
+                                    Click on any region marker to edit its name and details. 
+                                    <br />Drag the map to explore different areas.
+                                  </div>
                                 </div>
                                 
                                 {/* Interactive map with draggable functionality */}
