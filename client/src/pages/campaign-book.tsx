@@ -23,8 +23,15 @@ import { ModeToggle } from "@/components/mode-toggle";
 export default function CampaignPage() {
   const [, setLocation] = useLocation();
   const { campaignId: campaignIdParam } = useParams();
-  // Parse campaign ID with improved validation
-  const campaignId = campaignIdParam && !isNaN(parseInt(campaignIdParam)) ? parseInt(campaignIdParam) : undefined;
+  // Parse and validate campaign ID ensuring it's always a valid number
+  const parsedId = campaignIdParam ? parseInt(campaignIdParam, 10) : 0;
+  // Ensure campaignId is a positive number greater than 0
+  const campaignId = !isNaN(parsedId) && parsedId > 0 ? parsedId : 0;
+  
+  // Log campaign ID for debugging
+  useEffect(() => {
+    console.log("Campaign book received campaignId param:", campaignIdParam, "| parsed as:", campaignId);
+  }, [campaignIdParam, campaignId]);
   const { user } = useAuth();
   const { toast } = useToast();
   const narrativeRef = useRef<HTMLDivElement>(null);

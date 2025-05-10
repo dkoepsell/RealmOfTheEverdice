@@ -66,11 +66,29 @@ export function AddCharacterDialog({
 }: AddCharacterDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Force campaignId to a number type with a default of 0
+  // This ensures we always work with a number, not undefined
+  const numericCampaignId = typeof campaignId === 'number' ? campaignId : 0;
+  
   // Enhanced safety check for campaign ID to prevent issues with invalid values
-  const [validCampaignId, setValidCampaignId] = useState<number>(0);
+  const [validCampaignId, setValidCampaignId] = useState<number>(
+    numericCampaignId > 0 ? numericCampaignId : 0
+  );
   
   // Flag to track if dialog should be blocked due to invalid ID
-  const [hasInvalidId, setHasInvalidId] = useState<boolean>(false);
+  const [hasInvalidId, setHasInvalidId] = useState<boolean>(numericCampaignId <= 0);
+  
+  // Additional useEffect to log dialog opening with campaign ID
+  useEffect(() => {
+    if (open) {
+      console.log("AddCharacterDialog opened with campaignId:", numericCampaignId, "validCampaignId:", validCampaignId);
+      
+      if (numericCampaignId <= 0) {
+        console.error("Invalid campaign ID detected in AddCharacterDialog:", numericCampaignId);
+      }
+    }
+  }, [open, numericCampaignId, validCampaignId]);
   
   // Validate campaign ID whenever it changes
   useEffect(() => {
@@ -80,7 +98,7 @@ export function AddCharacterDialog({
     // Enhanced parsing with additional safety checks
     let parsedId = 0;
     
-    // Handle various campaign ID formats
+    // Handle various campaign ID formats 
     if (campaignId !== undefined && campaignId !== null) {
       if (typeof campaignId === 'number') {
         parsedId = campaignId;
@@ -97,10 +115,12 @@ export function AddCharacterDialog({
       }
     }
     
+    // Only accept positive numbers greater than 0
     if (parsedId <= 0 || isNaN(parsedId)) {
       console.error("Invalid campaign ID detected:", campaignId, "parsed as:", parsedId);
       setHasInvalidId(true);
-      // Don't update the validCampaignId if it's invalid
+      // For debugging, let's still record what we got
+      setValidCampaignId(0);
     } else {
       console.log("Valid campaign ID confirmed:", parsedId);
       setHasInvalidId(false);
