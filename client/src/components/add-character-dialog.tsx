@@ -69,6 +69,9 @@ export function AddCharacterDialog({
   // Enhanced safety check for campaign ID to prevent issues with invalid values
   const [validCampaignId, setValidCampaignId] = useState<number>(0);
   
+  // Flag to track if dialog should be blocked due to invalid ID
+  const [hasInvalidId, setHasInvalidId] = useState<boolean>(false);
+  
   // Validate campaign ID whenever it changes
   useEffect(() => {
     // Parse and validate the campaign ID
@@ -76,9 +79,11 @@ export function AddCharacterDialog({
     
     if (parsedId <= 0) {
       console.error("Invalid campaign ID detected:", campaignId, "parsed as:", parsedId);
+      setHasInvalidId(true);
       // Don't update the validCampaignId if it's invalid
     } else {
       console.log("Valid campaign ID confirmed:", parsedId);
+      setHasInvalidId(false);
       setValidCampaignId(parsedId);
     }
   }, [campaignId]);
@@ -332,9 +337,28 @@ export function AddCharacterDialog({
             Add Character to Campaign
           </DialogTitle>
           <DialogDescription>
-            Choose a character to join this adventure!
+            {hasInvalidId 
+              ? "⚠️ Error: Campaign ID is invalid"
+              : "Choose a character to join this adventure!"}
           </DialogDescription>
         </DialogHeader>
+        
+        {hasInvalidId && (
+          <div className="mt-2 mb-4 p-4 border border-destructive/50 rounded-md bg-destructive/10">
+            <h3 className="font-bold text-destructive">Campaign ID Error</h3>
+            <p className="text-sm">
+              We couldn't find a valid campaign ID (got: {campaignId}). This might happen if:
+            </p>
+            <ul className="text-sm mt-2 list-disc list-inside">
+              <li>The campaign was just created but isn't fully saved yet</li>
+              <li>There was an error during campaign creation</li>
+              <li>You're trying to access a campaign that doesn't exist</li>
+            </ul>
+            <p className="text-sm mt-2">
+              Try refreshing the page or going back to the campaigns list.
+            </p>
+          </div>
+        )}
 
         <Tabs 
           defaultValue="my-characters" 
