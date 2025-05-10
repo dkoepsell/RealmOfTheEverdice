@@ -310,21 +310,22 @@ export default function TavernLobby() {
       queryClient.invalidateQueries({ queryKey: ["/api/users/looking-for-party"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/looking-for-friends"] });
       
-      toast({
-        title: "Status Updated",
-        description: "Your tavern status has been updated successfully.",
-      });
+      // Show toast only for manual/explicit status updates, not automatic ones from toggle changes
     }
   });
   
-  // Update status when toggles change
+  // Update status when toggles change with debounce
   useEffect(() => {
-    if (user) {
-      updateStatusMutation.mutate({ 
-        lookingForParty, 
-        lookingForFriends 
-      });
-    }
+    const timer = setTimeout(() => {
+      if (user) {
+        updateStatusMutation.mutate({ 
+          lookingForParty, 
+          lookingForFriends 
+        });
+      }
+    }, 1000); // 1 second debounce
+    
+    return () => clearTimeout(timer);
   }, [lookingForParty, lookingForFriends, user]);
   
   // Create random tavern events at intervals
