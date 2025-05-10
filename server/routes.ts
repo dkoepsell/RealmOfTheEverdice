@@ -131,8 +131,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Everdice world not found" });
       }
       
-      // Use a local placeholder map that we know exists
-      const mapUrl = "/assets/placeholder-map.jpg";
+      console.log("Regenerating Everdice world map...");
+      
+      // Generate a new world map
+      let mapUrl;
+      try {
+        // Import the OpenAI generation function
+        const { generateGlobalMapImage } = require('./openai');
+        const generatedMap = await generateGlobalMapImage();
+        mapUrl = generatedMap?.url || "/assets/placeholder-map.jpg";
+        console.log("Generated new world map:", mapUrl);
+      } catch (genError) {
+        console.error("Error generating world map with OpenAI:", genError);
+        // Fallback to placeholder if generation fails
+        mapUrl = "/assets/placeholder-map.jpg";
+      }
       
       // Update the world with the new map URL
       const updatedWorld = await storage.createOrUpdateEverdiceWorld({
