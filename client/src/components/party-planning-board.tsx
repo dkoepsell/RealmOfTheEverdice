@@ -36,7 +36,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { InsertPartyPlanItem, PartyPlanItem, InsertPartyPlanComment } from "@shared/schema";
+import { InsertPartyPlanItem, PartyPlanItem, InsertPartyPlanComment, PartyPlanComment } from "@shared/schema";
+
+// Define extended interface for an item with comments
+interface PartyPlanItemWithComments extends PartyPlanItem {
+  comments?: PartyPlanComment[];
+}
 
 // Status badge color mapping
 const statusColors = {
@@ -111,7 +116,7 @@ export function PartyPlanningBoard({ campaignId, users, currentUserId }: PartyPl
   
   // Get items for the active plan
   const { 
-    data: planItems = [], 
+    data: planItems = [] as PartyPlanItemWithComments[], 
     isLoading: isLoadingItems,
     refetch: refetchItems
   } = getPartyPlanItems(activePlanId || 0);
