@@ -379,8 +379,19 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
   
   // Effect to handle auto-advancing after roll is complete
   useEffect(() => {
-    // Check for the auto-roll setting which should now be called isAutoRollEnabled
-    // for clarity that it's about auto-advancing the story after a roll
+    // For debugging
+    console.log("Roll result changed:", rollResult);
+    console.log("Auto advance setting:", localStorage.getItem('autoRollEnabled'));
+    console.log("Has onAdvanceStory callback:", !!onAdvanceStory);
+    console.log("Auto advance already triggered:", autoAdvanceTriggered);
+    
+    // Always reset autoAdvanceTriggered when rollResult changes to null
+    if (!rollResult) {
+      setAutoAdvanceTriggered(false);
+      return;
+    }
+    
+    // Check for the auto-roll setting (this is also our auto-advance setting)
     const isAutoRollEnabled = localStorage.getItem('autoRollEnabled') === 'true';
     
     // Only trigger auto-advance if:
@@ -400,9 +411,11 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
         // Wait a brief moment after the modal closes before advancing the story
         setTimeout(() => {
           console.log("Calling onAdvanceStory to progress the narrative");
-          onAdvanceStory(); // This should trigger autoAdvanceMutation.mutate()
-        }, 500);
-      }, 2500); // Show roll result for 2.5 seconds
+          if (onAdvanceStory) {
+            onAdvanceStory(); // This should trigger autoAdvanceMutation.mutate()
+          }
+        }, 800);
+      }, 2000); // Show roll result for 2 seconds
       
       return () => clearTimeout(advanceTimer);
     } else if (rollResult && !isAutoRollEnabled) {
