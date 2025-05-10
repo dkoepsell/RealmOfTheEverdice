@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock } from "lucide-react";
+import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -429,6 +429,26 @@ export default function CampaignPage() {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Campaign settings</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Party Planning */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation(`/campaigns/${campaignId}/planning`)}
+                    className="border-amber-300 hover:bg-amber-100 text-amber-900"
+                  >
+                    <ClipboardList className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Party Planning</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Collaborative party planning</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
