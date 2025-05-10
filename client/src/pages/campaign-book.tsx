@@ -22,7 +22,9 @@ import { ModeToggle } from "@/components/mode-toggle";
 // Campaign book / main adventure interface
 export default function CampaignPage() {
   const [, setLocation] = useLocation();
-  const { campaignId } = useParams();
+  const { campaignId: campaignIdParam } = useParams();
+  // Parse campaign ID with improved validation
+  const campaignId = campaignIdParam && !isNaN(parseInt(campaignIdParam)) ? parseInt(campaignIdParam) : undefined;
   const { user } = useAuth();
   const { toast } = useToast();
   const narrativeRef = useRef<HTMLDivElement>(null);
@@ -1057,7 +1059,7 @@ export default function CampaignPage() {
       
       {/* Character dialog */}
       <AddCharacterDialog
-        campaignId={campaignId && !isNaN(parseInt(campaignId)) ? parseInt(campaignId) : undefined}
+        campaignId={campaignId}
         open={showAddCharacterDialog}
         onOpenChange={setShowAddCharacterDialog}
         onCharacterAdded={handleCharacterAdded}
