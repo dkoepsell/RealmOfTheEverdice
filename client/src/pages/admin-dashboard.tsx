@@ -82,7 +82,27 @@ export default function AdminDashboard() {
     sendMessage,
     promoteUser,
     regenerateWorldMap,
-    regenerateWorldMapLoading
+    regenerateWorldMapLoading,
+    
+    // World management
+    worlds,
+    worldsLoading,
+    refetchWorlds,
+    selectedWorldId,
+    setSelectedWorldId,
+    worldUsers,
+    worldUsersLoading,
+    refetchWorldUsers,
+    createWorld,
+    createWorldLoading,
+    updateWorld,
+    updateWorldLoading,
+    grantWorldAccess,
+    grantWorldAccessLoading,
+    updateWorldAccess,
+    updateWorldAccessLoading,
+    removeWorldAccess,
+    removeWorldAccessLoading
   } = useAdmin();
 
   const [activeTab, setActiveTab] = useState("overview");

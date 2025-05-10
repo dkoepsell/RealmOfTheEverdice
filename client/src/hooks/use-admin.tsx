@@ -217,6 +217,137 @@ export function useAdmin() {
     },
   });
 
+  // Get all Everdice worlds
+  const {
+    data: worlds = [],
+    isLoading: worldsLoading,
+    error: worldsError,
+    refetch: refetchWorlds
+  } = useQuery({
+    queryKey: ["/api/admin/worlds"],
+    enabled: !!(isAdmin || isSuperAdmin)
+  });
+  
+  // Get world users
+  const {
+    data: worldUsers = [],
+    isLoading: worldUsersLoading,
+    error: worldUsersError,
+    refetch: refetchWorldUsers
+  } = useQuery({
+    queryKey: ["/api/admin/worlds", selectedWorldId, "access"],
+    enabled: !!(selectedWorldId && (isAdmin || isSuperAdmin))
+  });
+  
+  // Create a new Everdice world
+  const createWorldMutation = useMutation({
+    mutationFn: async (worldData: any) => {
+      const res = await apiRequest("POST", "/api/admin/worlds/create", worldData);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "World created",
+        description: "New Everdice world has been created successfully",
+      });
+      refetchWorlds();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create world",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Update an existing Everdice world
+  const updateWorldMutation = useMutation({
+    mutationFn: async ({ worldId, data }: { worldId: number; data: any }) => {
+      const res = await apiRequest("PUT", `/api/admin/worlds/${worldId}`, data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "World updated",
+        description: "Everdice world has been updated successfully",
+      });
+      refetchWorlds();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update world",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Grant access to a world
+  const grantWorldAccessMutation = useMutation({
+    mutationFn: async ({ worldId, userId, accessLevel }: { worldId: number; userId: number; accessLevel: string }) => {
+      const res = await apiRequest("POST", `/api/admin/worlds/${worldId}/access`, { userId, accessLevel });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Access granted",
+        description: "User access to world has been granted successfully",
+      });
+      refetchWorldUsers();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to grant access",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Update world access
+  const updateWorldAccessMutation = useMutation({
+    mutationFn: async ({ worldId, userId, accessLevel }: { worldId: number; userId: number; accessLevel: string }) => {
+      const res = await apiRequest("PUT", `/api/admin/worlds/${worldId}/access/${userId}`, { accessLevel });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Access updated",
+        description: "User access to world has been updated successfully",
+      });
+      refetchWorldUsers();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update access",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Remove access to a world
+  const removeWorldAccessMutation = useMutation({
+    mutationFn: async ({ worldId, userId }: { worldId: number; userId: number }) => {
+      await apiRequest("DELETE", `/api/admin/worlds/${worldId}/access/${userId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Access removed",
+        description: "User access to world has been removed successfully",
+      });
+      refetchWorldUsers();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to remove access",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   return {
     isAdmin,
     isSuperAdmin,
@@ -247,5 +378,27 @@ export function useAdmin() {
     logStat: logStatMutation.mutate,
     regenerateWorldMap: regenerateWorldMapMutation.mutate,
     regenerateWorldMapLoading: regenerateWorldMapMutation.isPending,
+    
+    // World management
+    worlds,
+    worldsLoading,
+    worldsError,
+    refetchWorlds,
+    selectedWorldId,
+    setSelectedWorldId,
+    worldUsers,
+    worldUsersLoading,
+    worldUsersError,
+    refetchWorldUsers,
+    createWorld: createWorldMutation.mutate,
+    createWorldLoading: createWorldMutation.isPending,
+    updateWorld: updateWorldMutation.mutate,
+    updateWorldLoading: updateWorldMutation.isPending,
+    grantWorldAccess: grantWorldAccessMutation.mutate,
+    grantWorldAccessLoading: grantWorldAccessMutation.isPending,
+    updateWorldAccess: updateWorldAccessMutation.mutate,
+    updateWorldAccessLoading: updateWorldAccessMutation.isPending,
+    removeWorldAccess: removeWorldAccessMutation.mutate,
+    removeWorldAccessLoading: removeWorldAccessMutation.isPending
   };
 }
