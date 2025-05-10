@@ -529,10 +529,12 @@ export default function AdminDashboard() {
                         <img 
                           src={everdiceWorld.mapUrl} 
                           alt="Everdice World Map" 
-                          className="object-cover w-full h-full"
+                          className="object-contain md:object-cover w-full h-full"
+                          style={{ maxWidth: '100%', maxHeight: '100%' }}
                           onError={(e) => {
                             e.currentTarget.src = "/placeholder-map.jpg";
                           }}
+                          loading="eager"
                         />
                         {/* Overlay of campaign regions */}
                         {!isLoadingCampaignRegions && campaignRegions?.uniqueRegions?.length > 0 && (
