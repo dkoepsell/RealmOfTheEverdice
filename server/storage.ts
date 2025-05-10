@@ -225,11 +225,16 @@ export class DatabaseStorage implements IStorage {
   // Raw SQL query execution - useful for complex queries and schema migrations
   async executeRawQuery(query: string, params?: any[]): Promise<any> {
     try {
+      console.log("Executing raw query:", query);
+      console.log("With params:", JSON.stringify(params || [], null, 2));
       const result = await pool.query(query, params || []);
-      console.log("Raw query result:", JSON.stringify(result.rows || [], null, 2));
+      console.log("Raw query result rows:", JSON.stringify(result.rows || [], null, 2));
+      console.log("Raw query result rowCount:", result.rowCount);
       return result.rows;
     } catch (error) {
       console.error("Error executing raw query:", error);
+      console.error("Query was:", query);
+      console.error("Params were:", JSON.stringify(params || [], null, 2));
       throw error;
     }
   }
