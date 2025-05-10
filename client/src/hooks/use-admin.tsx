@@ -78,11 +78,24 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/everdice"],
     queryFn: async () => {
-      if (!isSuperAdmin) return null;
-      const res = await apiRequest("GET", "/api/admin/everdice");
-      return await res.json();
+      if (!isAdmin && !isSuperAdmin) return null;
+      try {
+        const res = await apiRequest("GET", "/api/admin/everdice");
+        if (!res.ok) {
+          console.error("Error fetching Everdice world map:", res.status, res.statusText);
+          return null;
+        }
+        const data = await res.json();
+        console.log("Everdice world data received:", data);
+        return data;
+      } catch (error) {
+        console.error("Exception fetching Everdice world:", error);
+        return null;
+      }
     },
-    enabled: !!isSuperAdmin,
+    enabled: !!(isAdmin || isSuperAdmin),
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
   
   // Get all campaign regions within Everdice
@@ -94,11 +107,24 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/campaign-regions"],
     queryFn: async () => {
-      if (!isSuperAdmin) return { campaigns: [], uniqueRegions: [] };
-      const res = await apiRequest("GET", "/api/admin/campaign-regions");
-      return await res.json();
+      if (!isAdmin && !isSuperAdmin) return { campaigns: [], uniqueRegions: [] };
+      try {
+        const res = await apiRequest("GET", "/api/admin/campaign-regions");
+        if (!res.ok) {
+          console.error("Error fetching campaign regions:", res.status, res.statusText);
+          return { campaigns: [], uniqueRegions: [] };
+        }
+        const data = await res.json();
+        console.log("Campaign regions data received:", data);
+        return data;
+      } catch (error) {
+        console.error("Exception fetching campaign regions:", error);
+        return { campaigns: [], uniqueRegions: [] };
+      }
     },
-    enabled: !!isSuperAdmin,
+    enabled: !!(isAdmin || isSuperAdmin),
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
 
   // Send admin message

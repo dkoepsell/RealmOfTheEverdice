@@ -537,7 +537,8 @@ export default function AdminDashboard() {
                             display: 'block'
                           }}
                           onError={(e) => {
-                            e.currentTarget.src = "/placeholder-map.jpg";
+                            console.error(`Failed to load image from: ${everdiceWorld.mapUrl}`);
+                            e.currentTarget.src = "https://replit.com/cdn-cgi/image/width=1920,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg";
                           }}
                           loading="eager"
                         />
@@ -556,13 +557,26 @@ export default function AdminDashboard() {
                               >
                                 {/* Region marker */}
                                 <div 
-                                  className="w-4 h-4 rounded-full bg-primary animate-pulse ring-2 ring-white shadow-lg"
+                                  className="w-6 h-6 rounded-full bg-primary animate-pulse ring-2 ring-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform z-10"
                                   title={`${region.regionName || "Unnamed region"} - ${region.campaignName || ""}`}
-                                />
+                                  onClick={() => {
+                                    toast({
+                                      title: region.campaignName || "Campaign",
+                                      description: `Located in the ${region.regionName || "unknown"} region`,
+                                    });
+                                  }}
+                                >
+                                  <MapPin className="h-3 w-3 text-white" />
+                                </div>
                                 
-                                {/* Optional: small boundary to indicate region area */}
+                                {/* Region label */}
+                                <div className="absolute mt-4 -ml-12 w-24 text-center whitespace-nowrap">
+                                  <span className="bg-background/80 px-1 py-0.5 text-xs font-semibold rounded shadow-sm">{region.regionName || "Unknown"}</span>
+                                </div>
+                                
+                                {/* Region boundary to indicate area */}
                                 <div 
-                                  className="absolute -inset-3 border-2 border-dashed border-primary/40 rounded-md opacity-70"
+                                  className="absolute -inset-6 border-2 border-dashed border-primary/50 rounded-md opacity-80 hover:opacity-100 hover:border-primary transition-all"
                                   style={{
                                     width: '35px',
                                     height: '35px',

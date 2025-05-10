@@ -119,6 +119,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Public endpoint for Everdice world data (used by campaign pages)
+  app.get("/api/everdice/world", async (req, res) => {    
+    try {
+      const everdiceWorld = await storage.getEverdiceWorld();
+      
+      if (!everdiceWorld) {
+        return res.status(404).json({ message: "Everdice world not found" });
+      }
+      
+      // Return public-facing world data
+      res.json({
+        mapUrl: everdiceWorld.mapUrl,
+        name: everdiceWorld.name,
+        continents: everdiceWorld.continents || [],
+        generatedAt: everdiceWorld.generatedAt
+      });
+    } catch (error) {
+      console.error("Error getting public Everdice world data:", error);
+      res.status(500).json({ message: "Failed to get Everdice world data" });
+    }
+  });
+  
   // Regenerate world map for superadmins
   app.post("/api/admin/regenerate-world-map", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
