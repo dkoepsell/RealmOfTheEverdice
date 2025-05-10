@@ -570,10 +570,12 @@ const AdminDashboard = () => {
                           <div className="flex justify-between">
                             <dt className="text-muted-foreground">Campaign Coverage:</dt>
                             <dd className="font-medium">
-                              {campaignRegions ? 
-                                `${(campaignRegions.campaigns?.length || 0)} campaigns in ${Math.min((campaignRegions.uniqueRegions?.length || 0), 
-                                (everdiceWorld.continents?.reduce((sum: number, continent: any) => 
-                                sum + (continent.regions?.length || 0), 0)) || 1)} regions` :
+                              {campaignRegions && Array.isArray(campaignRegions.campaigns) ? 
+                                `${(campaignRegions.campaigns.length || 0)} campaigns in ${Math.min(
+                                  (Array.isArray(campaignRegions.uniqueRegions) ? campaignRegions.uniqueRegions.length : 0), 
+                                  (everdiceWorld?.continents?.reduce((sum: number, continent: any) => 
+                                  sum + (Array.isArray(continent.regions) ? continent.regions.length : 0), 0) || 1)
+                                )} regions` :
                                 '0 campaigns'}
                             </dd>
                           </div>
@@ -701,18 +703,32 @@ const AdminDashboard = () => {
                                     src={everdiceWorld?.mapUrl || '/assets/placeholder-map.jpg'} 
                                     alt="Everdice World Map" 
                                     className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                      e.currentTarget.src = '/assets/placeholder-map.jpg';
+                                      console.log('Fallback to placeholder map');
+                                    }}
                                   />
                                   
                                   {/* Map region markers - highlight campaign regions */}
                                   {campaignRegions && 
+                                   campaignRegions.uniqueRegions && 
                                    Array.isArray(campaignRegions.uniqueRegions) && 
                                    campaignRegions.uniqueRegions.length > 0 && 
                                    campaignRegions.uniqueRegions.map((regionName: string, index: number) => {
+                                    if (!regionName) return null;
+                                    
+                                    // Find campaigns in this region
+                                    const campaignsInRegion = campaignRegions.campaigns?.filter(
+                                      (c: any) => c.regionName === regionName
+                                    ) || [];
+                                    
                                     // Create a campaign object for display purposes
                                     const campaign = {
-                                      id: index + 1,
+                                      id: campaignsInRegion[0]?.id || index + 1,
                                       region: regionName,
-                                      name: `Campaign in ${regionName}`
+                                      name: campaignsInRegion.length > 0 
+                                        ? `${campaignsInRegion.length} campaign${campaignsInRegion.length > 1 ? 's' : ''} in ${regionName}`
+                                        : `Region: ${regionName}`
                                     };
                                     
                                     return (

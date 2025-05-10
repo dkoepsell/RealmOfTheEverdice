@@ -523,17 +523,26 @@ export class DatabaseStorage implements IStorage {
           c.is_ai_dm as "isAiDm",
           c.description,
           c.setting,
-          cwm.map_url as "mapUrl"
+          cwm.map_url as "mapUrl",
+          cwm.region_name as "regionName"
         FROM campaigns c
         LEFT JOIN campaign_world_maps cwm ON c.id = cwm.campaign_id
+        WHERE cwm.region_name IS NOT NULL
       `;
       
       const campaignsWithRegions = await this.executeRawQuery(query);
       
-      // Use an empty array for unique regions until schema is fixed
+      // Extract unique region names from campaigns
+      const uniqueRegions = campaignsWithRegions
+        .map((campaign: any) => campaign.regionName)
+        .filter((region: string | null) => region !== null)
+        .filter((region: string, index: number, self: string[]) => 
+          self.indexOf(region) === index
+        );
+      
       return {
         campaigns: campaignsWithRegions || [],
-        uniqueRegions: []
+        uniqueRegions: uniqueRegions || []
       };
     } catch (error) {
       console.error("Error getting campaign regions:", error);
