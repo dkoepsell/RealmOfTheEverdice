@@ -64,7 +64,8 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const {
-    isSuperuser,
+    isAdmin,
+    isSuperAdmin,
     users,
     isLoadingUsers,
     stats,
@@ -93,7 +94,7 @@ export default function AdminDashboard() {
 
   // Regenerate world map
   const handleRegenerateWorld = async () => {
-    if (!user?.isSuperAdmin) {
+    if (!isSuperAdmin) {
       toast({
         title: "Permission Denied",
         description: "Only superadmins can regenerate the world map.",
@@ -153,7 +154,7 @@ export default function AdminDashboard() {
   const handlePromoteUser = async () => {
     if (!selectedUser) return;
     
-    if (!user?.isSuperAdmin) {
+    if (!isSuperAdmin) {
       toast({
         title: "Permission Denied",
         description: "Only superadmins can promote users to admin.",
@@ -180,7 +181,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (!user?.isAdmin && !user?.isSuperAdmin) {
+  if (!isAdmin && !isSuperAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-[350px]">
@@ -275,7 +276,7 @@ export default function AdminDashboard() {
                     <Users className="mr-2 h-4 w-4" />
                     User Management
                   </Button>
-                  {user?.isSuperAdmin && (
+                  {isSuperAdmin && (
                     <div>
                       <Button 
                         className="w-full justify-start" 
@@ -356,7 +357,7 @@ export default function AdminDashboard() {
                               >
                                 <Mail className="h-4 w-4" />
                               </Button>
-                              {user.role !== "admin" && user?.isSuperAdmin && (
+                              {user.role !== "admin" && isSuperAdmin && (
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
