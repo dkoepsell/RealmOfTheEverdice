@@ -95,7 +95,6 @@ export default function CampaignPage() {
   const narrativeRef = useRef<HTMLDivElement>(null);
   
   // State management
-  const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
   const [gameLogs, setGameLogs] = useState<GameLog[]>([]);
   const [showAddCharacterDialog, setShowAddCharacterDialog] = useState(false);
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
@@ -614,6 +613,19 @@ export default function CampaignPage() {
                   onClick={() => setRightPanelTab(rightPanelTab === "party" ? null : "party")}
                 >
                   <Users className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 relative"
+                  title="Loot Collection"
+                  onClick={() => setRightPanelTab(rightPanelTab === "loot" ? null : "loot")}
+                >
+                  <Package className="h-4 w-4" />
+                  {hasUnclaimedLoot && (
+                    <span className="absolute top-0 right-0 h-2 w-2 bg-primary rounded-full" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -1319,19 +1331,26 @@ export default function CampaignPage() {
                         
                         {campaignCharacters && campaignCharacters.length > 0 ? (
                           campaignCharacters.map(character => (
-                            <div key={character.id} className="p-2 border border-border rounded-md bg-background">
+                            <div 
+                              key={character.id} 
+                              className={`p-2 border ${selectedCharacterId === character.id ? 'border-primary' : 'border-border'} rounded-md bg-background cursor-pointer transition-colors hover:border-primary/70`}
+                              onClick={() => setSelectedCharacterId(character.id)}
+                            >
                               <div className="flex items-center">
                                 <Avatar className="h-10 w-10 mr-3">
                                   <AvatarFallback className="bg-primary/10 text-primary">
                                     {character.name?.substring(0, 2).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div>
+                                <div className="flex-1">
                                   <div className="font-medium">{character.name}</div>
                                   <div className="text-sm text-muted-foreground">
                                     {character.race} {character.class}
                                   </div>
                                 </div>
+                                {selectedCharacterId === character.id && (
+                                  <div className="h-2 w-2 rounded-full bg-primary" />
+                                )}
                               </div>
                             </div>
                           ))
