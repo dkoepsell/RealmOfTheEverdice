@@ -118,6 +118,9 @@ export default function AdminDashboard() {
   const [worldName, setWorldName] = useState("");
   const [worldDescription, setWorldDescription] = useState("");
   const [isMainWorld, setIsMainWorld] = useState(false);
+  const [showGrantAccessDialog, setShowGrantAccessDialog] = useState(false);
+  const [accessUserId, setAccessUserId] = useState<number | null>(null);
+  const [accessLevel, setAccessLevel] = useState<string>("player");
   
   // Set the initial selectedWorldId when worlds load
   useEffect(() => {
@@ -197,6 +200,43 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "Failed to create world",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Grant access to a world
+  const handleGrantAccess = async () => {
+    if (!selectedWorldId || !accessUserId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a world and user",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await grantWorldAccess({
+        worldId: selectedWorldId,
+        userId: accessUserId,
+        accessLevel: accessLevel
+      });
+      
+      // Reset form
+      setAccessUserId(null);
+      setAccessLevel("player");
+      setShowGrantAccessDialog(false);
+      
+      toast({
+        title: "Success",
+        description: "Access granted successfully",
+      });
+    } catch (error) {
+      console.error("Grant access error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to grant access",
         variant: "destructive",
       });
     }
@@ -1075,11 +1115,7 @@ export default function AdminDashboard() {
                   <CardFooter>
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        // Implement dialog to grant access to new users
-                        // This would require a dialog similar to the create world dialog
-                        alert("Grant access functionality would be implemented here");
-                      }}
+                      onClick={() => setShowGrantAccessDialog(true)}
                     >
                       <Plus className="mr-2 h-4 w-4" /> Grant Access
                     </Button>
