@@ -9,7 +9,10 @@ import {
   Circle,
   useMapEvents,
   ZoomControl,
-  ImageOverlay
+  ImageOverlay,
+  Tooltip as LeafletTooltip,
+  Rectangle as LeafletRectangle,
+  Polygon
 } from 'react-leaflet';
 import { 
   DivIcon, 
@@ -28,6 +31,7 @@ import {
   DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -64,7 +68,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -710,7 +713,7 @@ export function AdventureMapPanel({
                     />
                     
                     {/* Region indicator frame to show this is a portion of the Everdice world */}
-                    <Rectangle 
+                    <LeafletRectangle 
                       bounds={[[-85, -180], [85, 180]]}
                       pathOptions={{ 
                         color: '#9333ea', 
@@ -719,14 +722,17 @@ export function AdventureMapPanel({
                         dashArray: '10, 10',
                         fillOpacity: 0
                       }}
-                      zIndex={15}
                     >
-                      <Tooltip direction="center" permanent opacity={0.9}>
+                      <LeafletTooltip 
+                        permanent 
+                        className="custom-tooltip"
+                        offset={[0, -20]}
+                      >
                         <div className="text-xs font-semibold p-1">
                           {regionName} - Part of {continentName}
                         </div>
-                      </Tooltip>
-                    </Rectangle>
+                      </LeafletTooltip>
+                    </LeafletRectangle>
                   </>
                 ) : (
                   <ImageOverlay
