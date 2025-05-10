@@ -86,7 +86,12 @@ export const campaignCharacters = pgTable("campaign_characters", {
   id: serial("id").primaryKey(),
   campaignId: integer("campaign_id").notNull(),
   characterId: integer("character_id").notNull(),
-  isActive: boolean("is_active").notNull().default(true)
+  isActive: boolean("is_active").notNull().default(true),
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
+  turnStatus: text("turn_status").notNull().default("waiting"), // waiting, active, completed, skipped
+  isZombieMode: boolean("is_zombie_mode").notNull().default(false),
+  zombieModeSince: timestamp("zombie_mode_since"),
+  canTakeDamage: boolean("can_take_damage").notNull().default(true)
 });
 
 export const insertCampaignCharacterSchema = createInsertSchema(campaignCharacters).omit({
@@ -321,6 +326,10 @@ export const campaignTurns = pgTable("campaign_turns", {
   startedAt: timestamp("started_at").defaultNow(),
   endedAt: timestamp("ended_at"),
   actionDescription: text("action_description"),
+  timeoutInMinutes: integer("timeout_in_minutes").default(1440), // Default: 24 hours in minutes
+  lastReminderSent: timestamp("last_reminder_sent"),
+  zombieModeEnabled: boolean("zombie_mode_enabled").notNull().default(true),
+  zombieModeActivationMinutes: integer("zombie_mode_activation_minutes").default(2880), // Default: 48 hours in minutes
   metadata: json("metadata")  // Additional turn-related data
 });
 

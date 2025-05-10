@@ -58,6 +58,22 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
+  // Campaign Character Turn System methods
+  getCampaignCharacter(campaignId: number, characterId: number): Promise<CampaignCharacter | undefined>;
+  updateCampaignCharacterStatus(id: number, updates: Partial<CampaignCharacter>): Promise<CampaignCharacter>;
+  setCampaignCharacterZombieMode(id: number, isZombieMode: boolean): Promise<CampaignCharacter>;
+  getActivePlayersInCampaign(campaignId: number): Promise<{ userId: number, characterId: number }[]>;
+  getInactivePlayersInCampaign(campaignId: number, thresholdMinutes: number): Promise<{ userId: number, characterId: number }[]>;
+  getCurrentTurn(campaignId: number): Promise<any | undefined>;
+  createNewTurn(campaignId: number, playerId: number): Promise<any>;
+  advanceTurn(campaignId: number): Promise<any>;
+  completeTurn(turnId: number): Promise<any>;
+  
+  // Turn Notification methods
+  createTurnNotification(turnId: number, userId: number, message: string): Promise<any>;
+  markNotificationAsRead(notificationId: number): Promise<any>;
+  getUnreadNotificationsForUser(userId: number): Promise<any[]>;
+  
   // Party Planning methods
   getPartyPlans(campaignId: number): Promise<PartyPlan[]>;
   getPartyPlan(planId: number): Promise<PartyPlan | undefined>;
