@@ -222,6 +222,17 @@ export class DatabaseStorage implements IStorage {
     });
   }
   
+  // Raw SQL query execution - useful for complex queries and schema migrations
+  async executeRawQuery(query: string, params?: any[]): Promise<any> {
+    try {
+      const result = await pool.query(query, params || []);
+      return result.rows;
+    } catch (error) {
+      console.error("Error executing raw query:", error);
+      throw error;
+    }
+  }
+  
   // Implement Map location methods
   async getMapLocationsByCampaignId(campaignId: number): Promise<MapLocation[]> {
     try {
@@ -394,80 +405,173 @@ export class DatabaseStorage implements IStorage {
         await this.createOrUpdateEverdiceWorld({});
       }
       
-      // Extract only safe fields
-      const safeWorldMap: any = {
-        mapUrl: worldMap.mapUrl
-      };
-      
-      // Only include these fields if they exist in the input
-      if (worldMap.regionName !== undefined) safeWorldMap.regionName = worldMap.regionName;
-      if (worldMap.position !== undefined) safeWorldMap.position = worldMap.position;
-      if (worldMap.bounds !== undefined) safeWorldMap.bounds = worldMap.bounds;
-      
+      // Using raw SQL for more reliable updates
       if (existingMap) {
         try {
-          // Update the existing map - use explicit returning to avoid schema issues
-          const [updatedMap] = await db
-            .update(campaignWorldMaps)
-            .set({ 
-              ...safeWorldMap,
-              updatedAt: new Date()
-            })
-            .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
-            .returning({
-              campaignId: campaignWorldMaps.campaignId,
-              mapUrl: campaignWorldMaps.mapUrl,
-              regionName: campaignWorldMaps.regionName,
-              continentId: campaignWorldMaps.continentId,
-              position: campaignWorldMaps.position,
-              bounds: campaignWorldMaps.bounds,
-              metadata: campaignWorldMaps.metadata,
-              updatedAt: campaignWorldMaps.updatedAt
-            });
-          return updatedMap;
-        } catch (updateError) {
-          console.error("Error updating campaign world map with full fields:", updateError);
+          // Build update parts
+          const updateFields = [];
+          const values = [worldMap.campaignId]; // campaign_id is always used in WHERE clause
+          let paramCounter = 2; // Start from 2 since $1 is used for campaign_id
           
-          // Try a more minimal update if the full update fails
-          const [minimalUpdatedMap] = await db
-            .update(campaignWorldMaps)
-            .set({ 
-              mapUrl: worldMap.mapUrl,
-              updatedAt: new Date()
-            })
-            .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
-            .returning({
-              campaignId: campaignWorldMaps.campaignId,
-              mapUrl: campaignWorldMaps.mapUrl,
-              updatedAt: campaignWorldMaps.updatedAt
-            });
-          return minimalUpdatedMap;
+          // Always include the mapUrl in updates
+          updateFields.push(`map_url = $${paramCounter}`);
+          values.push(worldMap.mapUrl);
+          paramCounter++;
+          
+          // Add other fields if they exist
+          if (worldMap.regionName !== undefined) {
+            updateFields.push(`region_name = $${paramCounter}`);
+            values.push(worldMap.regionName);
+            paramCounter++;
+          }
+          
+          if (worldMap.continentId !== undefined) {
+            updateFields.push(`continent_id = $${paramCounter}`);
+            values.push(worldMap.continentId);
+            paramCounter++;
+          }
+          
+          if (worldMap.position !== undefined) {
+            updateFields.push(`position = $${paramCounter}`);
+            values.push(worldMap.position);
+            paramCounter++;
+          }
+          
+          if (worldMap.bounds !== undefined) {
+            updateFields.push(`bounds = $${paramCounter}`);
+            values.push(worldMap.bounds);
+            paramCounter++;
+          }
+          
+          if (worldMap.metadata !== undefined) {
+            updateFields.push(`metadata = $${paramCounter}`);
+            values.push(worldMap.metadata);
+            paramCounter++;
+          }
+          
+          // Always update the updated_at timestamp
+          updateFields.push(`updated_at = NOW()`);
+          
+          // Create the full update query
+          const updateQuery = `
+            UPDATE campaign_world_maps
+            SET ${updateFields.join(', ')}
+            WHERE campaign_id = $1
+            RETURNING 
+              campaign_id as "campaignId",
+              map_url as "mapUrl",
+              region_name as "regionName",
+              continent_id as "continentId",
+              position,
+              bounds,
+              metadata,
+              generated_at as "generatedAt",
+              updated_at as "updatedAt"
+          `;
+          
+          const result = await this.executeRawQuery(updateQuery, values);
+          
+          if (result && result.length > 0) {
+            return result[0];
+          }
+          
+          throw new Error("Update didn't return the updated row");
+        } catch (updateError) {
+          console.error("Error updating campaign world map:", updateError);
+          
+          // Simplest fallback update
+          const minimalUpdateQuery = `
+            UPDATE campaign_world_maps
+            SET map_url = $2, updated_at = NOW()
+            WHERE campaign_id = $1
+            RETURNING 
+              campaign_id as "campaignId",
+              map_url as "mapUrl",
+              generated_at as "generatedAt",
+              updated_at as "updatedAt"
+          `;
+          
+          const result = await this.executeRawQuery(minimalUpdateQuery, [
+            worldMap.campaignId,
+            worldMap.mapUrl
+          ]);
+          
+          if (result && result.length > 0) {
+            return result[0];
+          }
+          
+          throw new Error("Minimal update didn't return the updated row");
         }
       } else {
+        // Insert new record
         try {
-          // Create a new map - only include the essential fields
-          const mapData = {
-            campaignId: worldMap.campaignId,
-            mapUrl: worldMap.mapUrl,
-            // Add optional fields if they exist
-            ...(worldMap.regionName && { regionName: worldMap.regionName }),
-            ...(worldMap.continentId && { continentId: worldMap.continentId }),
-            ...(worldMap.metadata && { metadata: worldMap.metadata })
-          };
+          // Build insert fields and values
+          const insertFields = ['campaign_id', 'map_url', 'generated_at', 'updated_at'];
+          const valuePlaceholders = ['$1', '$2', 'NOW()', 'NOW()'];
+          const values = [worldMap.campaignId, worldMap.mapUrl];
+          let paramCounter = 3; // Start from 3 since $1 and $2 are used
           
-          const [newMap] = await db
-            .insert(campaignWorldMaps)
-            .values(mapData)
-            .returning({
-              campaignId: campaignWorldMaps.campaignId,
-              mapUrl: campaignWorldMaps.mapUrl,
-              regionName: campaignWorldMaps.regionName,
-              continentId: campaignWorldMaps.continentId,
-              position: campaignWorldMaps.position,
-              metadata: campaignWorldMaps.metadata,
-              updatedAt: campaignWorldMaps.updatedAt
-            });
-          return newMap;
+          // Add optional fields
+          if (worldMap.regionName !== undefined) {
+            insertFields.push('region_name');
+            valuePlaceholders.push(`$${paramCounter}`);
+            values.push(worldMap.regionName);
+            paramCounter++;
+          }
+          
+          if (worldMap.continentId !== undefined) {
+            insertFields.push('continent_id');
+            valuePlaceholders.push(`$${paramCounter}`);
+            values.push(worldMap.continentId);
+            paramCounter++;
+          }
+          
+          if (worldMap.position !== undefined) {
+            insertFields.push('position');
+            valuePlaceholders.push(`$${paramCounter}`);
+            values.push(worldMap.position);
+            paramCounter++;
+          }
+          
+          if (worldMap.bounds !== undefined) {
+            insertFields.push('bounds');
+            valuePlaceholders.push(`$${paramCounter}`);
+            values.push(worldMap.bounds);
+            paramCounter++;
+          }
+          
+          if (worldMap.metadata !== undefined) {
+            insertFields.push('metadata');
+            valuePlaceholders.push(`$${paramCounter}`);
+            values.push(worldMap.metadata);
+            paramCounter++;
+          }
+          
+          // Create the full insert query
+          const insertQuery = `
+            INSERT INTO campaign_world_maps
+            (${insertFields.join(', ')})
+            VALUES
+            (${valuePlaceholders.join(', ')})
+            RETURNING 
+              campaign_id as "campaignId",
+              map_url as "mapUrl",
+              region_name as "regionName",
+              continent_id as "continentId",
+              position,
+              bounds,
+              metadata,
+              generated_at as "generatedAt",
+              updated_at as "updatedAt"
+          `;
+          
+          const result = await this.executeRawQuery(insertQuery, values);
+          
+          if (result && result.length > 0) {
+            return result[0];
+          }
+          
+          throw new Error("Insert didn't return the inserted row");
         } catch (insertError) {
           console.error("Error creating campaign world map:", insertError);
           throw insertError;
