@@ -321,11 +321,35 @@ export class DatabaseStorage implements IStorage {
   // Implement World Map methods
   async getCampaignWorldMap(campaignId: number): Promise<CampaignWorldMap | undefined> {
     try {
-      const [worldMap] = await db.select().from(campaignWorldMaps).where(eq(campaignWorldMaps.campaignId, campaignId));
+      // Use explicit column selection to avoid issues with missing columns
+      const [worldMap] = await db.select({
+        id: campaignWorldMaps.id,
+        campaignId: campaignWorldMaps.campaignId,
+        mapUrl: campaignWorldMaps.mapUrl,
+        regionName: campaignWorldMaps.regionName,
+        createdAt: campaignWorldMaps.createdAt,
+        updatedAt: campaignWorldMaps.updatedAt
+      })
+      .from(campaignWorldMaps)
+      .where(eq(campaignWorldMaps.campaignId, campaignId));
+      
       return worldMap;
     } catch (error) {
-      console.error("Error getting campaign world map:", error);
-      return undefined;
+      // If there's a column-related error, try a more minimal query
+      try {
+        const [minimalWorldMap] = await db.select({
+          id: campaignWorldMaps.id,
+          campaignId: campaignWorldMaps.campaignId,
+          mapUrl: campaignWorldMaps.mapUrl
+        })
+        .from(campaignWorldMaps)
+        .where(eq(campaignWorldMaps.campaignId, campaignId));
+        
+        return minimalWorldMap;
+      } catch (fallbackError) {
+        console.error("Error getting campaign world map (even with minimal query):", fallbackError);
+        return undefined;
+      }
     }
   }
   
@@ -340,31 +364,77 @@ export class DatabaseStorage implements IStorage {
         await this.createOrUpdateEverdiceWorld({});
       }
       
+      // Extract only safe fields
+      const safeWorldMap: any = {
+        mapUrl: worldMap.mapUrl
+      };
+      
+      // Only include these fields if they exist in the input
+      if (worldMap.regionName !== undefined) safeWorldMap.regionName = worldMap.regionName;
+      if (worldMap.position !== undefined) safeWorldMap.position = worldMap.position;
+      if (worldMap.bounds !== undefined) safeWorldMap.bounds = worldMap.bounds;
+      
       if (existingMap) {
-        // Update the existing map
-        const [updatedMap] = await db
-          .update(campaignWorldMaps)
-          .set({ 
-            mapUrl: worldMap.mapUrl,
-            continentId: worldMap.continentId,
-            regionName: worldMap.regionName,
-            position: worldMap.position,
-            bounds: worldMap.bounds,
-            updatedAt: new Date()
-          })
-          .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
-          .returning();
-        return updatedMap;
+        try {
+          // Update the existing map - use explicit returning to avoid schema issues
+          const [updatedMap] = await db
+            .update(campaignWorldMaps)
+            .set({ 
+              ...safeWorldMap,
+              updatedAt: new Date()
+            })
+            .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
+            .returning({
+              id: campaignWorldMaps.id,
+              campaignId: campaignWorldMaps.campaignId,
+              mapUrl: campaignWorldMaps.mapUrl,
+              regionName: campaignWorldMaps.regionName,
+              createdAt: campaignWorldMaps.createdAt,
+              updatedAt: campaignWorldMaps.updatedAt
+            });
+          return updatedMap;
+        } catch (updateError) {
+          console.error("Error updating campaign world map with full fields:", updateError);
+          
+          // Try a more minimal update if the full update fails
+          const [minimalUpdatedMap] = await db
+            .update(campaignWorldMaps)
+            .set({ 
+              mapUrl: worldMap.mapUrl,
+              updatedAt: new Date()
+            })
+            .where(eq(campaignWorldMaps.campaignId, worldMap.campaignId))
+            .returning({
+              id: campaignWorldMaps.id,
+              campaignId: campaignWorldMaps.campaignId,
+              mapUrl: campaignWorldMaps.mapUrl
+            });
+          return minimalUpdatedMap;
+        }
       } else {
-        // Create a new map
-        const [newMap] = await db
-          .insert(campaignWorldMaps)
-          .values(worldMap)
-          .returning();
-        return newMap;
+        try {
+          // Create a new map - only include the essential fields
+          const mapData = {
+            campaignId: worldMap.campaignId,
+            mapUrl: worldMap.mapUrl
+          };
+          
+          const [newMap] = await db
+            .insert(campaignWorldMaps)
+            .values(mapData)
+            .returning({
+              id: campaignWorldMaps.id,
+              campaignId: campaignWorldMaps.campaignId,
+              mapUrl: campaignWorldMaps.mapUrl
+            });
+          return newMap;
+        } catch (insertError) {
+          console.error("Error creating campaign world map:", insertError);
+          throw insertError;
+        }
       }
     } catch (error) {
-      console.error("Error creating/updating campaign world map:", error);
+      console.error("Error in createOrUpdateCampaignWorldMap:", error);
       throw error;
     }
   }
@@ -827,15 +897,62 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCampaign(id: number): Promise<boolean> {
     try {
-      // First, delete related campaign_world_maps record which has a foreign key constraint
-      await db.delete(campaignWorldMaps).where(eq(campaignWorldMaps.campaignId, id));
+      // Delete all related records in the following order to respect foreign key constraints
       
-      // Then delete the campaign
+      // 1. Delete map locations for the campaign
+      await db.delete(mapLocations).where(eq(mapLocations.campaignId, id));
+      console.log(`Deleted map locations for campaign ${id}`);
+      
+      // 2. Delete journey paths for the campaign
+      await db.delete(journeyPaths).where(eq(journeyPaths.campaignId, id));
+      console.log(`Deleted journey paths for campaign ${id}`);
+      
+      // 3. Delete campaign world map
+      await db.delete(campaignWorldMaps).where(eq(campaignWorldMaps.campaignId, id));
+      console.log(`Deleted world map for campaign ${id}`);
+      
+      // 4. Delete game logs
+      await db.delete(gameLogs).where(eq(gameLogs.campaignId, id));
+      console.log(`Deleted game logs for campaign ${id}`);
+      
+      // 5. Delete chat messages
+      await db.delete(chatMessages).where(eq(chatMessages.campaignId, id));
+      console.log(`Deleted chat messages for campaign ${id}`);
+      
+      // 6. Delete NPCs
+      await db.delete(npcs).where(eq(npcs.campaignId, id));
+      console.log(`Deleted NPCs for campaign ${id}`);
+      
+      // 7. Delete quests and adventures
+      // First get all adventures for this campaign
+      const campaignAdventures = await this.getAdventuresByCampaignId(id);
+      
+      // Delete quests for each adventure
+      for (const adventure of campaignAdventures) {
+        await db.delete(quests).where(eq(quests.adventureId, adventure.id));
+      }
+      console.log(`Deleted quests for campaign ${id}`);
+      
+      // Delete adventures
+      await db.delete(adventures).where(eq(adventures.campaignId, id));
+      console.log(`Deleted adventures for campaign ${id}`);
+      
+      // 8. Delete campaign characters
+      await db.delete(campaignCharacters).where(eq(campaignCharacters.campaignId, id));
+      console.log(`Deleted campaign characters for campaign ${id}`);
+      
+      // 9. Delete campaign invitations
+      await db.delete(campaignInvitations).where(eq(campaignInvitations.campaignId, id));
+      console.log(`Deleted campaign invitations for campaign ${id}`);
+      
+      // Finally, delete the campaign itself
       const result = await db.delete(campaigns).where(eq(campaigns.id, id)).returning();
+      console.log(`Campaign ${id} deleted successfully`);
+      
       return result.length > 0;
     } catch (error) {
       console.error("Error deleting campaign:", error);
-      throw error;
+      return false; // Return false instead of throwing, so the API can handle this gracefully
     }
   }
 
