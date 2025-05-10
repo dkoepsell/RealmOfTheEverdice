@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LootCollectionPanel } from "@/components/loot-collection-panel";
 import { useCombatDetection } from "@/hooks/use-combat-detection";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
+import { ModeToggle } from "@/components/mode-toggle";
 
 // Campaign book / main adventure interface
 export default function CampaignPage() {
@@ -384,6 +385,11 @@ export default function CampaignPage() {
           </div>
           
           <div className="flex items-center gap-1 md:gap-2">
+            {/* Theme toggle */}
+            <div className="mr-1">
+              <ModeToggle />
+            </div>
+            
             {/* Add character */}
             <TooltipProvider>
               <Tooltip>
