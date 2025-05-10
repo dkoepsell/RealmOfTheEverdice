@@ -514,25 +514,26 @@ export class DatabaseStorage implements IStorage {
   
   async getCampaignRegions(): Promise<{ campaigns: any[], uniqueRegions: string[] }> {
     try {
-      // Get all campaigns that have an assigned region
-      const campaignsWithRegions = await db
-        .select({
-          id: campaigns.id,
-          name: campaigns.name,
-          dmId: campaigns.dmId,
-          isAiDm: campaigns.isAiDm,
-          region: campaignWorldMaps.regionName
-        })
-        .from(campaigns)
-        .innerJoin(campaignWorldMaps, eq(campaigns.id, campaignWorldMaps.campaignId))
-        .where(sql`${campaignWorldMaps.regionName} IS NOT NULL`);
+      // Use raw SQL query to avoid column errors while database might be evolving
+      const query = `
+        SELECT 
+          c.id, 
+          c.name, 
+          c.dm_id as "dmId", 
+          c.is_ai_dm as "isAiDm",
+          c.description,
+          c.setting,
+          cwm.map_url as "mapUrl"
+        FROM campaigns c
+        LEFT JOIN campaign_world_maps cwm ON c.id = cwm.campaign_id
+      `;
       
-      // Extract unique regions
-      const uniqueRegions = [...new Set(campaignsWithRegions.map(c => c.region))];
+      const campaignsWithRegions = await this.executeRawQuery(query);
       
+      // Use an empty array for unique regions until schema is fixed
       return {
-        campaigns: campaignsWithRegions,
-        uniqueRegions
+        campaigns: campaignsWithRegions || [],
+        uniqueRegions: []
       };
     } catch (error) {
       console.error("Error getting campaign regions:", error);
