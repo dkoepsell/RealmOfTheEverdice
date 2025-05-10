@@ -20,6 +20,7 @@ interface InteractiveDiceSuggestionsProps {
   narrative: string;
   character?: Character;
   onRollComplete?: (result: DiceRollResult) => void;
+  onAdvanceStory?: () => void; // Add callback for auto-advancing the story
 }
 
 interface DiceRollResult {
@@ -83,7 +84,7 @@ const rollDamage = (damageFormula: string): number => {
   }
 };
 
-export function InteractiveDiceSuggestions({ narrative, character, onRollComplete }: InteractiveDiceSuggestionsProps) {
+export function InteractiveDiceSuggestions({ narrative, character, onRollComplete, onAdvanceStory }: InteractiveDiceSuggestionsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentSuggestion, setCurrentSuggestion] = useState<DiceSuggestion | null>(null);
   const [rollResult, setRollResult] = useState<DiceRollResult | null>(null);
@@ -365,11 +366,12 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
     setRollResult(null);
   };
   
-  // Auto-roll feature
+  // Auto-roll feature with auto-advance
   useEffect(() => {
     // Only auto-roll if there's a dice suggestion and it hasn't been auto-rolled yet
     // and if the user has auto-roll enabled in their settings
     const autoRollEnabled = localStorage.getItem('diceRollerAutoRoll') === 'true';
+    const autoAdvanceEnabled = localStorage.getItem('storyAutoAdvance') === 'true';
     
     if (diceSuggestions.length > 0 && !autoRolled && autoRollEnabled) {
       // Get the first dice suggestion
@@ -387,11 +389,28 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
       // Call the performRoll function after a short delay
       const timer = setTimeout(() => {
         performRoll();
+        
+        // Auto-advance after the roll if enabled
+        if (autoAdvanceEnabled && onAdvanceStory) {
+          // Close the modal first
+          const closeTimer = setTimeout(() => {
+            setIsModalOpen(false);
+            
+            // Then wait a moment to advance the story
+            const advanceTimer = setTimeout(() => {
+              onAdvanceStory();
+            }, 1500);
+            
+            return () => clearTimeout(advanceTimer);
+          }, 2000); // Show the roll result for 2 seconds
+          
+          return () => clearTimeout(closeTimer);
+        }
       }, 800);  // Delay for 800ms to allow the modal to render first
       
       return () => clearTimeout(timer);
     }
-  }, [diceSuggestions, autoRolled]);
+  }, [diceSuggestions, autoRolled, onAdvanceStory]);
 
   if (diceSuggestions.length === 0) {
     return null;

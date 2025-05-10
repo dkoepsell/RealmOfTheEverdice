@@ -356,6 +356,10 @@ export const GameArea = ({
                   );
                 }
               }}
+              onAdvanceStory={() => {
+                // When auto-advancing after a dice roll, call the auto-advance mutation
+                autoAdvanceMutation.mutate();
+              }}
             />
           )}
           
