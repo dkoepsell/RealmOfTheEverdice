@@ -692,3 +692,74 @@ IMPORTANT: Avoid generic medieval European fantasy tropes and standard Tolkien-i
     throw new Error("Failed to generate campaign");
   }
 }
+
+export async function generateGlobalMapImage() {
+  try {
+    console.log("Generating Everdice global world map...");
+    
+    // Generate continents information
+    const continentsPrompt = `Create a detailed fantasy world called "Everdice" with diverse continents, seas, and regions.
+    
+    Format your response as a JSON object with these fields:
+    - continents: Array of 7-9 major continents with their names, terrain types, and cultures
+    - oceans: Array of major oceans and seas with names and characteristics
+    - magicalFeatures: Array of unique magical elements that define this world
+    - majorConflicts: Array of current world-scale conflicts or tensions
+    - cosmology: Brief description of how the planes/cosmos work in this world
+    - uniqueElements: What makes this fantasy world distinct from others
+    `;
+    
+    const continentsResponse = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: "You are a master fantasy world builder for D&D campaigns, specializing in creating detailed, diverse, and geographically realistic worlds."
+        },
+        {
+          role: "user",
+          content: continentsPrompt
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.8
+    });
+    
+    const worldData = safeJsonParse(continentsResponse.choices[0].message.content);
+    
+    // Create a map generation prompt
+    const mapPrompt = `Create a beautiful, full-color fantasy world map of "Everdice", a realm of adventure.
+
+This global map MUST accurately represent these specific continents in geographically appropriate positions:
+${worldData.continents.map((c: any) => `- ${c.name}: ${c.terrainTypes.join(', ')}`).join('\n')}
+
+The map must show these major oceans and seas:
+${worldData.oceans.map((o: any) => `- ${typeof o === 'string' ? o : o.name}`).join('\n')}
+
+Include these unique magical features that define the world:
+${worldData.magicalFeatures.join('\n')}
+
+Style this as a detailed, high-fantasy world map on aged parchment with ornate borders, a decorative compass rose, and elegant fantasy-style illustrations of sea monsters and creatures in the oceans. Create a map with high readability, rich colors, and clear geographical labels. Make sure all text is clearly legible.
+
+This should be a complete, global world map showing ALL of the major continents in their entirety, with proper projected curvature as if looking at a complete world. Do not include any real-world geographical features or names.`;
+
+    console.log("Sending DALL-E map generation request...");
+    const imageResponse = await openai.images.generate({
+      model: "dall-e-3", 
+      prompt: mapPrompt,
+      n: 1,
+      size: "1024x1024",
+      quality: "hd",
+      response_format: "url"
+    });
+    
+    console.log("Map image generation complete");
+    return {
+      url: imageResponse.data[0].url,
+      worldData
+    };
+  } catch (error) {
+    console.error("Error generating global map image:", error);
+    throw new Error("Failed to generate global map");
+  }
+}
