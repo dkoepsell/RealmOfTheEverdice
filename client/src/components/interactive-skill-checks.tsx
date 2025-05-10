@@ -259,7 +259,7 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
   };
   
   const getAbilityModifier = (ability: string): number => {
-    if (!character) return 0;
+    if (!character || !character.stats) return 0;
     
     // Get the ability score
     const abilityScore = character.stats[ability as keyof typeof character.stats] || 10;
@@ -269,7 +269,7 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
   };
   
   const getSkillModifier = (skill: string): number => {
-    if (!character) return 0;
+    if (!character || !character.stats) return 0;
     
     // Check if it's an ability check
     if (Object.keys(ABILITY_SCORE_MODIFIERS).includes(skill)) {
