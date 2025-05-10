@@ -524,24 +524,36 @@ export class DatabaseStorage implements IStorage {
           c.description,
           c.setting,
           cwm.map_url as "mapUrl",
-          cwm.region_name as "regionName"
+          cwm.region_name as "regionName",
+          COALESCE(
+            cwm.region_name, 
+            CASE 
+              WHEN c.setting IS NOT NULL THEN c.setting
+              ELSE 'Unknown Region'
+            END
+          ) as "effectiveRegion"
         FROM campaigns c
         LEFT JOIN campaign_world_maps cwm ON c.id = cwm.campaign_id
-        WHERE cwm.region_name IS NOT NULL
       `;
       
       const campaignsWithRegions = await this.executeRawQuery(query);
       
-      // Extract unique region names from campaigns
+      // Use the campaign setting as fallback for region name
       const uniqueRegions = campaignsWithRegions
-        .map((campaign: any) => campaign.regionName)
+        .map((campaign: any) => campaign.effectiveRegion)
         .filter((region: string | null) => region !== null)
         .filter((region: string, index: number, self: string[]) => 
           self.indexOf(region) === index
         );
       
+      // Update the campaigns to use effectiveRegion as the regionName if regionName is null
+      const processedCampaigns = campaignsWithRegions.map((campaign: any) => ({
+        ...campaign,
+        regionName: campaign.regionName || campaign.effectiveRegion
+      }));
+      
       return {
-        campaigns: campaignsWithRegions || [],
+        campaigns: processedCampaigns || [],
         uniqueRegions: uniqueRegions || []
       };
     } catch (error) {
