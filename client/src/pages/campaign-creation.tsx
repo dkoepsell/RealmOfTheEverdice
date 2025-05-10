@@ -98,8 +98,27 @@ export default function CampaignCreation() {
       // Force dmId to be the current user's ID
       campaign.dmId = user?.id || 0;
 
-      const res = await apiRequest("POST", "/api/campaigns", campaign);
-      return await res.json();
+      // Create a timeout promise to prevent hanging during campaign creation
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Campaign creation timed out after 30 seconds")), 30000);
+      });
+      
+      // Create the actual API request promise
+      const fetchPromise = async () => {
+        try {
+          console.log("Sending campaign creation request:", campaign);
+          const res = await apiRequest("POST", "/api/campaigns", campaign);
+          const data = await res.json();
+          console.log("Campaign created successfully:", data);
+          return data;
+        } catch (error) {
+          console.error("Error creating campaign:", error);
+          throw error;
+        }
+      };
+      
+      // Race between timeout and API request
+      return Promise.race([fetchPromise(), timeoutPromise]);
     },
     onSuccess: (campaign) => {
       toast({
@@ -338,9 +357,33 @@ export default function CampaignCreation() {
     return () => clearTimeout(safetyTimeout);
   };
 
-  // Handle form submission
+  // Handle form submission with enhanced feedback
   const onSubmit = (values: CampaignFormValues) => {
-    createCampaignMutation.mutate(values);
+    // Show a creating status message
+    toast({
+      title: "Creating Campaign",
+      description: "Setting up your campaign world. This may take a moment...",
+    });
+    
+    // Create a safety timeout in case the mutation hangs
+    const creationTimeout = setTimeout(() => {
+      if (createCampaignMutation.isPending) {
+        console.warn("Campaign creation is taking longer than expected");
+        
+        toast({
+          title: "Still Working",
+          description: "Campaign creation is taking longer than expected. Please be patient...",
+        });
+      }
+    }, 8000); // Show "still working" message after 8 seconds
+    
+    // Start the creation process
+    createCampaignMutation.mutate(values, {
+      onSettled: () => {
+        // Clean up the timeout
+        clearTimeout(creationTimeout);
+      }
+    });
   };
 
   return (
