@@ -700,7 +700,9 @@ const AdminDashboard = () => {
                                   }}
                                 >
                                   <img 
-                                    src={everdiceWorld?.mapUrl || '/assets/placeholder-map.jpg'} 
+                                    src={everdiceWorld?.mapUrl?.startsWith('/') 
+                                      ? everdiceWorld.mapUrl 
+                                      : (everdiceWorld?.mapUrl || '/assets/placeholder-map.jpg')} 
                                     alt="Everdice World Map" 
                                     className="w-full h-full object-contain"
                                     onError={(e) => {
