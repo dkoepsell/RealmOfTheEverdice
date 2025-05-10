@@ -90,54 +90,18 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
     // - Checks with DC like "DC 15 Intelligence check"
     // - Complete phrases like "make an Intelligence check" or "roll a Wisdom saving throw"
     // - Formats in brackets like [Roll: d20+Intelligence modifier vs DC 12]
-    const skillCheckRegex = /(?:(?:make\s+(?:an?|your)|roll\s+(?:an?|your))?\s*(?:(DC\s*(\d+))?\s*(?:([A-Za-z]+)(?:\s*\())?([A-Za-z]+(?:\s+[A-Za-z]+)*)\)?(?:\s*check|\s*saving\s*throw))|(?:\[Roll:.*?(?:vs|against)\s+DC\s+(\d+).*?\])/gi;
+    // Separate regexes for better maintainability and to avoid complex nested capture groups
+    const standardCheckRegex = /(?:make\s+(?:an?|your)|roll\s+(?:an?|your))?\s*(?:(DC\s*(\d+))?\s*(?:([A-Za-z]+)\s*\()?([A-Za-z]+(?:\s+[A-Za-z]+)*)\)?(?:\s*check|\s*saving\s*throw))/gi;
+    const bracketCheckRegex = /\[Roll:.*?(?:vs|against)\s+DC\s+(\d+).*?\]/gi;
     
     // Find all skill checks in the content
     const matches: SkillCheck[] = [];
     let match;
     const lowerContent = content.toLowerCase();
     
-    while ((match = skillCheckRegex.exec(content)) !== null) {
+    // Process standard check format
+    while ((match = standardCheckRegex.exec(content)) !== null) {
       const fullText = match[0];
-      
-      // Check if this is a bracket-formatted roll instruction like [Roll: d20+Int modifier vs DC 12]
-      if (fullText.startsWith('[Roll:')) {
-        // Extract the DC from the bracket format (match group 5)
-        const dc = match[5] ? parseInt(match[5]) : undefined;
-        
-        // Extract skill/ability name from the text
-        let extractedSkill = '';
-        const modifierMatch = fullText.match(/d20\+([A-Za-z]+)/i);
-        if (modifierMatch && modifierMatch[1]) {
-          const rawSkill = modifierMatch[1].toLowerCase();
-          // Convert shortened forms like "Int" to full names
-          if (rawSkill === 'str') extractedSkill = 'strength';
-          else if (rawSkill === 'dex') extractedSkill = 'dexterity';
-          else if (rawSkill === 'con') extractedSkill = 'constitution';
-          else if (rawSkill === 'int') extractedSkill = 'intelligence';
-          else if (rawSkill === 'wis') extractedSkill = 'wisdom';
-          else if (rawSkill === 'cha') extractedSkill = 'charisma';
-          else extractedSkill = rawSkill.replace(' modifier', '');
-        } else {
-          // Try to find any ability in the text
-          const abilityMatch = fullText.match(/(strength|dexterity|constitution|intelligence|wisdom|charisma)/i);
-          if (abilityMatch && abilityMatch[1]) {
-            extractedSkill = abilityMatch[1].toLowerCase();
-          } else {
-            extractedSkill = 'intelligence'; // Default if we can't find anything
-          }
-        }
-        
-        matches.push({
-          id: `skill-check-${matches.length}`,
-          skill: extractedSkill,
-          text: fullText,
-          dc
-        });
-        continue;
-      }
-      
-      // Standard skill check format
       let skill = match[4]?.toLowerCase();
       const ability = match[3]?.toLowerCase();
       const dc = match[2] ? parseInt(match[2]) : undefined;
@@ -149,28 +113,54 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, ch
       // Skip if no valid skill or if the detected text isn't a real skill
       if (!finalSkill || (
         !Object.keys(SKILL_TO_ABILITY).includes(finalSkill) && 
-        !Object.keys(ABILITY_SCORE_MODIFIERS).includes(finalSkill)
+        !Object.keys(ABILITIES).includes(finalSkill)
       )) {
         continue;
       }
       
-      // Check if this skill check is mentioned in a meaningful context
-      // (not just listing skills in general)
-      const snippetStart = Math.max(0, match.index - 50);
-      const snippetEnd = Math.min(lowerContent.length, match.index + fullText.length + 50);
-      const contextSnippet = lowerContent.substring(snippetStart, snippetEnd);
+      matches.push({
+        id: `skill-check-${matches.length}`,
+        skill: finalSkill,
+        text: fullText,
+        dc
+      });
+    }
+    
+    // Process bracket format
+    while ((match = bracketCheckRegex.exec(content)) !== null) {
+      const fullText = match[0];
+      // Extract the DC from the bracket format (match group 1)
+      const dc = match[1] ? parseInt(match[1]) : undefined;
       
-      const contextKeywords = ['could', 'can', 'may', 'might', 'should', 'attempt', 'try', 'roll', 'make', 'perform'];
-      const hasContext = contextKeywords.some(keyword => contextSnippet.includes(keyword));
-      
-      if (hasContext) {
-        matches.push({
-          id: `skill-check-${matches.length}`,
-          skill: finalSkill,
-          text: fullText,
-          dc
-        });
+      // Extract skill/ability name from the text
+      let extractedSkill = '';
+      const modifierMatch = fullText.match(/d20\+([A-Za-z]+)/i);
+      if (modifierMatch && modifierMatch[1]) {
+        const rawSkill = modifierMatch[1].toLowerCase();
+        // Convert shortened forms like "Int" to full names
+        if (rawSkill === 'str') extractedSkill = 'strength';
+        else if (rawSkill === 'dex') extractedSkill = 'dexterity';
+        else if (rawSkill === 'con') extractedSkill = 'constitution';
+        else if (rawSkill === 'int') extractedSkill = 'intelligence';
+        else if (rawSkill === 'wis') extractedSkill = 'wisdom';
+        else if (rawSkill === 'cha') extractedSkill = 'charisma';
+        else extractedSkill = rawSkill.replace(' modifier', '');
+      } else {
+        // Try to find any ability in the text
+        const abilityMatch = fullText.match(/(strength|dexterity|constitution|intelligence|wisdom|charisma)/i);
+        if (abilityMatch && abilityMatch[1]) {
+          extractedSkill = abilityMatch[1].toLowerCase();
+        } else {
+          extractedSkill = 'intelligence'; // Default if we can't find anything
+        }
       }
+      
+      matches.push({
+        id: `skill-check-${matches.length}`,
+        skill: extractedSkill,
+        text: fullText,
+        dc
+      });
     }
     
     setSkillChecks(matches);
