@@ -616,14 +616,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
-      const validatedData = insertCharacterSchema.parse({
+      // Add the userId and default values for the new fields
+      const characterData = {
         ...req.body,
-        userId: req.user.id
-      });
+        userId: req.user.id,
+        experience: 0,
+        milestones: [],
+        achievements: [],
+        progression: []
+      };
+      
+      const validatedData = insertCharacterSchema.parse(characterData);
+      
+      // Log the validated data for debugging
+      console.log("Creating character with data:", JSON.stringify(validatedData, null, 2));
       
       const character = await storage.createCharacter(validatedData);
       res.status(201).json(character);
     } catch (error) {
+      console.error("Error creating character:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid character data", errors: error.errors });
       }

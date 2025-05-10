@@ -49,10 +49,17 @@ export const characters = pgTable("characters", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-export const insertCharacterSchema = createInsertSchema(characters).omit({
-  id: true,
-  createdAt: true
-});
+export const insertCharacterSchema = createInsertSchema(characters)
+  .omit({
+    id: true,
+    createdAt: true
+  })
+  .partial({
+    experience: true,
+    milestones: true,
+    achievements: true,
+    progression: true
+  });
 
 // Campaign model
 export const campaigns = pgTable("campaigns", {
