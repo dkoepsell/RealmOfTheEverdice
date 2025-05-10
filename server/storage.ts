@@ -180,6 +180,13 @@ export interface IStorage {
   addContinentToEverdiceWorld(continent: { id: string; name: string; description: string; position: [number, number]; bounds: [[number, number], [number, number]]; }, worldId?: number): Promise<EverdiceWorld>;
   getCampaignRegions(): Promise<{ campaigns: any[], uniqueRegions: string[] }>;
   
+  // World Access methods
+  createWorldAccess(worldId: number, userId: number, accessLevel: string): Promise<any>;
+  getWorldAccessForUser(userId: number): Promise<any[]>;
+  getWorldUsers(worldId: number): Promise<any[]>;
+  updateWorldAccess(worldId: number, userId: number, accessLevel: string): Promise<any>;
+  deleteWorldAccess(worldId: number, userId: number): Promise<boolean>;
+  
   // Campaign permissions
   isPlayerInCampaign(userId: number, campaignId: number): Promise<boolean>;
   

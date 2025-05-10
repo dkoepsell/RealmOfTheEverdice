@@ -71,6 +71,7 @@ export const campaigns = pgTable("campaigns", {
   setting: text("setting"),
   isAiDm: boolean("is_ai_dm").notNull().default(false),
   currentTurnId: integer("current_turn_id"),
+  worldId: integer("world_id").references(() => everdiceWorld.id),
   // Note: partyName field exists in schema but not in DB yet
   // partyName: text("party_name"),
   createdAt: timestamp("created_at").defaultNow()
@@ -435,6 +436,10 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
     fields: [campaigns.dmId],
     references: [users.id],
     relationName: "dmCampaigns"
+  }),
+  everdiceWorld: one(everdiceWorld, {
+    fields: [campaigns.worldId],
+    references: [everdiceWorld.id]
   }),
   campaignCharacters: many(campaignCharacters),
   adventures: many(adventures),
