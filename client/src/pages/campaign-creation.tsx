@@ -121,14 +121,27 @@ export default function CampaignCreation() {
       
       console.log("Campaign created successfully:", campaign);
       
-      // Update state with the new campaign ID
-      const campaignId = Number(campaign.id);
-      setNewCampaignId(campaignId);
+      // Update state with the new campaign ID with validation
+      const parsedId = campaign.id !== undefined && !isNaN(Number(campaign.id)) ? Number(campaign.id) : undefined;
+      if (parsedId && parsedId > 0) {
+        console.log("Valid campaign ID received:", parsedId);
+        setNewCampaignId(parsedId);
+      } else {
+        console.error("Invalid campaign ID received:", campaign.id, "parsed as:", parsedId);
+        toast({
+          title: "Error",
+          description: "Unable to get valid campaign ID. Please try again.",
+          variant: "destructive",
+        });
+      }
       
       // Add a delay to ensure state update before showing dialog
       setTimeout(() => {
-        console.log("Opening add character dialog for campaign:", campaignId);
-        setShowAddCharacterDialog(true);
+        // Only proceed if we have a valid campaign ID
+        if (parsedId && parsedId > 0) {
+          console.log("Opening add character dialog for campaign:", parsedId);
+          setShowAddCharacterDialog(true);
+        }
       }, 250);
     },
     onError: (error) => {
@@ -229,19 +242,39 @@ export default function CampaignCreation() {
       <main className="flex-grow container mx-auto px-4 py-8">
         {/* Add Character Dialog - opens after campaign creation */}
         <AddCharacterDialog
-          campaignId={newCampaignId || undefined}
+          campaignId={newCampaignId && newCampaignId > 0 ? newCampaignId : undefined}
           open={showAddCharacterDialog}
           onOpenChange={(open) => {
             setShowAddCharacterDialog(open);
             // If dialog is closed without adding a character, navigate to campaign
-            if (!open && newCampaignId) {
+            if (!open && newCampaignId && newCampaignId > 0) {
+              console.log("Navigating to campaign page with ID:", newCampaignId);
               navigate(`/campaigns/${newCampaignId}`);
+            } else if (!open) {
+              console.error("Cannot navigate: Invalid campaign ID:", newCampaignId);
+              toast({
+                title: "Navigation Error",
+                description: "Could not navigate to campaign due to invalid ID.",
+                variant: "destructive",
+              });
+              // Navigate back to campaigns list as fallback
+              navigate('/campaigns');
             }
           }}
           onCharacterAdded={() => {
             // Navigate to the new campaign after adding a character
-            if (newCampaignId) {
+            if (newCampaignId && newCampaignId > 0) {
+              console.log("Character added, navigating to campaign:", newCampaignId);
               navigate(`/campaigns/${newCampaignId}`);
+            } else {
+              console.error("Cannot navigate after character added: Invalid campaign ID:", newCampaignId);
+              toast({
+                title: "Navigation Error",
+                description: "Character was added but couldn't navigate to campaign due to invalid ID.",
+                variant: "destructive",
+              });
+              // Navigate back to campaigns list as fallback
+              navigate('/campaigns');
             }
           }}
         />
