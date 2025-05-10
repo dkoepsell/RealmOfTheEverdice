@@ -64,6 +64,8 @@ export function AddCharacterDialog({
   onOpenChange,
   onCharacterAdded
 }: AddCharacterDialogProps) {
+  // Safety check for campaign ID to prevent NaN issues
+  const validCampaignId = campaignId && !isNaN(campaignId) ? campaignId : 0;
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>("");
@@ -102,16 +104,16 @@ export function AddCharacterDialog({
   // Mutation for adding a user character
   const addCharacterMutation = useMutation({
     mutationFn: async (characterId: number) => {
-      // Validate campaignId to prevent NaN errors
-      if (!campaignId || isNaN(campaignId)) {
+      // Use the validated campaign ID
+      if (!validCampaignId || validCampaignId <= 0) {
         throw new Error(`Invalid campaign ID: ${campaignId}`);
       }
       
-      console.log("Adding character to campaign:", campaignId, characterId);
+      console.log("Adding character to campaign:", validCampaignId, characterId);
       try {
         const res = await apiRequest(
           "POST",
-          `/api/campaigns/${campaignId}/characters`,
+          `/api/campaigns/${validCampaignId}/characters`,
           { characterId }
         );
         
@@ -135,7 +137,7 @@ export function AddCharacterDialog({
       
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({
-        queryKey: [`/api/campaigns/${campaignId}/characters`],
+        queryKey: [`/api/campaigns/${validCampaignId}/characters`],
       });
       
       // Close dialog and trigger callback
