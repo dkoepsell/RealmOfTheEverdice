@@ -76,7 +76,7 @@ import {
 } from "lucide-react";
 import { DndTextAnalyzer } from "@/components/dnd-text-analyzer";
 import { DndQuickReference } from "@/components/dnd-quick-reference";
-import InteractiveDiceSuggestions from "@/components/interactive-dice-suggestions";
+import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
 import { InventoryManagement } from "@/components/inventory-management";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
 import BattleTracker from "@/components/battle-tracker";
@@ -228,6 +228,11 @@ export default function CampaignPage() {
       setSelectedCharacterId(campaignCharacters[0].id);
     }
   }, [campaignCharacters, selectedCharacterId]);
+  
+  // Save font size to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('narrativeFontSize', fontSizeMultiplier.toString());
+  }, [fontSizeMultiplier]);
   
   // Get the latest narrative content for combat detection
   const latestNarrativeContent = gameLogs.length > 0 
@@ -787,31 +792,64 @@ export default function CampaignPage() {
             <div className="border-b border-amber-200/50 bg-amber-50/30 flex-none p-2">
               <div className="flex items-center justify-end max-w-3xl mx-auto">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Font Size:</span>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={() => setFontSizeMultiplier(prev => Math.max(0.8, prev - 0.1))}
-                  >
-                    <span className="text-xs">A-</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={() => setFontSizeMultiplier(1)} // Reset to default
-                  >
-                    <span className="text-xs">A</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={() => setFontSizeMultiplier(prev => Math.min(1.5, prev + 0.1))}
-                  >
-                    <span className="text-xs">A+</span>
-                  </Button>
+                  <span className="text-xs text-muted-foreground">Font Size: {Math.round(fontSizeMultiplier * 100)}%</span>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => setFontSizeMultiplier(prev => Math.max(0.8, prev - 0.1))}
+                          disabled={fontSizeMultiplier <= 0.8}
+                        >
+                          <span className="text-xs">A-</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p className="text-xs">Decrease text size</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => setFontSizeMultiplier(1)} // Reset to default
+                          disabled={fontSizeMultiplier === 1}
+                        >
+                          <span className="text-xs">A</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p className="text-xs">Reset to default size</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => setFontSizeMultiplier(prev => Math.min(1.5, prev + 0.1))}
+                          disabled={fontSizeMultiplier >= 1.5}
+                        >
+                          <span className="text-xs">A+</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p className="text-xs">Increase text size</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
             </div>
@@ -835,7 +873,12 @@ export default function CampaignPage() {
                       {log.type === "player" && (
                         <div className="mb-2 text-right">
                           <div className="inline-block bg-primary/10 text-primary rounded-lg py-2 px-3">
-                            <p>{log.content}</p>
+                            <p style={{ 
+                              fontSize: `${0.95 * fontSizeMultiplier}rem`,
+                              lineHeight: 1.5
+                            }}>
+                              {log.content}
+                            </p>
                           </div>
                         </div>
                       )}
@@ -857,8 +900,14 @@ export default function CampaignPage() {
                       {log.type === "roll" && (
                         <div className="mb-2">
                           <div className="inline-block bg-muted rounded-lg py-2 px-3 text-sm">
-                            <p className="flex items-center">
-                              <DicesIcon className="h-4 w-4 mr-1 text-primary" />
+                            <p className="flex items-center" style={{ 
+                              fontSize: `${0.9 * fontSizeMultiplier}rem`,
+                              lineHeight: 1.5
+                            }}>
+                              <DicesIcon className="h-4 w-4 mr-1 text-primary" style={{
+                                height: `${1 * fontSizeMultiplier}em`,
+                                width: `${1 * fontSizeMultiplier}em`
+                              }} />
                               {log.content}
                             </p>
                           </div>
