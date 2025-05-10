@@ -12,6 +12,7 @@ import CharacterCreation from "@/pages/character-creation";
 import CharacterDetail from "@/pages/character-detail";
 import CampaignCreation from "@/pages/campaign-creation";
 import CampaignPage from "@/pages/campaign-book";
+import PartyPlanning from "@/pages/party-planning";
 import LearnPage from "@/pages/learn-page";
 import SocialPage from "@/pages/social-page";
 import SettingsPage from "@/pages/settings-page";
@@ -43,6 +44,7 @@ function Router() {
       <ProtectedRoute path="/characters/:id" component={CharacterDetail} />
       <ProtectedRoute path="/campaigns/create" component={CampaignCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
+      <ProtectedRoute path="/campaigns/:id/planning" component={PartyPlanning} />
       <ProtectedRoute path="/learn" component={LearnPage} />
       <ProtectedRoute path="/about" component={AboutPage} />
       <ProtectedRoute path="/social" component={SocialPage} />
