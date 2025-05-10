@@ -75,7 +75,17 @@ export function CampaignsDashboard() {
   // Delete campaign mutation
   const deleteCampaignMutation = useMutation({
     mutationFn: async (campaignId: number) => {
-      return await apiRequest("DELETE", `/api/campaigns/${campaignId}`);
+      try {
+        const response = await apiRequest("DELETE", `/api/campaigns/${campaignId}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to delete campaign");
+        }
+        return await response.json();
+      } catch (error) {
+        console.error("Campaign deletion error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
@@ -85,13 +95,17 @@ export function CampaignsDashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       setCampaignToDelete(null);
+      // Redirect to campaigns list to prevent staying on a non-existent campaign page
+      navigate("/campaigns");
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       toast({
         title: "Error Deleting Campaign",
-        description: error.message || "There was an error deleting the campaign. Please try again.",
+        description: error?.message || "There was an error deleting the campaign. Please try again.",
         variant: "destructive",
       });
+      // Close dialog even on error
+      setCampaignToDelete(null);
     }
   });
   

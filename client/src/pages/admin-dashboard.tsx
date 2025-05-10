@@ -92,6 +92,7 @@ export default function AdminDashboard() {
   const [messageSubject, setMessageSubject] = useState("");
   const [messageContent, setMessageContent] = useState("");
   const [worldLoading, setWorldLoading] = useState(false);
+  const [showCreateWorldDialog, setShowCreateWorldDialog] = useState(false);
 
   // Regenerate world map
   const handleRegenerateWorld = async () => {
@@ -774,6 +775,123 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="worlds">
+          <div className="bg-white p-6 rounded-lg">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Everdice Worlds</h2>
+                <p className="text-muted-foreground">Manage multiple Everdice worlds for your campaigns.</p>
+              </div>
+              
+              {isSuperAdmin && (
+                <Button onClick={() => setShowCreateWorldDialog(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Create New World
+                </Button>
+              )}
+            </div>
+            
+            {isLoadingEverdiceWorld ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {everdiceWorld && (
+                  <Card key={everdiceWorld.id} className="overflow-hidden border-primary border-2">
+                    <div className="relative aspect-video w-full overflow-hidden">
+                      {everdiceWorld.mapUrl ? (
+                        <img
+                          src={everdiceWorld.mapUrl}
+                          alt={everdiceWorld.name}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <div className="bg-accent/20 w-full h-full flex items-center justify-center">
+                          <Map className="h-16 w-16 text-accent/50" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
+                        Main World
+                      </div>
+                    </div>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        {everdiceWorld.name} 
+                      </CardTitle>
+                      <CardDescription>
+                        Created {new Date(everdiceWorld.createdAt).toLocaleDateString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm line-clamp-3 mb-2">
+                        {everdiceWorld.description || "No description available."}
+                      </p>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <span className="flex items-center">
+                          <Map className="h-4 w-4 mr-1" />
+                          {everdiceWorld.continents?.length || 0} continents
+                        </span>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setActiveTab("worldmap")}
+                      >
+                        View Map
+                      </Button>
+                      
+                      {isSuperAdmin && (
+                        <Button 
+                          variant="default" 
+                          size="sm"
+                          onClick={handleRegenerateWorld}
+                          disabled={worldLoading}
+                        >
+                          {worldLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Regenerating...
+                            </>
+                          ) : (
+                            <>Regenerate</>
+                          )}
+                        </Button>
+                      )}
+                    </CardFooter>
+                  </Card>
+                )}
+                
+                {!everdiceWorld && (
+                  <div className="col-span-2 text-center py-12 bg-accent/5 rounded-lg border border-accent/20">
+                    <Map className="h-12 w-12 mx-auto text-accent/40 mb-4" />
+                    <h3 className="text-xl font-medium mb-2">No World Available</h3>
+                    <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                      There is no Everdice world in the system yet. Generate a world to get started.
+                    </p>
+                    
+                    {isSuperAdmin && (
+                      <Button onClick={handleRegenerateWorld} disabled={worldLoading}>
+                        {worldLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="mr-2 h-4 w-4" /> Generate World
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </TabsContent>
 
