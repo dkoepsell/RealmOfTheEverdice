@@ -2090,8 +2090,52 @@ export class DatabaseStorage implements IStorage {
   
   async deletePartyPlanItem(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(partyPlanItems).where(eq(partyPlanItems.id, id)).returning();
-      return result.length > 0;
+      // First check if item exists and get its plan ID
+      const item = await this.getPartyPlanItem(id);
+      if (!item) {
+        console.warn(`Party plan item with ID ${id} not found, nothing to delete`);
+        return false;
+      }
+      
+      // Check if comments table exists before attempting to delete comments
+      const commentsTableExists = await this.executeRawQuery(
+        `SELECT EXISTS (
+           SELECT FROM information_schema.tables 
+           WHERE table_name = 'party_plan_comments'
+         )`,
+        []
+      );
+      
+      if (commentsTableExists && commentsTableExists[0].exists) {
+        // Delete all comments for this item
+        try {
+          await db.delete(partyPlanComments)
+            .where(eq(partyPlanComments.itemId, id));
+        } catch (commentError) {
+          console.error(`Error deleting comments for item ${id}:`, commentError);
+          // Continue with item deletion
+        }
+      }
+      
+      // Delete the item
+      const result = await db.delete(partyPlanItems)
+        .where(eq(partyPlanItems.id, id))
+        .returning();
+      
+      if (result.length > 0) {
+        // Update parent plan's updatedAt timestamp
+        try {
+          await db.update(partyPlans)
+            .set({ updatedAt: new Date() })
+            .where(eq(partyPlans.id, item.planId));
+        } catch (planUpdateError) {
+          console.error(`Error updating plan timestamp for ${item.planId}:`, planUpdateError);
+          // Continue - the item was deleted successfully
+        }
+        return true;
+      }
+      
+      return false;
     } catch (error) {
       console.error("Error deleting party plan item:", error);
       return false;
@@ -2187,26 +2231,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async deletePartyPlanItem(id: number): Promise<boolean> {
-    try {
-      // Get the item first to get the plan ID
-      const item = await this.getPartyPlanItem(id);
-      if (!item) return false;
-      
-      // Update the parent plan's updatedAt timestamp
-      await this.updatePartyPlan(item.planId, {});
-      
-      // Delete all comments for this item
-      await db.delete(partyPlanComments).where(eq(partyPlanComments.itemId, id));
-      
-      // Delete the item
-      const result = await db.delete(partyPlanItems).where(eq(partyPlanItems.id, id)).returning();
-      return result.length > 0;
-    } catch (error) {
-      console.error("Error deleting party plan item:", error);
-      return false;
-    }
-  }
+  // Duplicate method removed - see the single implementation elsewhere in this file
   
   // Implement Party Plan Comment methods
   async getPartyPlanCommentsByItemId(itemId: number): Promise<PartyPlanComment[]> {
@@ -2631,33 +2656,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  // Delete a party plan item
-  async deletePartyPlanItem(id: number): Promise<boolean> {
-    try {
-      // First get the item to get its planId
-      const item = await this.getPartyPlanItem(id);
-      if (!item) return false;
-      
-      // Delete all comments for this item
-      await db.delete(partyPlanComments)
-        .where(eq(partyPlanComments.itemId, id));
-      
-      // Delete the item
-      const result = await db.delete(partyPlanItems)
-        .where(eq(partyPlanItems.id, id))
-        .returning();
-      
-      // Update the plan's updatedAt time
-      await db.update(partyPlans)
-        .set({ updatedAt: new Date() })
-        .where(eq(partyPlans.id, item.planId));
-      
-      return result.length > 0;
-    } catch (error) {
-      console.error("Error deleting party plan item:", error);
-      return false;
-    }
-  }
+  // Duplicate method removed - see the single implementation elsewhere in this file
   
   // Get all comments for a specific party plan item
   async getPartyPlanCommentsByItemId(itemId: number): Promise<PartyPlanComment[]> {
