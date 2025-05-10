@@ -588,8 +588,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const characters = await storage.getCharactersByUserId(req.user.id);
-      res.json(characters);
+      
+      // Ensure the characters have the expected properties or initialize them
+      const processedCharacters = characters.map(character => ({
+        ...character,
+        experience: character.experience ?? 0,
+        milestones: character.milestones ?? [],
+        achievements: character.achievements ?? [],
+        progression: character.progression ?? []
+      }));
+      
+      res.json(processedCharacters);
     } catch (error) {
+      console.error("Error fetching characters:", error);
       res.status(500).json({ message: "Failed to get characters" });
     }
   });
@@ -606,8 +617,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      res.json(character);
+      // Ensure the character has all required fields
+      const processedCharacter = {
+        ...character,
+        experience: character.experience ?? 0,
+        milestones: character.milestones ?? [],
+        achievements: character.achievements ?? [],
+        progression: character.progression ?? []
+      };
+      
+      res.json(processedCharacter);
     } catch (error) {
+      console.error("Error fetching character:", error);
       res.status(500).json({ message: "Failed to get character" });
     }
   });
