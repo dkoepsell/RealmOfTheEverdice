@@ -1021,6 +1021,11 @@ export default function CampaignPage() {
                                   autoRoll={isAutoRollEnabled}
                                   onRollSkillCheck={handleSkillCheckRoll}
                                   character={userCharacter}
+                                  onAdvanceStory={() => {
+                                    // When auto-advancing after a skill check, submit a "continue" action
+                                    console.log("Auto-advancing narrative after skill check from campaign-book");
+                                    playerActionMutation.mutate("What happens next?");
+                                  }}
                                 />
                               </div>
                             </div>
