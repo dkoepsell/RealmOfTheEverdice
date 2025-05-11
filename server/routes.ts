@@ -1791,7 +1791,9 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
       try {
         const campaignMetadata = await storage.getCampaignMetadata(campaignId);
         if (campaignMetadata && campaignMetadata.narrativePatterns) {
-          narrativePatterns = JSON.parse(campaignMetadata.narrativePatterns);
+          narrativePatterns = typeof campaignMetadata.narrativePatterns === 'string'
+            ? JSON.parse(campaignMetadata.narrativePatterns)
+            : campaignMetadata.narrativePatterns;
         }
       } catch (error) {
         console.warn("Error fetching narrative patterns:", error);

@@ -2782,6 +2782,65 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
   }
+  
+  // Campaign metadata methods
+  async getCampaignMetadata(campaignId: number): Promise<Record<string, any> | undefined> {
+    try {
+      const campaign = await db.query.campaigns.findFirst({
+        where: eq(campaigns.id, campaignId),
+        columns: {
+          metadata: true
+        }
+      });
+      
+      if (!campaign) {
+        return undefined;
+      }
+      
+      // Parse metadata JSON if it exists
+      if (campaign.metadata) {
+        try {
+          return typeof campaign.metadata === 'string' 
+            ? JSON.parse(campaign.metadata as string)
+            : campaign.metadata;
+        } catch (e) {
+          console.error("Error parsing campaign metadata:", e);
+          return {};
+        }
+      }
+      
+      return {};
+    } catch (error) {
+      console.error("Error getting campaign metadata:", error);
+      return {};
+    }
+  }
+  
+  async updateCampaignMetadata(campaignId: number, metadata: Record<string, any>): Promise<Record<string, any>> {
+    try {
+      // First get existing metadata
+      const existingMetadata = await this.getCampaignMetadata(campaignId) || {};
+      
+      // Merge with new metadata
+      const updatedMetadata = {
+        ...existingMetadata,
+        ...metadata
+      };
+      
+      // Update campaign with merged metadata
+      await db.update(campaigns)
+        .set({ 
+          metadata: JSON.stringify(updatedMetadata),
+          updatedAt: new Date()
+        })
+        .where(eq(campaigns.id, campaignId));
+      
+      return updatedMetadata;
+    } catch (error) {
+      console.error("Error updating campaign metadata:", error);
+      return metadata;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
