@@ -83,11 +83,11 @@ export function useAdmin() {
     error: everdiceWorldError,
     refetch: refetchEverdiceWorld
   } = useQuery({
-    queryKey: ["/api/admin/everdice"],
+    queryKey: ["/api/everdice/world"],
     queryFn: async () => {
       if (!isAdmin && !isSuperAdmin) return null;
       try {
-        const res = await apiRequest("GET", "/api/admin/everdice");
+        const res = await apiRequest("GET", "/api/everdice/world");
         if (!res.ok) {
           console.error("Error fetching Everdice world map:", res.status, res.statusText);
           return null;
