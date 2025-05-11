@@ -199,33 +199,21 @@ export default function CampaignPage() {
             queryKey: [`/api/campaigns/${campaignId}/logs`],
           });
           
-          return responseData;
+          return {
+            success: true,
+            ...responseData
+          };
         } catch (dmError) {
           console.error("Error generating DM response:", dmError);
           
-          // Instead of directly manipulating state, create a fallback message through the API
-          try {
-            await apiRequest(
-              "POST",
-              `/api/campaigns/${campaignId}/logs`,
-              {
-                content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
-                type: "narrative",
-                timestamp: new Date()
-              }
-            );
-            
-            // Refresh the logs to get the fallback message
-            await queryClient.invalidateQueries({
-              queryKey: [`/api/campaigns/${campaignId}/logs`],
-            });
-          } catch (fallbackError) {
-            console.error("Failed to add fallback message:", fallbackError);
-          }
+          // Instead of directly manipulating state, log the error and handle gracefully
+          // We'll create a manual log entry when this function returns
+          console.warn("Will create fallback message for failed DM response");
           
-          // Return a fallback response
+          // Return a fallback response with a flag that indicates we need to create a fallback message
           return { 
-            success: false, 
+            success: false,
+            needsFallbackMessage: true,
             error: dmError instanceof Error ? dmError.message : "Unknown error" 
           };
         }
@@ -244,9 +232,28 @@ export default function CampaignPage() {
         setIsProcessing(false);
       }
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       // Clear player input
       setPlayerInput("");
+      
+      // Check if we need to create a fallback message due to DM response failure
+      if (data.needsFallbackMessage) {
+        console.log("Creating fallback message for failed DM response");
+        try {
+          // Add the fallback narrative response through the API
+          await apiRequest(
+            "POST",
+            `/api/campaigns/${campaignId}/logs`,
+            {
+              content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
+              type: "narrative",
+              timestamp: new Date()
+            }
+          );
+        } catch (fallbackError) {
+          console.error("Failed to add fallback message:", fallbackError);
+        }
+      }
       
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({
