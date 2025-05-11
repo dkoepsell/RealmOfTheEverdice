@@ -773,11 +773,26 @@ export function AdventureMapPanel({
             <DialogTitle>Adventure Map</DialogTitle>
             <DialogDescription className="flex justify-between items-center">
               <span>Explore locations and plan your journey in this campaign.</span>
-              {regionName && (
-                <Badge variant="outline" className="ml-2">
-                  Region: {regionName} of {continentName}
-                </Badge>
-              )}
+              <div className="flex items-center space-x-2 ml-2">
+                {regionName && (
+                  <Badge variant="outline">
+                    Region: {regionName} of {continentName}
+                  </Badge>
+                )}
+                {regionBounds && everdiceWorldQuery.data?.mapUrl && (
+                  <div className="flex items-center space-x-1 ml-2">
+                    <Label htmlFor="show-region-bounds" className="text-xs text-muted-foreground">
+                      Show region
+                    </Label>
+                    <Switch
+                      id="show-region-bounds"
+                      checked={showRegionBounds}
+                      onCheckedChange={setShowRegionBounds}
+                      className="data-[state=checked]:bg-amber-600"
+                    />
+                  </div>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
           
@@ -830,7 +845,6 @@ export function AdventureMapPanel({
                       fillOpacity: 0.1,
                       dashArray: '5, 5',
                     }}
-                    zIndex={15}
                   >
                     <LeafletTooltip sticky>
                       <div className="text-sm font-medium">
