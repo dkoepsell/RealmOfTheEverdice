@@ -123,9 +123,18 @@ export default function CampaignPage() {
   // Get user's player character in this campaign
   const userCharacter = useMemo(() => {
     if (!user || !campaignCharacters.length) return null;
-    return campaignCharacters.find(
+    
+    // Debug logging to help diagnose the issue
+    console.log("Looking for character for user:", user?.id);
+    console.log("Available campaign characters:", campaignCharacters);
+    
+    // Match by user ID
+    const character = campaignCharacters.find(
       (char) => char.userId === user.id && !char.isBot
     );
+    
+    console.log("Found character:", character);
+    return character;
   }, [user, campaignCharacters]);
 
   // Get map locations
@@ -373,14 +382,15 @@ export default function CampaignPage() {
       return;
     }
     
+    // Allow submission without user character but show a dialog to add one
     if (!userCharacter) {
       toast({
         title: "No Character",
-        description: "You need to add a character to the campaign first!",
-        variant: "destructive",
+        description: "Your action will be submitted, but it's recommended to add a character first!",
+        variant: "default",
       });
       setShowAddCharacterDialog(true);
-      return;
+      // We'll continue with the action submission
     }
     
     try {
@@ -1145,7 +1155,7 @@ export default function CampaignPage() {
                           className="min-h-[80px] resize-none bg-white border-amber-200"
                           value={playerInput}
                           onChange={(e) => setPlayerInput(e.target.value)}
-                          disabled={!userCharacter || isProcessing}
+                          disabled={isProcessing}
                           style={{ fontSize: `${fontSizeMultiplier}rem` }}
                         />
                         <div className="flex justify-between items-center mt-2">
@@ -1165,7 +1175,7 @@ export default function CampaignPage() {
                           <div className="flex gap-2">
                             <Button
                               type="submit"
-                              disabled={!userCharacter || isProcessing || !playerInput.trim()}
+                              disabled={isProcessing || !playerInput.trim()}
                               className="font-semibold"
                             >
                               {isProcessing ? (
