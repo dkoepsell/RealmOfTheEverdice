@@ -638,27 +638,7 @@ export default function CampaignPage() {
               </Tooltip>
             </TooltipProvider>
             
-            {/* Toggle map */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={rightPanelTab === "map" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleToggleRightPanel("map")}
-                    className={rightPanelTab === "map" 
-                      ? "bg-amber-700 hover:bg-amber-600" 
-                      : "border-amber-300 hover:bg-amber-100 text-amber-900"}
-                  >
-                    <Map className="h-4 w-4 mr-1 md:mr-2" />
-                    <span className="hidden md:inline">Map</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>View adventure map</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Map feature removed */}
             
             {/* Characters panel */}
             <TooltipProvider>

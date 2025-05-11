@@ -274,10 +274,8 @@ export function AdventureMapPanel({
   const [regionBounds, setRegionBounds] = useState<[[number, number], [number, number]] | null>(null);
   const [regionPosition, setRegionPosition] = useState<[number, number] | null>(null);
   const [showRegionBounds, setShowRegionBounds] = useState(true);
-  const [isRegeneratingMap, setIsRegeneratingMap] = useState(false);
   
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   
   // Fetch campaign map locations
   const locationsQuery = useQuery({
