@@ -341,28 +341,22 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, on
           
           // If auto-roll is enabled, this means we should automatically
           // advance the narrative after a skill check is completed
-          if (autoRoll) {
-            // Extract campaign ID from URL path, e.g., "/campaigns/123/adventure"
-            const pathParts = location.split('/');
-            const campaignIndex = pathParts.findIndex(part => part === 'campaigns');
+          if (autoRoll && onAdvanceStory && !autoAdvanceTriggered) {
+            console.log('Auto-advancing narrative after skill check with auto-roll enabled');
             
-            if (campaignIndex !== -1 && pathParts.length > campaignIndex + 1) {
-              const campaignId = pathParts[campaignIndex + 1];
-              console.log('Auto-advancing narrative after skill check with auto-roll enabled');
+            // Prevent multiple auto-advancement triggers
+            setAutoAdvanceTriggered(true);
+            
+            // Use timeout to give the player time to see the roll result before advancing
+            setTimeout(() => {
+              console.log('Calling onAdvanceStory callback from skill checks component');
+              onAdvanceStory();
               
-              // Submit a special action to advance the narrative
-              apiRequest(
-                "POST",
-                `/api/campaigns/${campaignId}/action`,
-                { action: "continue" }
-              ).then(() => {
-                console.log('Auto-advance successful');
-              }).catch(error => {
-                console.error('Error auto-advancing narrative:', error);
-              });
-            } else {
-              console.error('Could not extract campaign ID from path for auto-advance');
-            }
+              // Reset the auto-advance trigger after a delay
+              setTimeout(() => {
+                setAutoAdvanceTriggered(false);
+              }, 5000); // Wait 5 seconds before allowing another auto-advance
+            }, 2000); // Wait 2 seconds before auto-advancing
           }
         }, 1500);
       }
