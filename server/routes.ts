@@ -1766,6 +1766,230 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all relationships in a campaign
+  app.get("/api/campaigns/:id/relationships", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    const campaignId = parseInt(req.params.id);
+    if (isNaN(campaignId)) {
+      return res.status(400).json({ message: "Invalid campaign ID" });
+    }
+    
+    try {
+      // Check campaign access
+      const isInCampaign = await storage.isPlayerInCampaign(req.user.id, campaignId);
+      const campaign = await storage.getCampaign(campaignId);
+      
+      if (!isInCampaign && (!campaign || campaign.dmId !== req.user.id)) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Get all characters in the campaign
+      const campaignCharacters = await storage.getCampaignCharacters(campaignId);
+      const characterIds = campaignCharacters.map(cc => cc.characterId);
+      
+      // If no characters, return empty array
+      if (characterIds.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all relationships between characters in the campaign
+      const relationships = [];
+      const processedPairs = new Set();
+      
+      // For each character, get their relationships
+      for (const characterId of characterIds) {
+        const characterRelationships = await storage.getCharacterRelationships(characterId);
+        
+        // Filter to only include relationships with other characters in the campaign
+        for (const relationship of characterRelationships) {
+          const sourceId = relationship.sourceCharacterId;
+          const targetId = relationship.targetCharacterId;
+          
+          // Create a unique key for this relationship pair
+          const pairKey = [Math.min(sourceId, targetId), Math.max(sourceId, targetId)].join(':');
+          
+          // Skip if we've already processed this pair
+          if (processedPairs.has(pairKey)) continue;
+          
+          // Only include if both characters are in the campaign
+          if (characterIds.includes(sourceId) && characterIds.includes(targetId)) {
+            relationships.push(relationship);
+            processedPairs.add(pairKey);
+          }
+        }
+      }
+      
+      res.json(relationships);
+    } catch (error) {
+      console.error("Error fetching campaign relationships:", error);
+      res.status(500).json({ message: "Failed to fetch campaign relationships" });
+    }
+  });
+  
+  // AI Relationship Analysis Routes
+  app.post("/api/characters/:sourceId/relationships/:targetId/analyze", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    const sourceId = parseInt(req.params.sourceId);
+    const targetId = parseInt(req.params.targetId);
+    const { campaignId } = req.body;
+    
+    if (isNaN(sourceId) || isNaN(targetId)) {
+      return res.status(400).json({ message: "Invalid character IDs" });
+    }
+    
+    try {
+      // Import relationship analyzer dynamically
+      const { analyzeRelationship } = await import('./relationship-analyzer');
+      
+      // Get characters and relationship
+      const sourceCharacter = await storage.getCharacter(sourceId);
+      const targetCharacter = await storage.getCharacter(targetId);
+      const relationship = await storage.getCharacterRelationship(sourceId, targetId);
+      
+      if (!sourceCharacter || !targetCharacter || !relationship) {
+        return res.status(404).json({ 
+          message: !sourceCharacter 
+            ? "Source character not found" 
+            : !targetCharacter 
+              ? "Target character not found" 
+              : "Relationship not found" 
+        });
+      }
+      
+      // Check campaign access if provided
+      let campaignContext = undefined;
+      if (campaignId) {
+        const campaign = await storage.getCampaign(parseInt(campaignId));
+        if (!campaign) {
+          return res.status(404).json({ message: "Campaign not found" });
+        }
+        
+        // Check if the user has access to this campaign
+        const isInCampaign = await storage.isPlayerInCampaign(req.user.id, parseInt(campaignId));
+        if (!isInCampaign && campaign.dmId !== req.user.id) {
+          return res.status(403).json({ message: "Unauthorized to access this campaign" });
+        }
+        
+        campaignContext = {
+          campaignId: campaign.id,
+          campaignTitle: campaign.title || "",
+          campaignTheme: campaign.theme || "",
+          campaignSetting: campaign.setting || ""
+        };
+      }
+      
+      // Analyze the relationship
+      const analysis = await analyzeRelationship({
+        sourceCharacter,
+        targetCharacter,
+        relationship,
+        campaignContext
+      });
+      
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing relationship:", error);
+      res.status(500).json({ message: "Failed to analyze relationship" });
+    }
+  });
+  
+  app.post("/api/campaigns/:id/generate-predictions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    const campaignId = parseInt(req.params.id);
+    if (isNaN(campaignId)) {
+      return res.status(400).json({ message: "Invalid campaign ID" });
+    }
+    
+    try {
+      // Check if the user is the DM of this campaign
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Only the DM can generate predictions" });
+      }
+      
+      // Import relationship analyzer dynamically
+      const { generateCampaignRelationshipPredictions } = await import('./relationship-analyzer');
+      
+      // Generate predictions
+      const result = await generateCampaignRelationshipPredictions(campaignId, req.user.id);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error || "Failed to generate predictions" });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Successfully generated ${result.count} predictions`,
+        count: result.count
+      });
+    } catch (error) {
+      console.error("Error generating predictions:", error);
+      res.status(500).json({ message: "Failed to generate predictions" });
+    }
+  });
+  
+  app.post("/api/campaigns/:id/predict-new-character/:characterId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    const campaignId = parseInt(req.params.id);
+    const characterId = parseInt(req.params.characterId);
+    
+    if (isNaN(campaignId) || isNaN(characterId)) {
+      return res.status(400).json({ message: "Invalid IDs" });
+    }
+    
+    try {
+      // Check campaign access
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      const isInCampaign = await storage.isPlayerInCampaign(req.user.id, campaignId);
+      if (!isInCampaign && campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Unauthorized to access this campaign" });
+      }
+      
+      // Check character access
+      const character = await storage.getCharacter(characterId);
+      if (!character) {
+        return res.status(404).json({ message: "Character not found" });
+      }
+      
+      // Check if character is already in this campaign
+      const campaignCharacters = await storage.getCampaignCharacters(campaignId);
+      const isCharacterInCampaign = campaignCharacters.some(cc => cc.characterId === characterId);
+      
+      // Import relationship analyzer dynamically
+      const { predictNewCharacterInteractions } = await import('./relationship-analyzer');
+      
+      // Predict interactions
+      const predictions = await predictNewCharacterInteractions(characterId, campaignId);
+      
+      res.json({
+        character: {
+          id: character.id,
+          name: character.name,
+          race: character.race,
+          class: character.class,
+          level: character.level
+        },
+        isAlreadyInCampaign: isCharacterInCampaign,
+        predictions
+      });
+    } catch (error) {
+      console.error("Error predicting new character interactions:", error);
+      res.status(500).json({ message: "Failed to predict interactions" });
+    }
+  });
+  
   // AI Character Generation
   app.post("/api/characters/generate", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
