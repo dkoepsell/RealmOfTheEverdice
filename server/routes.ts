@@ -1800,13 +1800,71 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
         // Continue even if we can't fetch patterns
       }
       
-      // Add pattern tracking to context
-      const patternContext = Object.entries(narrativePatterns)
-        .map(([pattern, count]) => `PREVIOUSLY USED (${count} times): ${pattern}`)
-        .join('\n');
+      // Add pattern tracking to context in an organized format
+      // Sort and group patterns by category and frequency
+      const environmentPatterns = [];
+      const interactionPatterns = [];
+      const mechanicPatterns = [];
+      const entityPatterns = [];
+      
+      Object.entries(narrativePatterns).forEach(([pattern, count]) => {
+        if (pattern.startsWith('environment:')) {
+          environmentPatterns.push([pattern.replace('environment:', ''), count]);
+        } else if (pattern.startsWith('interaction:')) {
+          interactionPatterns.push([pattern.replace('interaction:', ''), count]);
+        } else if (pattern.startsWith('mechanic:')) {
+          mechanicPatterns.push([pattern.replace('mechanic:', ''), count]);
+        } else if (pattern.startsWith('entity:')) {
+          entityPatterns.push([pattern.replace('entity:', ''), count]);
+        }
+      });
+      
+      // Sort each category by usage count (highest first)
+      const sortByCount = (a, b) => b[1] - a[1];
+      environmentPatterns.sort(sortByCount);
+      interactionPatterns.sort(sortByCount);
+      mechanicPatterns.sort(sortByCount);
+      entityPatterns.sort(sortByCount);
+      
+      // Create formatted pattern context
+      let patternContext = "";
+      
+      if (environmentPatterns.length > 0) {
+        patternContext += "AVOID THESE ENVIRONMENTS:\n";
+        environmentPatterns.slice(0, 5).forEach(([env, count]) => {
+          patternContext += `- ${env} (used ${count} times)\n`;
+        });
+        patternContext += "\n";
+      }
+      
+      if (interactionPatterns.length > 0) {
+        patternContext += "AVOID THESE INTERACTIONS:\n";
+        interactionPatterns.slice(0, 5).forEach(([interaction, count]) => {
+          patternContext += `- ${interaction} (used ${count} times)\n`;
+        });
+        patternContext += "\n";
+      }
+      
+      if (mechanicPatterns.length > 0) {
+        patternContext += "VARY THESE MECHANICS:\n";
+        mechanicPatterns.slice(0, 5).forEach(([mechanic, count]) => {
+          patternContext += `- ${mechanic} (used ${count} times)\n`;
+        });
+        patternContext += "\n";
+      }
+      
+      if (entityPatterns.length > 0) {
+        patternContext += "AVOID REPEATING THESE ENTITIES:\n";
+        entityPatterns.slice(0, 5).forEach(([entity, count]) => {
+          patternContext += `- ${entity} (used ${count} times)\n`;
+        });
+      }
       
       if (patternContext) {
-        context += "\n\nAVOID REPEATING THESE PATTERNS:\n" + patternContext;
+        context += "\n\nPATTERN VARIETY GUIDANCE:\n" + patternContext;
+        
+        // Add a general instruction to ensure variety
+        context += "\nCREATE VARIETY: Use different environments, interactions, mechanics and entities than those listed above. The narrative should feel fresh and avoid repetition of elements.";
       }
       
       // Use OpenAI to generate a response with enhanced context
@@ -1816,32 +1874,87 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
         isAutoAdvance
       );
       
-      // Update pattern tracking (simplified implementation)
+      // Advanced pattern detection and tracking system
       try {
-        // Extract key narrative patterns from the response
-        const patterns = [
-          narrativeResponse.includes("combat") ? "combat" : null,
-          narrativeResponse.includes("puzzle") ? "puzzle" : null,
-          narrativeResponse.includes("social interaction") ? "social" : null,
-          narrativeResponse.includes("dungeon") ? "dungeon" : null,
-          narrativeResponse.includes("forest") ? "forest" : null,
-          narrativeResponse.includes("town") ? "town" : null,
-          narrativeResponse.includes("cave") ? "cave" : null,
-          narrativeResponse.includes("mountain") ? "mountain" : null,
-          narrativeResponse.includes("skill check") ? "skill check" : null,
-          narrativeResponse.includes("saving throw") ? "saving throw" : null,
-          narrativeResponse.includes("attack roll") ? "attack roll" : null,
-        ].filter(Boolean);
+        // Environment patterns
+        const environments = [
+          "dungeon", "cave", "forest", "town", "village", "city", "mountain", 
+          "castle", "temple", "ruins", "tavern", "ship", "ocean", "lake", 
+          "desert", "swamp", "jungle", "tundra", "camp", "mansion", "tower"
+        ];
+        
+        // Interaction patterns
+        const interactions = [
+          "combat", "battle", "fight", "puzzle", "riddle", "trap", 
+          "social interaction", "negotiation", "conversation", "stealth", 
+          "exploration", "investigation", "chase", "infiltration"
+        ];
+        
+        // Game mechanics patterns
+        const mechanics = [
+          "skill check", "saving throw", "attack roll", "ability check",
+          "initiative", "death save", "inspiration", "advantage", "disadvantage",
+          "critical hit", "damage roll", "spell cast", "concentration check"
+        ];
+        
+        // Entity patterns
+        const entities = [
+          "monster", "undead", "orc", "goblin", "dragon", "demon", "elemental",
+          "NPC", "merchant", "guard", "noble", "wizard", "priest", "rogue", "warrior",
+          "druid", "ranger", "artifact", "magic item", "treasure", "trap"
+        ];
+        
+        // Detect patterns in the narrative response
+        const detectedPatterns = [];
+        
+        // Detect environment patterns
+        environments.forEach(env => {
+          const envRegex = new RegExp(`\\b${env}\\b`, 'i');
+          if (envRegex.test(narrativeResponse)) {
+            detectedPatterns.push(`environment:${env}`);
+          }
+        });
+        
+        // Detect interaction patterns
+        interactions.forEach(interaction => {
+          const interactionRegex = new RegExp(`\\b${interaction.replace(/ /g, '\\s+')}\\b`, 'i');
+          if (interactionRegex.test(narrativeResponse)) {
+            detectedPatterns.push(`interaction:${interaction}`);
+          }
+        });
+        
+        // Detect mechanic patterns
+        mechanics.forEach(mechanic => {
+          const mechanicRegex = new RegExp(`\\b${mechanic.replace(/ /g, '\\s+')}\\b`, 'i');
+          if (mechanicRegex.test(narrativeResponse)) {
+            detectedPatterns.push(`mechanic:${mechanic}`);
+          }
+        });
+        
+        // Detect entity patterns
+        entities.forEach(entity => {
+          const entityRegex = new RegExp(`\\b${entity.replace(/ /g, '\\s+')}\\b`, 'i');
+          if (entityRegex.test(narrativeResponse)) {
+            detectedPatterns.push(`entity:${entity}`);
+          }
+        });
         
         // Update pattern counts
-        patterns.forEach(pattern => {
+        detectedPatterns.forEach(pattern => {
           narrativePatterns[pattern] = (narrativePatterns[pattern] || 0) + 1;
         });
+        
+        // Prevent overflow by capping at 50 patterns
+        const sortedPatterns = Object.entries(narrativePatterns)
+          .sort((a, b) => b[1] - a[1]) // Sort by count (highest first)
+          .slice(0, 50); // Keep only top 50 patterns
+        
+        const trimmedPatterns = Object.fromEntries(sortedPatterns);
         
         // Store pattern tracking for future reference
         await storage.updateCampaignMetadata(
           campaignId, 
-          { narrativePatterns: JSON.stringify(narrativePatterns) }
+          { narrativePatterns: trimmedPatterns }
         );
       } catch (error) {
         console.warn("Error updating narrative patterns:", error);

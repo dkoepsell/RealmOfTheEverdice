@@ -118,6 +118,14 @@ VARIETY AND CREATIVITY:
 - Never repeat the same type of encounter or scenario twice in succession
 - Alternate between different types of challenges (puzzles, combat, social, exploration)
 - Introduce unique NPCs with distinct personalities and motivations
+- Use different environments and settings in consecutive narrative segments
+- Vary the sensory descriptions (visual, auditory, olfactory, tactile) between scenes
+- Create contrasting emotional tones between consecutive narrative segments
+- Vary sentence structures, vocabulary choices, and paragraph lengths
+- If you described a dark, enclosed environment previously, next choose an open, bright one
+- If the previous scene was action-oriented, shift to introspection, mystery, or social dynamics
+- Never use the same adjectives to describe locations, NPCs, or actions in consecutive prompts
+- Interrupt predictable narrative flow with unexpected but coherent developments
 - Create varied and imaginative settings, not generic fantasy locations
 - Invent unexpected twists that change the direction of the adventure
 - Incorporate diverse fantasy elements from different D&D settings and traditions
