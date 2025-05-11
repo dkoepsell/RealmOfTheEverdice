@@ -1405,6 +1405,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const generatedCharacter = await generateCharacter(options);
+      
+      // Ensure the character has proper equipment structure with apparel
+      if (!generatedCharacter.equipment || !generatedCharacter.equipment.apparel) {
+        // Initialize proper equipment structure
+        let defaultEquipment = {
+          weapons: generatedCharacter.equipment?.weapons || [],
+          armor: generatedCharacter.equipment?.armor || "",
+          apparel: {
+            head: "",
+            chest: "",
+            legs: "",
+            feet: "",
+            hands: "",
+            back: "",
+            neck: "",
+            finger: "",
+            waist: ""
+          },
+          items: generatedCharacter.equipment?.items || [],
+          inventory: generatedCharacter.equipment?.inventory || []
+        };
+        
+        // Add class-specific equipment if needed
+        if (defaultEquipment.weapons.length === 0 && defaultEquipment.inventory.length === 0) {
+          // Add appropriate defaults based on class
+          const charClass = generatedCharacter.class?.toLowerCase();
+          if (charClass) {
+            if (['fighter', 'warrior', 'barbarian'].includes(charClass)) {
+              defaultEquipment.weapons = ["Longsword"];
+              defaultEquipment.armor = "Chain Mail";
+              defaultEquipment.apparel.chest = "Sturdy Breastplate";
+              defaultEquipment.apparel.legs = "Reinforced Leggings";
+              defaultEquipment.inventory = [
+                {
+                  slot: 0,
+                  name: "Longsword",
+                  description: "A well-balanced blade favored by fighters",
+                  quantity: 1,
+                  isEquipped: true,
+                  type: "weapon"
+                },
+                {
+                  slot: 1,
+                  name: "Shield",
+                  description: "A sturdy wooden shield reinforced with iron",
+                  quantity: 1,
+                  isEquipped: true,
+                  type: "armor"
+                }
+              ];
+            } else if (['ranger', 'rogue'].includes(charClass)) {
+              defaultEquipment.weapons = ["Shortbow", "Shortsword"];
+              defaultEquipment.armor = "Leather Armor";
+              defaultEquipment.apparel.chest = "Fitted Leather Vest";
+              defaultEquipment.apparel.legs = "Light Leather Pants";
+              defaultEquipment.inventory = [
+                {
+                  slot: 0,
+                  name: "Shortbow",
+                  description: "A compact bow ideal for hunting and skirmishing",
+                  quantity: 1,
+                  isEquipped: true,
+                  type: "weapon"
+                },
+                {
+                  slot: 1,
+                  name: "Shortsword",
+                  description: "A quick blade favored by rogues and rangers",
+                  quantity: 1,
+                  isEquipped: true,
+                  type: "weapon"
+                }
+              ];
+            } else if (['cleric', 'paladin'].includes(charClass)) {
+              defaultEquipment.weapons = ["Mace"];
+              defaultEquipment.armor = "Chain Mail";
+              defaultEquipment.apparel.chest = "Blessed Breastplate";
+              defaultEquipment.apparel.neck = "Holy Symbol";
+              defaultEquipment.inventory = [
+                {
+                  slot: 0,
+                  name: "Mace",
+                  description: "A blessed weapon channeling divine power",
+                  quantity: 1,
+                  isEquipped: true,
+                  type: "weapon"
+                },
+                {
+                  slot: 1,
+                  name: "Shield",
+                  description: "A shield emblazoned with a holy symbol",
+                  quantity: 1,
+                  isEquipped: true,
+                  type: "armor"
+                }
+              ];
+            } else if (['wizard', 'sorcerer', 'warlock'].includes(charClass)) {
+              defaultEquipment.weapons = ["Quarterstaff"];
+              defaultEquipment.armor = "Cloth Robes";
+              defaultEquipment.apparel.chest = "Arcane Robes";
+              defaultEquipment.apparel.head = "Scholar's Cap";
+              defaultEquipment.inventory = [
+                {
+                  slot: 0,
+                  name: "Quarterstaff",
+                  description: "A wooden staff imbued with arcane energy",
+                  quantity: 1,
+                  isEquipped: true,
+                  type: "weapon"
+                },
+                {
+                  slot: 1,
+                  name: "Spellbook",
+                  description: "A book containing arcane knowledge",
+                  quantity: 1,
+                  isEquipped: false,
+                  type: "miscellaneous"
+                }
+              ];
+            }
+          }
+        }
+        
+        generatedCharacter.equipment = defaultEquipment;
+      }
+      
       res.json(generatedCharacter);
     } catch (error) {
       res.status(500).json({ message: "Failed to generate character" });
@@ -1523,11 +1649,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const hp = baseHP + (hpPerLevel * (parseInt(level) - 1));
       
-      // Create basic equipment
-      const equipment = {
-        items: [
-          { name: "Adventurer's Pack", type: "gear", isEquipped: true },
-          { name: "Traveler's Clothes", type: "armor", isEquipped: true }
+      // Initialize proper equipment structure with apparel
+      let equipment = {
+        weapons: [],
+        armor: "",
+        apparel: {
+          head: "",
+          chest: "",
+          legs: "",
+          feet: "",
+          hands: "",
+          back: "",
+          neck: "",
+          finger: "",
+          waist: ""
+        },
+        items: [],
+        inventory: [
+          {
+            slot: 0,
+            name: "Adventurer's Pack",
+            description: "Includes basic survival gear",
+            quantity: 1,
+            isEquipped: false,
+            type: "miscellaneous"
+          }
         ]
       };
       
@@ -1536,28 +1682,210 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'fighter':
         case 'warrior':
         case 'barbarian':
-          equipment.items.push({ name: "Longsword", type: "weapon", isEquipped: true });
-          equipment.items.push({ name: "Chain Mail", type: "armor", isEquipped: true });
-          equipment.items.push({ name: "Shield", type: "armor", isEquipped: true });
+          equipment.weapons = ["Longsword"];
+          equipment.armor = "Chain Mail";
+          equipment.apparel.chest = "Sturdy Breastplate";
+          equipment.apparel.legs = "Reinforced Leggings";
+          equipment.items = ["Shield", "Adventurer's Pack"];
+          equipment.inventory.push(
+            {
+              slot: 1,
+              name: "Longsword",
+              description: "A well-balanced blade favored by fighters",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            },
+            {
+              slot: 2,
+              name: "Shield",
+              description: "A sturdy wooden shield reinforced with iron",
+              quantity: 1,
+              isEquipped: true,
+              type: "armor"
+            }
+          );
           break;
         case 'ranger':
         case 'rogue':
-          equipment.items.push({ name: "Shortbow", type: "weapon", isEquipped: true });
-          equipment.items.push({ name: "Shortsword", type: "weapon", isEquipped: true });
-          equipment.items.push({ name: "Leather Armor", type: "armor", isEquipped: true });
+          equipment.weapons = ["Shortbow", "Shortsword"];
+          equipment.armor = "Leather Armor";
+          equipment.apparel.chest = "Fitted Leather Vest";
+          equipment.apparel.legs = "Light Leather Pants";
+          equipment.items = ["Thieves' Tools", "Adventurer's Pack"];
+          equipment.inventory.push(
+            {
+              slot: 1,
+              name: "Shortbow",
+              description: "A compact bow ideal for hunting and skirmishing",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            },
+            {
+              slot: 2,
+              name: "Shortsword",
+              description: "A quick blade favored by rogues and rangers",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            },
+            {
+              slot: 3,
+              name: "Thieves' Tools",
+              description: "A set of tools for picking locks and disarming traps",
+              quantity: 1,
+              isEquipped: false,
+              type: "tool"
+            }
+          );
           break;
         case 'cleric':
         case 'paladin':
-          equipment.items.push({ name: "Mace", type: "weapon", isEquipped: true });
-          equipment.items.push({ name: "Chain Mail", type: "armor", isEquipped: true });
-          equipment.items.push({ name: "Holy Symbol", type: "gear", isEquipped: true });
+          equipment.weapons = ["Mace"];
+          equipment.armor = "Chain Mail";
+          equipment.apparel.chest = "Blessed Breastplate";
+          equipment.apparel.legs = "Templar Leggings";
+          equipment.apparel.neck = "Holy Symbol";
+          equipment.items = ["Shield", "Prayer Book", "Healer's Kit"];
+          equipment.inventory.push(
+            {
+              slot: 1,
+              name: "Mace",
+              description: "A blessed weapon channeling divine power",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            },
+            {
+              slot: 2,
+              name: "Shield",
+              description: "A shield emblazoned with a holy symbol",
+              quantity: 1,
+              isEquipped: true,
+              type: "armor"
+            },
+            {
+              slot: 3,
+              name: "Holy Symbol",
+              description: "A symbol of your faith",
+              quantity: 1,
+              isEquipped: true,
+              type: "apparel"
+            }
+          );
           break;
         case 'wizard':
         case 'sorcerer':
-          equipment.items.push({ name: "Quarterstaff", type: "weapon", isEquipped: true });
-          equipment.items.push({ name: "Spellbook", type: "gear", isEquipped: true });
-          equipment.items.push({ name: "Component Pouch", type: "gear", isEquipped: true });
+        case 'warlock':
+          equipment.weapons = ["Quarterstaff"];
+          equipment.armor = "Cloth Robes";
+          equipment.apparel.chest = "Arcane Robes";
+          equipment.apparel.head = "Scholar's Cap";
+          equipment.apparel.waist = "Spellcaster's Belt";
+          equipment.items = ["Spellbook", "Component Pouch", "Wand"];
+          equipment.inventory.push(
+            {
+              slot: 1,
+              name: "Quarterstaff",
+              description: "A wooden staff imbued with arcane energy",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            },
+            {
+              slot: 2,
+              name: "Spellbook",
+              description: "A book containing your arcane knowledge",
+              quantity: 1,
+              isEquipped: false,
+              type: "miscellaneous"
+            },
+            {
+              slot: 3,
+              name: "Component Pouch",
+              description: "A small pouch containing material components for spells",
+              quantity: 1,
+              isEquipped: true,
+              type: "miscellaneous"
+            }
+          );
           break;
+        case 'bard':
+          equipment.weapons = ["Rapier"];
+          equipment.armor = "Leather Armor";
+          equipment.apparel.chest = "Performer's Outfit";
+          equipment.apparel.neck = "Charming Pendant";
+          equipment.items = ["Musical Instrument", "Disguise Kit"];
+          equipment.inventory.push(
+            {
+              slot: 1,
+              name: "Rapier",
+              description: "An elegant blade favored by duelists and performers",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            },
+            {
+              slot: 2,
+              name: "Musical Instrument",
+              description: "Your chosen instrument for performances and spellcasting",
+              quantity: 1,
+              isEquipped: true,
+              type: "miscellaneous"
+            }
+          );
+          break;
+        case 'druid':
+          equipment.weapons = ["Quarterstaff", "Sickle"];
+          equipment.armor = "Leather Armor";
+          equipment.apparel.chest = "Natural Hide Vest";
+          equipment.apparel.neck = "Nature's Totem";
+          equipment.items = ["Herbalism Kit", "Druidic Focus"];
+          equipment.inventory.push(
+            {
+              slot: 1,
+              name: "Quarterstaff",
+              description: "A wooden staff made from living wood",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            },
+            {
+              slot: 2,
+              name: "Sickle",
+              description: "A curved blade used for harvesting herbs",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            },
+            {
+              slot: 3,
+              name: "Druidic Focus",
+              description: "A focus for your druidic magic",
+              quantity: 1,
+              isEquipped: true,
+              type: "miscellaneous"
+            }
+          );
+          break;
+        default:
+          // Default equipment for any other class
+          equipment.weapons = ["Dagger"];
+          equipment.armor = "Cloth Clothes";
+          equipment.apparel.chest = "Simple Tunic";
+          equipment.apparel.legs = "Basic Trousers";
+          equipment.items = ["Adventurer's Pack"];
+          equipment.inventory.push(
+            {
+              slot: 1,
+              name: "Dagger",
+              description: "A simple but effective blade",
+              quantity: 1,
+              isEquipped: true,
+              type: "weapon"
+            }
+          );
       }
       
       // Create the bot character
@@ -1576,8 +1904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spells: {},
         abilities: {},
         userId: req.user!.id,
-        isBot: true,
-        createdAt: new Date()
+        isBot: true
       });
       
       res.status(201).json(botCharacter);
@@ -3132,6 +3459,59 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
       // Mark character as bot in the database
       botCharacter.isBot = true;
       botCharacter.userId = req.user.id;
+      
+      // Make sure the equipment has proper structure with apparel
+      if (!botCharacter.equipment || !botCharacter.equipment.apparel) {
+        // Initialize proper equipment structure
+        let defaultEquipment = {
+          weapons: botCharacter.equipment?.weapons || [],
+          armor: botCharacter.equipment?.armor || "",
+          apparel: {
+            head: "",
+            chest: "",
+            legs: "",
+            feet: "",
+            hands: "",
+            back: "",
+            neck: "",
+            finger: "",
+            waist: ""
+          },
+          items: botCharacter.equipment?.items || [],
+          inventory: botCharacter.equipment?.inventory || []
+        };
+        
+        // Add class-specific equipment if needed
+        if (defaultEquipment.weapons.length === 0 && defaultEquipment.inventory.length === 0) {
+          // Add appropriate defaults based on class
+          const charClass = characterClass?.toLowerCase() || botCharacter.class?.toLowerCase();
+          if (charClass) {
+            if (['fighter', 'warrior', 'barbarian'].includes(charClass)) {
+              defaultEquipment.weapons = ["Longsword"];
+              defaultEquipment.armor = "Chain Mail";
+              defaultEquipment.apparel.chest = "Sturdy Breastplate";
+              defaultEquipment.apparel.legs = "Reinforced Leggings";
+            } else if (['ranger', 'rogue'].includes(charClass)) {
+              defaultEquipment.weapons = ["Shortbow", "Shortsword"];
+              defaultEquipment.armor = "Leather Armor";
+              defaultEquipment.apparel.chest = "Fitted Leather Vest";
+              defaultEquipment.apparel.legs = "Light Leather Pants";
+            } else if (['cleric', 'paladin'].includes(charClass)) {
+              defaultEquipment.weapons = ["Mace"];
+              defaultEquipment.armor = "Chain Mail";
+              defaultEquipment.apparel.chest = "Blessed Breastplate";
+              defaultEquipment.apparel.neck = "Holy Symbol";
+            } else if (['wizard', 'sorcerer', 'warlock'].includes(charClass)) {
+              defaultEquipment.weapons = ["Quarterstaff"];
+              defaultEquipment.armor = "Cloth Robes";
+              defaultEquipment.apparel.chest = "Arcane Robes";
+              defaultEquipment.apparel.head = "Scholar's Cap";
+            }
+          }
+        }
+        
+        botCharacter.equipment = defaultEquipment;
+      }
       
       // Create the character in the database
       const character = await storage.createCharacter(botCharacter);
