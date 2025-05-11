@@ -2446,7 +2446,20 @@ export class DatabaseStorage implements IStorage {
   // Implement admin methods
   async getAllUsers(): Promise<User[]> {
     try {
-      return db.select().from(users);
+      // Query all users, make sure to include all fields that might be needed
+      const allUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        email: users.email, 
+        role: users.role,
+        createdAt: users.createdAt,
+        lastLogin: users.lastLoginAt,
+        status: users.status,
+        preferences: users.preferences
+      }).from(users);
+      
+      console.log(`Found ${allUsers.length} users`);
+      return allUsers;
     } catch (error) {
       console.error("Error getting all users:", error);
       return [];

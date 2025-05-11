@@ -3283,8 +3283,8 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
   app.get("/api/admin/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
-    // Check if user is a superuser
-    if (req.user.role !== "superuser") {
+    // Check if user is an admin or superuser
+    if (req.user.role !== "admin" && req.user.role !== "superuser") {
       return res.status(403).json({ message: "Forbidden" });
     }
     
@@ -3479,7 +3479,7 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
     
     // Only superusers can change roles
     if (req.user.role !== "superuser") {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "Forbidden: Only superusers can change user roles" });
     }
     
     const { role } = req.body;

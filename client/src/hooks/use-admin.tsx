@@ -21,11 +21,14 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/users"],
     queryFn: async () => {
-      if (!isAdmin) return [];
+      if (!isAdmin && !isSuperAdmin) return [];
       const res = await apiRequest("GET", "/api/admin/users");
       return await res.json();
     },
-    enabled: !!isAdmin,
+    enabled: !!(isAdmin || isSuperAdmin),
+    onError: (error) => {
+      console.error("Error fetching users:", error);
+    }
   });
 
   // Get system stats
