@@ -221,7 +221,7 @@ export default function CampaignRelationships({
           </TabsTrigger>
           {isDm && (
             <TabsTrigger value="predictions">
-              <Lightning className="h-4 w-4 mr-2" />
+              <Zap className="h-4 w-4 mr-2" />
               Predictions
             </TabsTrigger>
           )}
