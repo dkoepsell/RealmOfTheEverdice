@@ -2605,17 +2605,31 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCharacterRelationship(sourceCharacterId: number, targetCharacterId: number): Promise<CharacterRelationship | undefined> {
+  async getCharacterRelationship(
+    sourceCharacterId: number | null, 
+    targetCharacterId: number | null,
+    relationshipId?: number
+  ): Promise<CharacterRelationship | undefined> {
     try {
-      const [relationship] = await db.select()
-        .from(characterRelationships)
-        .where(
-          and(
-            eq(characterRelationships.sourceCharacterId, sourceCharacterId),
-            eq(characterRelationships.targetCharacterId, targetCharacterId)
-          )
-        );
-      return relationship;
+      if (relationshipId) {
+        // Lookup by ID
+        const [relationship] = await db.select()
+          .from(characterRelationships)
+          .where(eq(characterRelationships.id, relationshipId));
+        return relationship;
+      } else if (sourceCharacterId && targetCharacterId) {
+        // Lookup by source and target
+        const [relationship] = await db.select()
+          .from(characterRelationships)
+          .where(
+            and(
+              eq(characterRelationships.sourceCharacterId, sourceCharacterId),
+              eq(characterRelationships.targetCharacterId, targetCharacterId)
+            )
+          );
+        return relationship;
+      }
+      return undefined;
     } catch (error) {
       console.error("Error getting character relationship:", error);
       return undefined;
