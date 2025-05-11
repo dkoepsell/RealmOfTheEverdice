@@ -59,7 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Shield, Users, Settings, Mail, MapPin, Plus, Trash, Map } from "lucide-react";
+import { Loader2, Send, User, Shield, Users, Settings, Mail, Plus, Trash, BarChart, Scroll, Award } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAdmin } from "@/hooks/use-admin";
 
@@ -336,57 +336,110 @@ export default function AdminDashboard() {
       </div>
       
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-6 mb-8 w-full max-w-4xl">
+        <TabsList className="grid grid-cols-5 mb-8 w-full max-w-4xl">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="worldmap">World Map</TabsTrigger>
           <TabsTrigger value="worlds">Worlds</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          
-            <Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            <Card className="md:col-span-3 mb-4">
               <CardHeader>
-                <CardTitle>Users</CardTitle>
-                <CardDescription>
-                  Registered users in the system
+                <CardTitle className="text-3xl">Welcome to Admin Dashboard</CardTitle>
+                <CardDescription className="text-lg">
+                  Manage your Everdice worlds, users, and system settings
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold mb-2">
-                  {isLoadingUsers ? <Loader2 className="h-6 w-6 animate-spin" /> : users.length}
+                <p className="text-muted-foreground mb-4">
+                  Use this dashboard to manage all aspects of the Realm of Everdice platform. You can view user statistics, 
+                  manage world access permissions, and monitor system performance from this central interface.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+                  <Button onClick={() => setActiveTab("users")} variant="outline" className="flex items-center justify-center gap-2 py-6">
+                    <Users className="h-6 w-6" />
+                    <span className="text-base">User Management</span>
+                  </Button>
+                  <Button onClick={() => setActiveTab("worlds")} variant="outline" className="flex items-center justify-center gap-2 py-6">
+                    <Scroll className="h-6 w-6" />
+                    <span className="text-base">World Management</span>
+                  </Button>
+                  <Button onClick={() => setActiveTab("system")} variant="outline" className="flex items-center justify-center gap-2 py-6">
+                    <Settings className="h-6 w-6" />
+                    <span className="text-base">System Settings</span>
+                  </Button>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {isLoadingUsers ? (
-                    <Loader2 className="h-3 w-3 animate-spin inline mr-2" />
-                  ) : (
-                    <>
-                      <span className="font-medium">{users.filter((u: any) => u.role === "admin").length}</span> admins
-                    </>
-                  )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="mr-2 h-5 w-5" />
+                  User Statistics
+                </CardTitle>
+                <CardDescription>
+                  Detailed user information
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Users</p>
+                    <p className="text-3xl font-bold">
+                      {isLoadingUsers ? <Loader2 className="h-6 w-6 animate-spin" /> : users.length}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Admins</p>
+                      <p className="text-xl font-semibold">
+                        {isLoadingUsers ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          users.filter((u: any) => u.role === "admin").length
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Online Now</p>
+                      <p className="text-xl font-semibold">
+                        {isLoadingUsers ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          users.filter((u: any) => u.isOnline).length
+                        )}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle className="flex items-center">
+                  <BarChart className="mr-2 h-5 w-5" />
+                  Activity Summary
+                </CardTitle>
                 <CardDescription>
-                  Latest system statistics
+                  Recent system activity
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoadingStats ? (
-                  <div className="flex justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin" />
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-8 w-8 animate-spin" />
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {stats.slice(0, 3).map((stat: {name: string, value: string}, i: number) => (
-                      <div key={i} className="flex justify-between items-center">
+                  <div className="space-y-3">
+                    {stats.slice(0, 5).map((stat: {name: string, value: string}, i: number) => (
+                      <div key={i} className="flex justify-between items-center pb-2 border-b border-border last:border-0">
                         <span className="text-sm">{stat.name}</span>
                         <span className="font-medium">{stat.value}</span>
                       </div>
@@ -398,39 +451,45 @@ export default function AdminDashboard() {
             
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle className="flex items-center">
+                  <Award className="mr-2 h-5 w-5" />
+                  Campaign Insights
+                </CardTitle>
                 <CardDescription>
-                  Common administrative tasks
+                  Campaign statistics
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <Button className="w-full justify-start" variant="outline">
-                    <Users className="mr-2 h-4 w-4" />
-                    User Management
-                  </Button>
-                  {isSuperAdmin && (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Campaigns</p>
+                    <p className="text-3xl font-bold">
+                      {isLoadingCampaigns ? <Loader2 className="h-6 w-6 animate-spin" /> : campaigns.length}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Button 
-                        className="w-full justify-start" 
-                        variant="outline"
-                        onClick={() => setShowRegenerateWorldDialog(true)}
-                        disabled={worldLoading}
-                      >
-                        {worldLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
-                          </>
+                      <p className="text-sm text-muted-foreground">Active</p>
+                      <p className="text-xl font-semibold">
+                        {isLoadingCampaigns ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <>
-                            <MapPin className="mr-2 h-4 w-4" />
-                            Regenerate Everdice World
-                          </>
+                          campaigns.filter((c: any) => c.status === "active").length
                         )}
-                      </Button>
+                      </p>
                     </div>
-                  )}
+                    <div>
+                      <p className="text-sm text-muted-foreground">AI DM</p>
+                      <p className="text-xl font-semibold">
+                        {isLoadingCampaigns ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          campaigns.filter((c: any) => c.isAiDm).length
+                        )}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
