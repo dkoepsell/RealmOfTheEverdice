@@ -1590,12 +1590,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Add character to campaign
-      const campaignCharacter = await storage.addCharacterToCampaign({
-        campaignId,
-        characterId,
-        isActive: true
-      });
+      // First check if this character is already in the campaign
+      const existingCharactersInCampaign = await storage.getCampaignCharacters(campaignId);
+      const isDuplicate = existingCharactersInCampaign.some(cc => cc.characterId === characterId);
+      
+      if (isDuplicate) {
+        console.log(`Character ${characterId} is already in campaign ${campaignId} - returning existing record`);
+        return res.status(200).json({ 
+          message: "Character was already in this campaign",
+          campaignCharacter: existingCharactersInCampaign.find(cc => cc.characterId === characterId)
+        });
+      }
+      
+      // Add character to campaign with enhanced error handling
+      try {
+        const campaignCharacter = await storage.addCharacterToCampaign({
+          campaignId,
+          characterId,
+          isActive: true
+        });
+        
+        // Log success for debugging
+        console.log(`Successfully added character ${characterId} to campaign ${campaignId}`);
+      } catch (addError) {
+        console.error(`Failed to add character ${characterId} to campaign ${campaignId}:`, addError);
+        return res.status(400).json({ 
+          message: addError instanceof Error ? addError.message : "Failed to add character to campaign",
+          error: addError 
+        });
+      }
       
       // Check if this is the first character in the campaign and there are no logs yet
       const existingLogs = await storage.getGameLogsByCampaignId(campaignId);
