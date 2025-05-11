@@ -39,6 +39,7 @@ import Navbar from "@/components/navbar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Dice5, Sparkles, RefreshCw, UserCircle, ScrollText } from "lucide-react";
+import BackstoryGenerator from "@/components/backstory-generator";
 
 // Character races
 const races = [
@@ -732,18 +733,43 @@ export default function CharacterCreation() {
                         control={form.control}
                         name="backstory"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Backstory</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                {...field}
-                                className="resize-none h-32 bg-parchment border-accent"
-                                placeholder="Write your character's background story..."
+                          <FormItem className="space-y-6">
+                            <div className="flex justify-between items-center">
+                              <FormLabel className="text-lg">Backstory</FormLabel>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setUseBackstoryGenerator(!useBackstoryGenerator)}
+                              >
+                                {useBackstoryGenerator ? "Write Manually" : "Use Story Generator"}
+                              </Button>
+                            </div>
+                            
+                            {useBackstoryGenerator ? (
+                              <BackstoryGenerator
+                                race={form.watch("race")}
+                                characterClass={form.watch("class")}
+                                initialBackstory={field.value}
+                                onBackstoryGenerated={(backstory, traits) => {
+                                  field.onChange(backstory);
+                                  // Optionally use personality traits to modify other character attributes
+                                }}
                               />
-                            </FormControl>
-                            <FormDescription>
-                              Provide details about your character's past, motivations, and connections.
-                            </FormDescription>
+                            ) : (
+                              <>
+                                <FormControl>
+                                  <Textarea
+                                    {...field}
+                                    className="resize-none h-64 bg-parchment border-accent"
+                                    placeholder="Write your character's background story..."
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Provide details about your character's past, motivations, and connections.
+                                </FormDescription>
+                              </>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}

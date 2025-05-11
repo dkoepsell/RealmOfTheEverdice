@@ -1160,6 +1160,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Procedural Backstory Generator Endpoints
+  app.post("/api/characters/generate-backstory-tree", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const { generateBackstoryTree } = require('./backstory-generator');
+      const options = {
+        race: req.body.race || "human",
+        class: req.body.class || "fighter",
+        alignment: req.body.alignment || "neutral",
+        theme: req.body.theme || "classic fantasy"
+      };
+      
+      const backstoryTree = await generateBackstoryTree(options);
+      res.json(backstoryTree);
+    } catch (error) {
+      console.error("Error generating backstory tree:", error);
+      res.status(500).json({ message: "Failed to generate backstory tree" });
+    }
+  });
+  
+  app.post("/api/characters/finalize-backstory", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const { finalizeBackstory } = require('./backstory-generator');
+      const backstory = await finalizeBackstory({
+        race: req.body.race,
+        class: req.body.class,
+        narrativePath: req.body.narrativePath,
+        personalityTraits: req.body.personalityTraits,
+        backgroundElements: req.body.backgroundElements,
+        alignmentTendencies: req.body.alignmentTendencies
+      });
+      
+      res.json(backstory);
+    } catch (error) {
+      console.error("Error finalizing backstory:", error);
+      res.status(500).json({ message: "Failed to finalize backstory" });
+    }
+  });
+  
   // Bot Character Creation API
   app.post("/api/characters/create-bot", async (req, res) => {
     if (!req.isAuthenticated()) {
