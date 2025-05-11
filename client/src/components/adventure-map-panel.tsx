@@ -599,6 +599,21 @@ export function AdventureMapPanel({
     }
   }, [metadata, everdiceData, worldData]);
   
+  // Add keyboard shortcut to toggle region bounds (using 'B' key)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only if dialog is open and we have region bounds
+      if (isOpen && regionBounds && e.key.toLowerCase() === 'b' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        setShowRegionBounds(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, regionBounds]);
+  
   // Extract region and continent names with better fallbacks
   const regionName = everdiceData?.regionName || worldData?.regionName || mapData.regionName || "Unknown Region";
   const continentName = everdiceData?.continent || worldData?.continent || mapData.continentName || "Everdice World";
@@ -781,9 +796,18 @@ export function AdventureMapPanel({
                 )}
                 {regionBounds && everdiceWorldQuery.data?.mapUrl && (
                   <div className="flex items-center space-x-1 ml-2">
-                    <Label htmlFor="show-region-bounds" className="text-xs text-muted-foreground">
-                      Show region
-                    </Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Label htmlFor="show-region-bounds" className="text-xs text-muted-foreground cursor-help">
+                            Show region
+                          </Label>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          <p className="text-xs">Toggle with 'B' key</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <Switch
                       id="show-region-bounds"
                       checked={showRegionBounds}
@@ -1091,6 +1115,17 @@ export function AdventureMapPanel({
                   This map shows <span className="text-primary font-medium">{regionName}</span>, a region within 
                   <span className="text-secondary font-medium"> {continentName}</span> of the Everdice world.
                 </p>
+                
+                {showRegionBounds && regionBounds && (
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-sm bg-amber-600/50 border border-amber-600"></div>
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Region boundary</span> shows this campaign's area within the Everdice world
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Map controls overlay */}
