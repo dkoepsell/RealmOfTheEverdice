@@ -1175,15 +1175,7 @@ export default function CampaignPage() {
               </div>
               
               <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleToggleRightPanel("map")}
-                  className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "map" ? "bg-amber-200" : ""}`}
-                >
-                  <Map className="h-4 w-4" />
-                  <span className="ml-1 text-xs">Map</span>
-                </Button>
+                {/* Map button removed */}
                 
                 <Button
                   variant="outline"

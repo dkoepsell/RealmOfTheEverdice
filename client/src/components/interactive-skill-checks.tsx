@@ -103,7 +103,8 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, on
     // - Formats in brackets like [Roll: d20+Intelligence modifier vs DC 12]
     // Separate regexes for better maintainability and to avoid complex nested capture groups
     const standardCheckRegex = /(?:make\s+(?:an?|your)|roll\s+(?:an?|your))?\s*(?:(DC\s*(\d+))?\s*(?:([A-Za-z]+)\s*\()?([A-Za-z]+(?:\s+[A-Za-z]+)*)\)?(?:\s*check|\s*saving\s*throw))/gi;
-    const bracketCheckRegex = /\[Roll:.*?(?:vs|against)\s+DC\s+(\d+).*?\]/gi;
+    // Updated to capture skill checks in the format [Roll for Puzzle Solving: d20+Intelligence (Investigation) vs DC 16]
+    const bracketCheckRegex = /\[(?:Roll|Roll for [A-Za-z\s]+):?\s*(?:d20\+)?([A-Za-z]+(?:\s+\([A-Za-z]+\))?).*?(?:vs|against)\s+DC\s+(\d+).*?\]/gi;
     
     // Find all skill checks in the content
     const matches: SkillCheck[] = [];
@@ -140,14 +141,20 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, on
     // Process bracket format
     while ((match = bracketCheckRegex.exec(content)) !== null) {
       const fullText = match[0];
-      // Extract the DC from the bracket format (match group 1)
-      const dc = match[1] ? parseInt(match[1]) : undefined;
+      // In the new regex, the skill is in match[1] and DC is in match[2]
+      const skillText = match[1] ? match[1].toLowerCase() : '';
+      const dc = match[2] ? parseInt(match[2]) : undefined;
       
       // Extract skill/ability name from the text
       let extractedSkill = '';
-      const modifierMatch = fullText.match(/d20\+([A-Za-z]+)/i);
-      if (modifierMatch && modifierMatch[1]) {
-        const rawSkill = modifierMatch[1].toLowerCase();
+      
+      // Special handling for the pattern like "Intelligence (Investigation)"
+      const skillWithParenthesis = skillText.match(/([a-z]+)\s*\(([a-z]+)\)/i);
+      if (skillWithParenthesis) {
+        // If we have Intelligence (Investigation), use Investigation as the skill
+        extractedSkill = skillWithParenthesis[2].toLowerCase();
+      } else if (skillText) {
+        const rawSkill = skillText.toLowerCase().replace(' modifier', '');
         // Convert shortened forms like "Int" to full names
         if (rawSkill === 'str') extractedSkill = 'strength';
         else if (rawSkill === 'dex') extractedSkill = 'dexterity';
@@ -155,14 +162,20 @@ export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, on
         else if (rawSkill === 'int') extractedSkill = 'intelligence';
         else if (rawSkill === 'wis') extractedSkill = 'wisdom';
         else if (rawSkill === 'cha') extractedSkill = 'charisma';
-        else extractedSkill = rawSkill.replace(' modifier', '');
+        else extractedSkill = rawSkill;
       } else {
-        // Try to find any ability in the text
-        const abilityMatch = fullText.match(/(strength|dexterity|constitution|intelligence|wisdom|charisma)/i);
-        if (abilityMatch && abilityMatch[1]) {
-          extractedSkill = abilityMatch[1].toLowerCase();
+        // Fallback - try to find abilities in the full text
+        const modifierMatch = fullText.match(/d20\+([A-Za-z]+)/i);
+        if (modifierMatch && modifierMatch[1]) {
+          extractedSkill = modifierMatch[1].toLowerCase().replace(' modifier', '');
         } else {
-          extractedSkill = 'intelligence'; // Default if we can't find anything
+          // Try to find any ability in the text
+          const abilityMatch = fullText.match(/(strength|dexterity|constitution|intelligence|wisdom|charisma)/i);
+          if (abilityMatch && abilityMatch[1]) {
+            extractedSkill = abilityMatch[1].toLowerCase();
+          } else {
+            extractedSkill = 'intelligence'; // Default if we can't find anything
+          }
         }
       }
       
