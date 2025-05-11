@@ -6,18 +6,31 @@ import {
   ChevronUp, 
   Swords, 
   Sparkles, 
-  Package 
+  Package, 
+  Shield
 } from "lucide-react";
 import { Character } from "@shared/schema";
 import DiceRoller from "./dice-roll";
 import { calculateModifier } from "@/lib/utils";
+import { InventoryManagerWithApparel } from "./inventory-management-with-apparel";
 
 interface CharacterPanelProps {
   character: Character;
+  campaignId?: number;
+  campaignCharacters?: Character[];
 }
 
-export const CharacterPanel = ({ character }: CharacterPanelProps) => {
+export const CharacterPanel = ({ 
+  character,
+  campaignId = 0, 
+  campaignCharacters = []
+}: CharacterPanelProps) => {
   const [sheetExpanded, setSheetExpanded] = useState(true);
+  const [inventoryUpdated, setInventoryUpdated] = useState(false);
+  
+  const handleItemUpdate = () => {
+    setInventoryUpdated(!inventoryUpdated);
+  };
   
   const stats = character.stats as {
     strength: number;
@@ -127,10 +140,15 @@ export const CharacterPanel = ({ character }: CharacterPanelProps) => {
                   <Sparkles className="mr-1 h-4 w-4" />
                   Spells
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Package className="mr-1 h-4 w-4" />
-                  Items
-                </Button>
+                <div className="flex items-center justify-center flex-1">
+                  <InventoryManagerWithApparel
+                    characterId={character.id}
+                    campaignId={campaignId}
+                    character={character}
+                    campaignCharacters={campaignCharacters}
+                    onItemUpdate={handleItemUpdate}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
