@@ -1578,6 +1578,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint to remove a character from a campaign
+  app.delete("/api/campaigns/:id/characters/:characterId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      const characterId = parseInt(req.params.characterId);
+      
+      if (isNaN(campaignId) || isNaN(characterId)) {
+        return res.status(400).json({ message: "Invalid campaign or character ID" });
+      }
+      
+      // Fetch the campaign to check if it exists
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Fetch the character to check ownership
+      const character = await storage.getCharacter(characterId);
+      if (!character) {
+        return res.status(404).json({ message: "Character not found" });
+      }
+      
+      // Check if the character exists in the campaign
+      const campaignCharacter = await storage.getCampaignCharacter(campaignId, characterId);
+      if (!campaignCharacter) {
+        return res.status(404).json({ message: "Character not found in this campaign" });
+      }
+      
+      // Check permission: must be campaign DM or the owner of the character
+      const isDm = campaign.dmId === req.user.id;
+      const isCharacterOwner = character.userId === req.user.id;
+      
+      if (!isDm && !isCharacterOwner) {
+        return res.status(403).json({ 
+          message: "You don't have permission to remove this character" 
+        });
+      }
+      
+      // Remove the character from the campaign
+      const success = await storage.removeCharacterFromCampaign(campaignId, characterId);
+      
+      if (success) {
+        // Log this action to the game logs if it's a significant removal
+        if (!character.isBot) {
+          // Only generate a system log message if a player character is removed (not an NPC)
+          await storage.createGameLog({
+            campaignId,
+            content: `${character.name} has left the adventure.`,
+            type: "system"
+          });
+        }
+        
+        res.status(200).json({ message: "Character removed from campaign successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to remove character from campaign" });
+      }
+    } catch (error) {
+      console.error("Error removing character from campaign:", error);
+      res.status(500).json({ 
+        message: "Failed to remove character from campaign",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   app.post("/api/campaigns/:id/characters", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
