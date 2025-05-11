@@ -1219,6 +1219,16 @@ export default function CampaignPage() {
                   <DicesIcon className="h-4 w-4" />
                   <span className="ml-1 text-xs">Roll</span>
                 </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleToggleRightPanel("relationships")}
+                  className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "relationships" ? "bg-amber-200" : ""}`}
+                >
+                  <HeartHandshake className="h-4 w-4" />
+                  <span className="ml-1 text-xs">Relations</span>
+                </Button>
               </div>
             </div>
             
