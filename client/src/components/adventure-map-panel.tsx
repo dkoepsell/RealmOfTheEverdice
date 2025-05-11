@@ -100,7 +100,9 @@ import {
   Swords,
   Globe2,
   Gem,
-  UserCircle
+  UserCircle,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 
 // Default latitude/longitude for map center if none is provided
