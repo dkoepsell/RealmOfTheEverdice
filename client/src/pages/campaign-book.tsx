@@ -958,13 +958,13 @@ export default function CampaignPage() {
                     {/* Progress indicators showing new vs. old content */}
                     <div className="absolute left-0 bottom-0 flex flex-col items-center -translate-x-1/2">
                       <div className="px-2 py-1 bg-amber-400 rounded-md text-xs font-medium text-amber-900 whitespace-nowrap border border-amber-500/30 shadow-sm">
-                        Current Moment
+                        Start of Adventure
                       </div>
                     </div>
                     
                     <div className="absolute left-0 top-0 flex flex-col items-center -translate-x-1/2">
                       <div className="px-2 py-1 bg-amber-100 rounded-md text-xs font-medium text-amber-700 whitespace-nowrap">
-                        Start of Adventure
+                        Current Moment
                       </div>
                     </div>
                     
