@@ -72,6 +72,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Map, 
   MapPin, 
@@ -274,8 +275,10 @@ export function AdventureMapPanel({
   const [regionBounds, setRegionBounds] = useState<[[number, number], [number, number]] | null>(null);
   const [regionPosition, setRegionPosition] = useState<[number, number] | null>(null);
   const [showRegionBounds, setShowRegionBounds] = useState(true);
+  const [isRegeneratingMap, setIsRegeneratingMap] = useState(false);
   
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   // Fetch campaign map locations
   const locationsQuery = useQuery({
@@ -421,6 +424,36 @@ export function AdventureMapPanel({
         description: error.message,
         variant: "destructive",
       });
+    }
+  });
+  
+  // Mutation for regenerating the campaign's world map
+  const regenerateMapMutation = useMutation({
+    mutationFn: async () => {
+      setIsRegeneratingMap(true);
+      const response = await apiRequest('POST', `/api/campaigns/${campaignId}/world-map/regenerate`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to regenerate map: ${errorText}`);
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Map regenerated",
+        description: "Your campaign world map has been successfully regenerated.",
+      });
+      // Invalidate the query to trigger a refresh
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/world-map`] });
+      setIsRegeneratingMap(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to regenerate map",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsRegeneratingMap(false);
     }
   });
   
