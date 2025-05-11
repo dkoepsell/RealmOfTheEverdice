@@ -1815,8 +1815,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Find if user has a character in this campaign
       const userCharacter = characters.find(char => char && char.userId === req.user.id);
       
-      // Allow DM or players with characters to generate responses
-      if (campaign.dmId !== req.user.id && !userCharacter) {
+      // Allow DM or any players to generate responses (we changed the frontend to let users enter text even without a character)
+      // Special case: allow users without characters for better UX
+      const isUserAllowedToParticipate = 
+        campaign.dmId === req.user.id || // User is the DM
+        userCharacter !== undefined || // User has a character
+        true; // Allow all authenticated users to participate (always true for better UX)
+      
+      if (!isUserAllowedToParticipate) {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -1840,7 +1846,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 CAMPAIGN: "${campaignDetails.title || campaignDetails.name}"
 SETTING: ${campaignDetails.setting || "Fantasy world"}
 THEME: ${campaignDetails.theme || "Adventure"}
-CURRENT CHARACTER: ${userCharacter ? `${userCharacter.name}, a level ${userCharacter.level || 1} ${userCharacter.race} ${userCharacter.class}` : "Unknown"}
+CURRENT CHARACTER: ${userCharacter ? `${userCharacter.name}, a level ${userCharacter.level || 1} ${userCharacter.race} ${userCharacter.class}` : "Spectator (no character selected yet)"}
 
 KNOWN LOCATIONS: ${locations.map(loc => loc.name).join(", ") || "None yet"}
 
@@ -1963,6 +1969,11 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
         
         // Add a general instruction to ensure variety
         context += "\nCREATE VARIETY: Use different environments, interactions, mechanics and entities than those listed above. The narrative should feel fresh and avoid repetition of elements.";
+      }
+      
+      // Add special handling for users without characters
+      if (!userCharacter) {
+        context += "\n\nIMPORTANT: This user does not yet have a character in the campaign. Treat them as a spectator who can ask questions about the game, but frame your response in a way that acknowledges they're not actively participating as a character. Encourage them to create a character if they want to join the adventure.";
       }
       
       // Use OpenAI to generate a response with enhanced context
