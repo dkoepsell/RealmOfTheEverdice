@@ -115,6 +115,7 @@ export default function CharacterCreation() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [currentTab, setCurrentTab] = useState("basic");
+  const [useBackstoryGenerator, setUseBackstoryGenerator] = useState(false);
 
   // Initialize form with default values
   const form = useForm<CharacterFormValues>({
