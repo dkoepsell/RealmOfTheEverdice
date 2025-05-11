@@ -235,6 +235,19 @@ export interface IStorage {
   getTavernNoticeReplies(noticeId: number): Promise<any[]>;
   createTavernNoticeReply(reply: any): Promise<any>;
   
+  // Character Relationship methods
+  createCharacterRelationship(relationship: InsertCharacterRelationship): Promise<CharacterRelationship>;
+  getCharacterRelationship(sourceCharacterId: number, targetCharacterId: number): Promise<CharacterRelationship | undefined>;
+  getCharacterRelationships(characterId: number): Promise<CharacterRelationship[]>;
+  updateCharacterRelationship(sourceCharacterId: number, targetCharacterId: number, updates: Partial<CharacterRelationship>): Promise<CharacterRelationship | undefined>;
+  addInteractionToRelationship(relationshipId: number, interaction: { date: string; description: string; impact: number; context: string }): Promise<CharacterRelationship | undefined>;
+  
+  // Relationship Prediction methods
+  createRelationshipPrediction(prediction: InsertRelationshipPrediction): Promise<RelationshipPrediction>;
+  getRelationshipPredictions(relationshipId: number, campaignId: number): Promise<RelationshipPrediction[]>;
+  markPredictionAsTriggered(predictionId: number, actualOutcome: string): Promise<RelationshipPrediction | undefined>;
+  getPendingPredictionsForCampaign(campaignId: number): Promise<RelationshipPrediction[]>;
+  
   // Admin methods
   getAllUsers(): Promise<User[]>;
   updateUserRole(userId: number, role: "user" | "admin"): Promise<User | undefined>;
@@ -2578,6 +2591,171 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error creating user message:", error);
       throw error;
+    }
+  }
+  
+  // Character Relationship methods
+  async createCharacterRelationship(relationship: InsertCharacterRelationship): Promise<CharacterRelationship> {
+    try {
+      const [newRelationship] = await db.insert(characterRelationships).values(relationship).returning();
+      return newRelationship;
+    } catch (error) {
+      console.error("Error creating character relationship:", error);
+      throw error;
+    }
+  }
+
+  async getCharacterRelationship(sourceCharacterId: number, targetCharacterId: number): Promise<CharacterRelationship | undefined> {
+    try {
+      const [relationship] = await db.select()
+        .from(characterRelationships)
+        .where(
+          and(
+            eq(characterRelationships.sourceCharacterId, sourceCharacterId),
+            eq(characterRelationships.targetCharacterId, targetCharacterId)
+          )
+        );
+      return relationship;
+    } catch (error) {
+      console.error("Error getting character relationship:", error);
+      return undefined;
+    }
+  }
+
+  async getCharacterRelationships(characterId: number): Promise<CharacterRelationship[]> {
+    try {
+      // Get relationships where this character is either the source or target
+      const outgoingRelationships = await db.select()
+        .from(characterRelationships)
+        .where(eq(characterRelationships.sourceCharacterId, characterId));
+        
+      const incomingRelationships = await db.select()
+        .from(characterRelationships)
+        .where(eq(characterRelationships.targetCharacterId, characterId));
+        
+      return [...outgoingRelationships, ...incomingRelationships];
+    } catch (error) {
+      console.error("Error getting character relationships:", error);
+      return [];
+    }
+  }
+
+  async updateCharacterRelationship(
+    sourceCharacterId: number, 
+    targetCharacterId: number, 
+    updates: Partial<CharacterRelationship>
+  ): Promise<CharacterRelationship | undefined> {
+    try {
+      const [updatedRelationship] = await db.update(characterRelationships)
+        .set(updates)
+        .where(
+          and(
+            eq(characterRelationships.sourceCharacterId, sourceCharacterId),
+            eq(characterRelationships.targetCharacterId, targetCharacterId)
+          )
+        )
+        .returning();
+      return updatedRelationship;
+    } catch (error) {
+      console.error("Error updating character relationship:", error);
+      return undefined;
+    }
+  }
+
+  async addInteractionToRelationship(
+    relationshipId: number,
+    interaction: { date: string; description: string; impact: number; context: string }
+  ): Promise<CharacterRelationship | undefined> {
+    try {
+      // First get the current relationship with its interaction history
+      const [relationship] = await db.select()
+        .from(characterRelationships)
+        .where(eq(characterRelationships.id, relationshipId));
+        
+      if (!relationship) {
+        return undefined;
+      }
+      
+      // Update the interaction history
+      const interactionHistory = relationship.interactionHistory || [];
+      interactionHistory.push(interaction);
+      
+      // Calculate new relationship strength based on the impact
+      const updatedStrength = Math.max(-10, Math.min(10, relationship.relationshipStrength + interaction.impact));
+      
+      // Update the relationship
+      const [updatedRelationship] = await db.update(characterRelationships)
+        .set({
+          interactionHistory,
+          relationshipStrength: updatedStrength,
+          updatedAt: new Date()
+        })
+        .where(eq(characterRelationships.id, relationshipId))
+        .returning();
+        
+      return updatedRelationship;
+    } catch (error) {
+      console.error("Error adding interaction to relationship:", error);
+      return undefined;
+    }
+  }
+  
+  // Relationship Prediction methods
+  async createRelationshipPrediction(prediction: InsertRelationshipPrediction): Promise<RelationshipPrediction> {
+    try {
+      const [newPrediction] = await db.insert(relationshipPredictions).values(prediction).returning();
+      return newPrediction;
+    } catch (error) {
+      console.error("Error creating relationship prediction:", error);
+      throw error;
+    }
+  }
+
+  async getRelationshipPredictions(relationshipId: number, campaignId: number): Promise<RelationshipPrediction[]> {
+    try {
+      return db.select()
+        .from(relationshipPredictions)
+        .where(
+          and(
+            eq(relationshipPredictions.relationshipId, relationshipId),
+            eq(relationshipPredictions.campaignId, campaignId)
+          )
+        );
+    } catch (error) {
+      console.error("Error getting relationship predictions:", error);
+      return [];
+    }
+  }
+
+  async markPredictionAsTriggered(predictionId: number, actualOutcome: string): Promise<RelationshipPrediction | undefined> {
+    try {
+      const [updatedPrediction] = await db.update(relationshipPredictions)
+        .set({
+          wasTriggered: true,
+          actualOutcome
+        })
+        .where(eq(relationshipPredictions.id, predictionId))
+        .returning();
+      return updatedPrediction;
+    } catch (error) {
+      console.error("Error marking prediction as triggered:", error);
+      return undefined;
+    }
+  }
+
+  async getPendingPredictionsForCampaign(campaignId: number): Promise<RelationshipPrediction[]> {
+    try {
+      return db.select()
+        .from(relationshipPredictions)
+        .where(
+          and(
+            eq(relationshipPredictions.campaignId, campaignId),
+            eq(relationshipPredictions.wasTriggered, false)
+          )
+        );
+    } catch (error) {
+      console.error("Error getting pending predictions for campaign:", error);
+      return [];
     }
   }
   
