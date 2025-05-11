@@ -870,76 +870,118 @@ export async function generateGlobalMapImage() {
   try {
     console.log("Generating Everdice global world map...");
     
-    // Generate continents information
-    const continentsPrompt = `Create a detailed fantasy world called "Everdice" with diverse continents, seas, and regions.
+    // Generate comprehensive continents and world information
+    const worldBuildingPrompt = `Create a detailed fantasy world called "Everdice" with diverse continents, seas, and regions.
     
     Format your response as a JSON object with these fields:
-    - continents: Array of 7-9 major continents with their names, terrain types, and cultures
+    - continents: Array of 7-9 major continents with these properties:
+        - id: String (unique identifier)
+        - name: String (the name of the continent)
+        - terrainTypes: Array of strings (the primary terrain features)
+        - cultures: Array of strings (the major cultural groups)
+        - description: String (brief description of the continent)
+        - position: [latitude, longitude] (approximate center coordinates, latitude: -90 to 90, longitude: -180 to 180)
+        - bounds: [[minLat, minLong], [maxLat, maxLong]] (approximate boundary coordinates for the continent)
+        - majorLandmarks: Array of strings (notable landmarks or features)
     - oceans: Array of major oceans and seas with names and characteristics
     - magicalFeatures: Array of unique magical elements that define this world
     - majorConflicts: Array of current world-scale conflicts or tensions
     - cosmology: Brief description of how the planes/cosmos work in this world
     - uniqueElements: What makes this fantasy world distinct from others
+    - worldHistory: Brief history of the world's major events
     `;
     
-    const continentsResponse = await openai.chat.completions.create({
+    const worldBuildingResponse = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
-          content: "You are a master fantasy world builder for D&D campaigns, specializing in creating detailed, diverse, and geographically realistic worlds."
+          content: "You are a master fantasy world builder for D&D campaigns, specializing in creating detailed, diverse, and geographically realistic worlds with precisely defined continents and regions."
         },
         {
           role: "user",
-          content: continentsPrompt
+          content: worldBuildingPrompt
         }
       ],
       response_format: { type: "json_object" },
       temperature: 0.8
     });
     
-    if (!continentsResponse.choices || !continentsResponse.choices.length || !continentsResponse.choices[0].message.content) {
-      console.error("Invalid response from OpenAI for continents data");
+    if (!worldBuildingResponse.choices || !worldBuildingResponse.choices.length || !worldBuildingResponse.choices[0].message.content) {
+      console.error("Invalid response from OpenAI for world building data");
       throw new Error("Invalid response format from OpenAI");
     }
     
-    const worldDataJson = continentsResponse.choices[0].message.content;
+    const worldDataJson = worldBuildingResponse.choices[0].message.content;
     let worldData;
     
     try {
       worldData = safeJsonParse(worldDataJson);
       
       // Validate the worldData has expected structure
-      if (!worldData || !worldData.continents || !Array.isArray(worldData.continents) || 
-          !worldData.oceans || !Array.isArray(worldData.oceans) || 
-          !worldData.magicalFeatures || !Array.isArray(worldData.magicalFeatures)) {
+      if (!worldData || !worldData.continents || !Array.isArray(worldData.continents)) {
         throw new Error("Missing required world data fields");
       }
     } catch (parseError) {
       console.error("Could not parse or validate world data:", parseError);
-      // Create fallback world data to ensure map generation can continue
-      worldData = {
-        continents: [
-          { name: "Mystara", terrainTypes: ["forests", "plains", "hills"] },
-          { name: "The Northern Reaches", terrainTypes: ["tundra", "mountains"] },
-          { name: "The Solaran Peninsula", terrainTypes: ["coast", "islands"] },
-          { name: "Eldramir", terrainTypes: ["ancient forests", "mountains"] },
-          { name: "The Burning Sands", terrainTypes: ["deserts", "canyons"] },
-          { name: "The Shattered Isles", terrainTypes: ["archipelagos", "volcanic islands"] }
-        ],
-        oceans: ["The Great Expanse", "The Azure Deep", "The Misty Reach"],
-        magicalFeatures: ["The Everflame", "Whispering Woods", "Crystal Spires"]
-      };
+      throw new Error("Failed to parse world data from OpenAI");
     }
     
-    // Create a map generation prompt with proper error handling for array mapping
-    const continentDescriptions = Array.isArray(worldData.continents) 
-      ? worldData.continents.map((c: any) => {
-          const name = c?.name || "Unnamed Continent";
-          const terrainTypes = Array.isArray(c?.terrainTypes) ? c.terrainTypes.join(', ') : "varied terrain";
-          return `- ${name}: ${terrainTypes}`;
-        }).join('\n')
-      : "- Mystara: forests, plains, hills\n- The Northern Reaches: tundra, mountains";
+    // Process continents to ensure they have all required properties
+    worldData.continents = worldData.continents.map((continent: any, index: number) => {
+      // Ensure ID
+      continent.id = continent.id || `continent-${index + 1}`;
+      
+      // Generate position if missing
+      if (!continent.position || !Array.isArray(continent.position) || continent.position.length !== 2) {
+        // Generate positions in a roughly circular pattern around the center of the map
+        const angle = (index / worldData.continents.length) * 2 * Math.PI;
+        const radius = 45; // Distance from center
+        const latitude = 25 * Math.sin(angle);
+        const longitude = 50 * Math.cos(angle);
+        continent.position = [latitude, longitude];
+      }
+      
+      // Generate bounds if missing
+      if (!continent.bounds || !Array.isArray(continent.bounds) || continent.bounds.length !== 2) {
+        const centerLat = continent.position[0];
+        const centerLong = continent.position[1];
+        const size = 20 + Math.random() * 15; // Random size between 20 and 35 degrees
+        continent.bounds = [
+          [Math.max(-90, centerLat - size/2), Math.max(-180, centerLong - size/2)],
+          [Math.min(90, centerLat + size/2), Math.min(180, centerLong + size/2)]
+        ];
+      }
+      
+      // Ensure other required properties
+      continent.description = continent.description || `A land of ${(continent.terrainTypes || ['diverse terrain']).join(' and ')}.`;
+      continent.terrainTypes = continent.terrainTypes || ['varied terrain'];
+      continent.cultures = continent.cultures || ['diverse peoples'];
+      continent.majorLandmarks = continent.majorLandmarks || [`The ${continent.name} Capital`];
+      
+      return continent;
+    });
+    
+    // Create a detailed prompt for DALL-E based on the continents information
+    let continentDescriptions = '';
+    
+    // Add each continent to the prompt
+    if (worldData.continents && worldData.continents.length > 0) {
+      continentDescriptions = worldData.continents.map((c: any) => {
+        const name = c?.name || "Unnamed Continent";
+        const terrainTypes = Array.isArray(c?.terrainTypes) ? c.terrainTypes.join(', ') : "varied terrain";
+        
+        // Add landmarks if available
+        let landmarkText = '';
+        if (c.majorLandmarks && c.majorLandmarks.length > 0) {
+          landmarkText = ` with landmarks like ${c.majorLandmarks.slice(0, 2).join(' and ')}`;
+        }
+        
+        return `- ${name}: ${terrainTypes}${landmarkText}`;
+      }).join('\n');
+    } else {
+      continentDescriptions = "- Mystara: forests, plains, hills\n- The Northern Reaches: tundra, mountains";
+    }
     
     const oceanDescriptions = Array.isArray(worldData.oceans)
       ? worldData.oceans.map((o: any) => {
@@ -948,7 +990,9 @@ export async function generateGlobalMapImage() {
       : "- The Great Expanse\n- The Azure Deep";
     
     const magicalFeaturesList = Array.isArray(worldData.magicalFeatures)
-      ? worldData.magicalFeatures.join('\n')
+      ? worldData.magicalFeatures.slice(0, 3).map((feature: any) => {
+          return `- ${typeof feature === 'string' ? feature : (feature?.name || feature || "Magical Feature")}`;
+        }).join('\n')
       : "- The Everflame\n- Whispering Woods";
     
     const mapPrompt = `Create a beautiful, full-color fantasy world map of "Everdice", a realm of adventure.
@@ -990,7 +1034,8 @@ This should be a complete, global world map showing ALL of the major continents 
     // Return a placeholder URL instead of throwing, to make the function more resilient
     return {
       url: "/assets/placeholder-map.jpg",
-      error: error.message || "Failed to generate global map"
+      error: error.message || "Failed to generate global map",
+      worldData: {}
     };
   }
 }

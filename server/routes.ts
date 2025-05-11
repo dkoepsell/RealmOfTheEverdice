@@ -273,20 +273,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Regenerate world map for superadmins
   app.post("/api/admin/regenerate-world-map", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    if (req.user!.role !== "superuser") return res.status(403).json({ message: "Not authorized" });
+    if (req.user!.role !== "superuser" && req.user!.role !== "admin") return res.status(403).json({ message: "Not authorized" });
     
     try {
-      // Get existing world data
-      const everdiceWorld = await storage.getEverdiceWorld();
+      const { worldId } = req.body; // Optional, if not provided regenerate main Everdice world
       
-      if (!everdiceWorld) {
-        return res.status(404).json({ message: "Everdice world not found" });
+      // Get existing world data
+      let everdiceWorld;
+      if (worldId) {
+        everdiceWorld = await storage.getEverdiceWorld(worldId);
+        
+        // If not superuser, check if the user has admin access to this world
+        if (req.user!.role !== "superuser") {
+          const worldAccess = await storage.getWorldAccessForUser(req.user!.id);
+          const hasAccess = worldAccess.some(access => 
+            access.worldId === worldId && access.accessLevel === "admin"
+          );
+          
+          if (!hasAccess) {
+            return res.status(403).json({ message: "You don't have admin access to this world" });
+          }
+        }
+      } else {
+        everdiceWorld = await storage.getEverdiceWorld();
       }
       
-      console.log("Regenerating Everdice world map...");
+      if (!everdiceWorld) {
+        return res.status(404).json({ message: "World not found" });
+      }
       
-      // Generate a new world map
-      // No try/catch needed here since the function now safely returns errors instead of throwing
+      console.log(`Regenerating world map for "${everdiceWorld.name}"...`);
+      
+      // Generate a new world map with appropriate name
       const generatedMap = await generateGlobalMapImage();
       const mapUrl = generatedMap?.url || "/assets/placeholder-map.jpg";
       console.log("Generated new world map:", mapUrl);
@@ -304,11 +322,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If we have any world data from the generation, update the continents as well
         ...(generatedMap?.worldData && {
           continents: generatedMap.worldData.continents || everdiceWorld.continents,
-          metadata: JSON.stringify({
-            worldData: generatedMap.worldData,
-            generatedAt: new Date()
-          })
+          metadata: generatedMap.worldData
         })
+      });
+      
+      // Create a system activity log entry for this action
+      await storage.createSystemActivityLog({
+        action: "world_map_regenerated",
+        userId: req.user!.id,
+        metadata: { worldId: updatedWorld.id, worldName: updatedWorld.name }
       });
       
       // Return both the updated world and any error that might have occurred
@@ -323,6 +345,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to regenerate world map", 
         error: error.message 
       });
+    }
+  });
+  
+  // Create a new world (separate from Everdice)
+  app.post("/api/admin/worlds", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (req.user!.role !== "superuser" && req.user!.role !== "admin") return res.status(403).json({ message: "Not authorized" });
+    
+    try {
+      const { name, description, theme } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      
+      // Check if a world with this name already exists
+      const existingWorlds = await storage.getAllEverdiceWorlds();
+      const existingWorld = existingWorlds.find(w => w.name.toLowerCase() === name.toLowerCase());
+      
+      if (existingWorld) {
+        return res.status(400).json({ message: `A world named "${name}" already exists` });
+      }
+      
+      console.log(`Creating new world: ${name}`);
+      
+      // Generate the world map
+      const generatedMap = await generateGlobalMapImage();
+      const mapUrl = generatedMap?.url || "/assets/placeholder-map.jpg";
+      
+      // Create the new world
+      const newWorld = await storage.createOrUpdateEverdiceWorld({
+        name,
+        description: description || `${name} is a world of adventure and wonder.`,
+        lore: `${name} is a realm filled with untold stories and epic adventures waiting to be discovered.`,
+        mapUrl,
+        continents: generatedMap?.worldData?.continents || [],
+        metadata: {
+          ...(generatedMap?.worldData || {}),
+          theme: theme || "high fantasy"
+        },
+        isMainWorld: false,
+        isActive: true
+      });
+      
+      // Give the creator admin access to this world
+      await storage.createWorldAccess({
+        worldId: newWorld.id,
+        userId: req.user!.id,
+        accessLevel: "admin"
+      });
+      
+      // Create a system activity log entry
+      await storage.createSystemActivityLog({
+        action: "world_created",
+        userId: req.user!.id,
+        metadata: { worldId: newWorld.id, worldName: newWorld.name }
+      });
+      
+      res.status(201).json(newWorld);
+    } catch (error: any) {
+      console.error("Error creating new world:", error);
+      res.status(500).json({ message: "Failed to create new world", error: error.message });
     }
   });
   
