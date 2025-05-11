@@ -26,7 +26,9 @@ import {
   insertCampaignInvitationSchema,
   insertPartyPlanSchema,
   insertPartyPlanItemSchema,
-  insertPartyPlanCommentSchema
+  insertPartyPlanCommentSchema,
+  insertCharacterRelationshipSchema,
+  insertRelationshipPredictionSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
