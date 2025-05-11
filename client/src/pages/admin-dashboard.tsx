@@ -988,11 +988,22 @@ export default function AdminDashboard() {
                   >
                     <div className="relative aspect-video w-full overflow-hidden">
                       {world.mapUrl ? (
-                        <div className="w-full h-full">
+                        <div className="w-full h-full relative">
+                          {/* Image placeholder while loading */}
+                          <div className="absolute inset-0 flex items-center justify-center bg-accent/10">
+                            <Loader2 className="h-12 w-12 animate-spin text-primary/50" />
+                          </div>
+                          
+                          {/* Actual image */}
                           <img
                             src={world.mapUrl}
                             alt={world.name}
-                            className="object-cover w-full h-full"
+                            className="object-cover w-full h-full relative z-10"
+                            onLoad={(e) => {
+                              // Successfully loaded - ensure full visibility
+                              e.currentTarget.style.opacity = '1';
+                              console.log("Successfully loaded world map:", world.mapUrl);
+                            }}
                             onError={(e) => {
                               // Replace broken image with a map icon and log the error
                               console.error("Failed to load world map image:", world.mapUrl);
@@ -1003,14 +1014,15 @@ export default function AdminDashboard() {
                               if (container) {
                                 // Create fallback element
                                 const fallback = document.createElement('div');
-                                fallback.className = "bg-accent/20 w-full h-full flex flex-col items-center justify-center";
+                                fallback.className = "absolute inset-0 bg-accent/20 flex flex-col items-center justify-center z-20";
                                 fallback.innerHTML = `
                                   <div class="text-accent/50">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-16 w-16"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
                                   </div>
                                   <p class="mt-2 text-sm text-muted-foreground">Map image not available</p>
-                                  <button class="mt-2 px-2 py-1 bg-primary hover:bg-primary/90 text-white rounded-md text-xs font-medium regenerate-world-btn" data-world-id="${world.id}">
-                                    Regenerate
+                                  <p class="mt-1 text-xs text-muted-foreground">URL: ${world.mapUrl ? world.mapUrl.substring(0, 50) + '...' : 'No URL'}</p>
+                                  <button class="mt-3 px-3 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-md text-sm font-medium regenerate-world-btn" data-world-id="${world.id}">
+                                    Regenerate Map
                                   </button>
                                 `;
                                 
@@ -1027,7 +1039,7 @@ export default function AdminDashboard() {
                                       if (!worldId) return;
                                       
                                       // Show loading state
-                                      regenerateBtn.textContent = '...';
+                                      regenerateBtn.textContent = 'Generating...';
                                       regenerateBtn.setAttribute('disabled', 'true');
                                       regenerateBtn.classList.add('opacity-70');
                                       
@@ -1036,24 +1048,27 @@ export default function AdminDashboard() {
                                         const response = await apiRequest('POST', `/api/admin/worlds/${worldId}/regenerate-map`);
                                         
                                         // Show success message
-                                        regenerateBtn.textContent = '✓';
+                                        regenerateBtn.textContent = 'Success! ✓';
                                         regenerateBtn.classList.add('bg-green-500');
                                         
                                         // Add refresh message
                                         const refreshMsg = document.createElement('p');
-                                        refreshMsg.className = 'text-xs text-muted-foreground mt-1';
-                                        refreshMsg.textContent = 'Refresh to see new map';
+                                        refreshMsg.className = 'text-xs text-muted-foreground mt-2';
+                                        refreshMsg.textContent = 'Page will refresh shortly...';
                                         regenerateBtn.after(refreshMsg);
                                         
-                                        // Reload worlds after a delay
+                                        // Reload worlds after a delay and force refresh
                                         setTimeout(() => {
                                           queryClient.invalidateQueries({ queryKey: ['/api/admin/worlds'] });
+                                          window.location.reload(); // Force a full refresh to ensure map is loaded
                                         }, 2000);
                                       } catch (error) {
                                         // Show error message
                                         console.error('Failed to regenerate map:', error);
-                                        regenerateBtn.textContent = '×';
+                                        regenerateBtn.textContent = 'Failed, try again';
                                         regenerateBtn.classList.add('bg-destructive');
+                                        regenerateBtn.classList.remove('opacity-70');
+                                        regenerateBtn.removeAttribute('disabled');
                                       }
                                     });
                                   }
@@ -1062,11 +1077,71 @@ export default function AdminDashboard() {
                               }
                             }}
                           />
+                          
+                          {/* Regenerate button overlay (always visible) */}
+                          <div className="absolute bottom-2 right-2 z-30">
+                            <Button 
+                              size="sm" 
+                              variant="secondary"
+                              className="bg-white/80 hover:bg-white shadow-sm text-xs"
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                if (!confirm('Regenerate this world map? This may take a moment.')) {
+                                  return;
+                                }
+                                
+                                // Call the API to regenerate the world map
+                                try {
+                                  // Show toast for loading state
+                                  toast({
+                                    title: "Regenerating map",
+                                    description: "Please wait while we create a new map...",
+                                  });
+                                  
+                                  const response = await apiRequest('POST', `/api/admin/worlds/${world.id}/regenerate-map`);
+                                  
+                                  // Show success toast
+                                  toast({
+                                    title: "Map regenerated!",
+                                    description: "The world map has been regenerated successfully.",
+                                    variant: "success",
+                                  });
+                                  
+                                  // Refresh data
+                                  setTimeout(() => {
+                                    queryClient.invalidateQueries({ queryKey: ['/api/admin/worlds'] });
+                                    window.location.reload(); // Force reload to refresh image cache
+                                  }, 1500);
+                                } catch (error) {
+                                  // Show error toast
+                                  toast({
+                                    title: "Failed to regenerate",
+                                    description: "There was an error creating the new map. Please try again.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <div className="bg-accent/20 w-full h-full flex flex-col items-center justify-center">
                           <Map className="h-16 w-16 text-accent/50" />
                           <p className="mt-2 text-sm text-muted-foreground">No map available</p>
+                          {isSuperAdmin && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="mt-4"
+                              onClick={() => setShowRegenerateWorldDialog(true)}
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" /> Generate Map
+                            </Button>
+                          )}
                         </div>
                       )}
                       {world.isMainWorld && (
