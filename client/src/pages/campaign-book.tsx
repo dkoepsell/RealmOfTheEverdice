@@ -577,22 +577,7 @@ export default function CampaignPage() {
             
             {/* Campaign settings */}
             <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowSettings(true)}
-                    className="border-amber-300 hover:bg-amber-100 text-amber-900"
-                  >
-                    <Settings className="h-4 w-4 mr-1 md:mr-2" />
-                    <span className="hidden md:inline">Settings</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Campaign settings</p>
-                </TooltipContent>
-              </Tooltip>
+{/* Settings button removed as requested */}
             </TooltipProvider>
             
             {/* Party Planning */}
@@ -947,7 +932,7 @@ export default function CampaignPage() {
                     </svg>
                     Loading Campaign...
                   </span>
-                ) : campaign?.title || "Campaign"}
+                ) : campaign?.title || campaign?.name || "Loading Campaign..."}
               </h1>
             </div>
             
@@ -1345,12 +1330,7 @@ export default function CampaignPage() {
         onCharacterAdded={handleCharacterAdded}
       />
       
-      {/* Settings dialog */}
-      <CampaignSettingsDialog
-        campaign={campaign}
-        open={showSettings}
-        onOpenChange={setShowSettings}
-      />
+      {/* Settings dialog removed as it wasn't functional */}
     </div>
   );
 }
