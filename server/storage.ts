@@ -23,10 +23,12 @@ import {
   UserMessage, InsertUserMessage,
   EverdiceWorld, InsertEverdiceWorld,
   WorldAccess, InsertWorldAccess,
+  CharacterRelationship, InsertCharacterRelationship,
+  RelationshipPrediction, InsertRelationshipPrediction,
   users, characters, campaigns, campaignCharacters, adventures, npcs, quests, gameLogs,
   friendships, userSessions, chatMessages, campaignInvitations, mapLocations, journeyPaths,
   campaignWorldMaps, partyPlans, partyPlanItems, partyPlanComments, tavernNotices, tavernNoticeReplies,
-  systemStats, userMessages, everdiceWorld, worldAccess
+  systemStats, userMessages, everdiceWorld, worldAccess, characterRelationships, relationshipPredictions
 } from "@shared/schema";
 
 // Define our own Campaign type without partyName since it's not in the DB yet

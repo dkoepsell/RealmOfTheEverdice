@@ -291,7 +291,9 @@ export const charactersRelations = relations(characters, ({ one, many }) => ({
     fields: [characters.userId],
     references: [users.id]
   }),
-  campaignCharacters: many(campaignCharacters)
+  campaignCharacters: many(campaignCharacters),
+  outgoingRelationships: many(characterRelationships, { relationName: "sourceRelationships" }),
+  incomingRelationships: many(characterRelationships, { relationName: "targetRelationships" })
 }));
 
 // Everdice World (the superworld containing all campaigns)
@@ -934,5 +936,85 @@ export const userMessagesRelations = relations(userMessages, ({ one }) => ({
   })
 }));
 
+// Character Relationships model
+export const characterRelationships = pgTable("character_relationships", {
+  id: serial("id").primaryKey(),
+  sourceCharacterId: integer("source_character_id").notNull().references(() => characters.id),
+  targetCharacterId: integer("target_character_id").notNull().references(() => characters.id),
+  relationshipType: text("relationship_type").notNull(), // ally, rival, mentor, family, etc.
+  relationshipStrength: integer("relationship_strength").notNull().default(0), // -10 to 10 scale
+  relationshipTags: json("relationship_tags").$type<string[]>(),
+  interactionHistory: json("interaction_history").$type<Array<{
+    date: string;
+    description: string;
+    impact: number; // -5 to 5 scale of how it affected the relationship
+    context: string;
+  }>>(),
+  dynamicNotes: text("dynamic_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+}, (table) => {
+  return {
+    uniqRelationship: primaryKey({ columns: [table.sourceCharacterId, table.targetCharacterId] })
+  };
+});
+
+export const insertCharacterRelationshipSchema = createInsertSchema(characterRelationships)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true
+  });
+
+// Character Relationship Predictions
+export const relationshipPredictions = pgTable("relationship_predictions", {
+  id: serial("id").primaryKey(),
+  relationshipId: integer("relationship_id").notNull().references(() => characterRelationships.id),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  predictedInteraction: text("predicted_interaction").notNull(),
+  predictedOutcome: text("predicted_outcome").notNull(),
+  triggerConditions: json("trigger_conditions"),
+  probability: integer("probability").notNull().default(50), // 0-100 scale
+  wasTriggered: boolean("was_triggered").notNull().default(false),
+  actualOutcome: text("actual_outcome"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertRelationshipPredictionSchema = createInsertSchema(relationshipPredictions)
+  .omit({
+    id: true,
+    createdAt: true
+  });
+
+// Define relationships
+export const characterRelationshipsRelations = relations(characterRelationships, ({ one, many }) => ({
+  sourceCharacter: one(characters, {
+    fields: [characterRelationships.sourceCharacterId],
+    references: [characters.id]
+  }),
+  targetCharacter: one(characters, {
+    fields: [characterRelationships.targetCharacterId],
+    references: [characters.id]
+  }),
+  predictions: many(relationshipPredictions)
+}));
+
+export const relationshipPredictionsRelations = relations(relationshipPredictions, ({ one }) => ({
+  relationship: one(characterRelationships, {
+    fields: [relationshipPredictions.relationshipId],
+    references: [characterRelationships.id]
+  }),
+  campaign: one(campaigns, {
+    fields: [relationshipPredictions.campaignId],
+    references: [campaigns.id]
+  })
+}));
+
 export type UserMessage = typeof userMessages.$inferSelect;
 export type InsertUserMessage = z.infer<typeof insertUserMessageSchema>;
+
+export type CharacterRelationship = typeof characterRelationships.$inferSelect;
+export type InsertCharacterRelationship = z.infer<typeof insertCharacterRelationshipSchema>;
+
+export type RelationshipPrediction = typeof relationshipPredictions.$inferSelect;
+export type InsertRelationshipPrediction = z.infer<typeof insertRelationshipPredictionSchema>;
