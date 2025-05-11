@@ -69,7 +69,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { toast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -875,6 +874,30 @@ export function AdventureMapPanel({
             
             {/* Left panel: Map */}
             <div className="flex-1 h-[55vh] relative border rounded-md overflow-hidden">
+              {/* Regenerate map button - visible only to DMs */}
+              {isDm && (
+                <div className="absolute top-3 right-3 z-[1000]">
+                  <Button
+                    variant="outline" 
+                    size="sm"
+                    className="bg-background/80 backdrop-blur-sm shadow-md hover:bg-background"
+                    onClick={() => regenerateMapMutation.mutate()}
+                    disabled={isRegeneratingMap || regenerateMapMutation.isPending}
+                  >
+                    {isRegeneratingMap || regenerateMapMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        Regenerating...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                        Regenerate Map
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
               <MapContainer
                 center={mapCenter}
                 zoom={zoom}
