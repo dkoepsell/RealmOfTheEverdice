@@ -1561,6 +1561,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const character = await storage.getCharacter(characterId);
       if (!character) return res.status(404).json({ message: "Character not found" });
       
+      // Check if character is already in the campaign
+      const existingCampaignCharacters = await storage.getCampaignCharacters(campaignId);
+      const alreadyInCampaign = existingCampaignCharacters.some(cc => cc.characterId === characterId);
+      
+      if (alreadyInCampaign) {
+        return res.status(400).json({ 
+          message: "Character is already in this campaign",
+          character: character
+        });
+      }
+      
       // Add character to campaign
       const campaignCharacter = await storage.addCharacterToCampaign({
         campaignId,
