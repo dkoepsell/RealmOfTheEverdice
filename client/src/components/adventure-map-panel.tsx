@@ -269,6 +269,9 @@ export function AdventureMapPanel({
   const [currentPathPoints, setCurrentPathPoints] = useState<[number, number][]>([]);
   const [showDiscoveredOnly, setShowDiscoveredOnly] = useState(false);
   const [worldMap, setWorldMap] = useState<string | null>(null);
+  const [regionBounds, setRegionBounds] = useState<[[number, number], [number, number]] | null>(null);
+  const [regionPosition, setRegionPosition] = useState<[number, number] | null>(null);
+  const [showRegionBounds, setShowRegionBounds] = useState(true);
   
   const queryClient = useQueryClient();
   
@@ -543,6 +546,58 @@ export function AdventureMapPanel({
   // Extract world and Everdice data from metadata
   const worldData = metadata?.worldData || {};
   const everdiceData = metadata?.everdiceData || {};
+  
+  // Extract region bounds and position
+  useEffect(() => {
+    // Check for region position in everdiceData
+    if (everdiceData?.regionPosition && 
+        Array.isArray(everdiceData.regionPosition) && 
+        everdiceData.regionPosition.length === 2) {
+      setRegionPosition(everdiceData.regionPosition);
+      
+      // If we have position, update map center
+      setMapCenter(everdiceData.regionPosition as LatLngExpression);
+    }
+    
+    // Check for region bounds in everdiceData
+    if (everdiceData?.regionBounds && 
+        Array.isArray(everdiceData.regionBounds) && 
+        everdiceData.regionBounds.length === 2 &&
+        Array.isArray(everdiceData.regionBounds[0]) && 
+        Array.isArray(everdiceData.regionBounds[1])) {
+      setRegionBounds(everdiceData.regionBounds);
+      
+      // If we have bounds but no position set, calculate center from bounds
+      if (!everdiceData.regionPosition) {
+        const minLat = everdiceData.regionBounds[0][0];
+        const minLng = everdiceData.regionBounds[0][1];
+        const maxLat = everdiceData.regionBounds[1][0];
+        const maxLng = everdiceData.regionBounds[1][1];
+        
+        const centerPosition: [number, number] = [
+          (minLat + maxLat) / 2,
+          (minLng + maxLng) / 2
+        ];
+        
+        setRegionPosition(centerPosition);
+        setMapCenter(centerPosition as LatLngExpression);
+      }
+    }
+    
+    // Also check worldData as fallback
+    if (!regionPosition && !everdiceData?.regionPosition) {
+      if (worldData?.regionPosition) {
+        setRegionPosition(worldData.regionPosition);
+        setMapCenter(worldData.regionPosition as LatLngExpression);
+      }
+    }
+    
+    if (!regionBounds && !everdiceData?.regionBounds) {
+      if (worldData?.regionBounds) {
+        setRegionBounds(worldData.regionBounds);
+      }
+    }
+  }, [metadata, everdiceData, worldData]);
   
   // Extract region and continent names with better fallbacks
   const regionName = everdiceData?.regionName || worldData?.regionName || mapData.regionName || "Unknown Region";
