@@ -3330,6 +3330,75 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
     }
   });
   
+  // Regenerate campaign world map
+  app.post("/api/campaigns/:id/world-map/regenerate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const campaignId = parseInt(req.params.id);
+      const campaign = await storage.getCampaign(campaignId);
+      
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Check if user is the DM of this campaign or an admin
+      const isAdmin = req.user.role === "admin" || req.user.role === "superuser";
+      if (campaign.dmId !== req.user.id && !isAdmin) {
+        return res.status(403).json({ message: "Only the DM or admins can regenerate campaign maps" });
+      }
+      
+      // Get the Everdice world
+      const everdiceWorld = await storage.getEverdiceWorld();
+      
+      console.log(`Regenerating world map for campaign ${campaignId}`);
+      
+      // Force regenerate the world map
+      try {
+        const placeholderCampaign = {
+          id: campaign.id,
+          name: campaign.name,
+          description: campaign.description,
+          setting: campaign.setting
+        };
+        
+        // Generate a new map using the OpenAI function
+        const worldMapData = await generateWorldMap(campaign.id, placeholderCampaign, everdiceWorld);
+        
+        // Save the regenerated map
+        const savedMap = await storage.updateCampaignWorldMap(campaignId, {
+          mapUrl: worldMapData.mapUrl,
+          mapData: JSON.stringify(worldMapData),
+          continentId: worldMapData.continentId,
+          regionName: worldMapData.regionName,
+          position: worldMapData.position,
+          everdiceWorldId: everdiceWorld?.id ?? null,
+          updatedAt: new Date()
+        });
+        
+        console.log(`Successfully regenerated map for campaign ${campaignId}`);
+        
+        // Add a system log entry about the map regeneration
+        await storage.createGameLog({
+          campaignId: campaign.id,
+          content: "The world map has been updated with new details.",
+          type: "system"
+        });
+        
+        res.json(savedMap);
+      } catch (mapError) {
+        console.error("Error regenerating campaign world map:", mapError);
+        res.status(500).json({ 
+          message: "Failed to regenerate campaign world map", 
+          error: mapError instanceof Error ? mapError.message : String(mapError)
+        });
+      }
+    } catch (error) {
+      console.error("Error with campaign world map regeneration:", error);
+      res.status(500).json({ message: "Failed to process map regeneration request" });
+    }
+  });
+  
   app.post("/api/campaigns/:id/world-map/generate", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
