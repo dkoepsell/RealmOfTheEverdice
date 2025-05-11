@@ -59,7 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Shield, Users, Settings, Mail, Plus, Trash, BarChart, Scroll, Award } from "lucide-react";
+import { Loader2, Send, User, Shield, Users, Settings, Mail, Plus, Trash, BarChart, Scroll, Award, Compass, Map } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAdmin } from "@/hooks/use-admin";
 
@@ -938,26 +938,18 @@ export default function AdminDashboard() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setActiveTab("worldmap")}
+                        onClick={() => handleManageWorldUsers(world.id)}
                       >
-                        View Map
+                        Manage Users
                       </Button>
                       
                       {isSuperAdmin && (
                         <Button 
                           variant="default" 
                           size="sm"
-                          onClick={() => setShowRegenerateWorldDialog(true)}
-                          disabled={worldLoading}
+                          onClick={() => handleEditWorld(world)}
                         >
-                          {worldLoading ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Regenerating...
-                            </>
-                          ) : (
-                            <>Regenerate</>
-                          )}
+                          Edit Details
                         </Button>
                       )}
                     </CardFooter>
@@ -966,24 +958,16 @@ export default function AdminDashboard() {
                 
                 {worlds.length === 0 && (
                   <div className="col-span-2 text-center py-12 bg-accent/5 rounded-lg border border-accent/20">
-                    <Map className="h-12 w-12 mx-auto text-accent/40 mb-4" />
-                    <h3 className="text-xl font-medium mb-2">No World Available</h3>
+                    <Compass className="h-12 w-12 mx-auto text-accent/40 mb-4" />
+                    <h3 className="text-xl font-medium mb-2">No Worlds Available</h3>
                     <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                      There is no Everdice world in the system yet. Generate a world to get started.
+                      There are no Everdice worlds in the system yet. Create a world to get started.
                     </p>
                     
                     {isSuperAdmin && (
-                      <Button onClick={() => setShowRegenerateWorldDialog(true)} disabled={worldLoading}>
-                        {worldLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="mr-2 h-4 w-4" /> Generate World
-                          </>
-                        )}
+                      <Button onClick={() => setShowCreateWorldDialog(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create New World
                       </Button>
                     )}
                   </div>
