@@ -113,6 +113,18 @@ As the Educational Auto-DM, your role is to:
 8. When you see dice roll results in the context or player action, use these results to drive the narrative consequences
 9. Make D&D's tabletop elements visible and accessible within the digital experience
 
+VARIETY AND CREATIVITY: 
+- CRITICALLY IMPORTANT: Avoid repetitive narrative structures, phrases, and scenarios
+- Never repeat the same type of encounter or scenario twice in succession
+- Alternate between different types of challenges (puzzles, combat, social, exploration)
+- Introduce unique NPCs with distinct personalities and motivations
+- Create varied and imaginative settings, not generic fantasy locations
+- Invent unexpected twists that change the direction of the adventure
+- Incorporate diverse fantasy elements from different D&D settings and traditions
+- Develop the ongoing narrative with clear story progression - don't present static scenarios
+- Make serious efforts to remember previous events and build upon them
+- Ensure each narrative response meaningfully advances the story in some way
+
 EDUCATIONAL ELEMENTS: In each response, include a specific reference to at least one actual D&D game mechanic (ability checks, saving throws, attack rolls, etc.) and explain it naturally within the narrative. When appropriate, suggest specific dice rolls with the format: "[Roll: d20+modifier vs DC X for Y]" to clearly show the tabletop elements.
 
 IMPORTANT: When you identify a dice roll in the context (look for phrases like "rolled X for Y" or "rolls X against DC Y"), narrate the exact consequences of that roll - success or failure should meaningfully impact the story! If a roll was critical (natural 20 or natural 1), make the outcome especially dramatic. Be specific and vivid about what exactly happens as a result of the roll, and explain briefly what the roll represents in D&D mechanics.
@@ -129,15 +141,34 @@ Your narration should be vivid and educational, focusing on immersion while teac
     if (isAutoAdvance) {
       userPrompt = `Context: ${context}
 
-The player wants to advance the story. Create a compelling narrative that progresses the adventure by introducing a new element, encounter, or development, while teaching real D&D mechanics. Consider including one of the following (choose what makes most sense given the context):
+The player wants to advance the story. Create a compelling narrative that progresses the adventure in a CREATIVE, IMAGINATIVE way that is DIFFERENT from your previous responses. Carefully read the context to identify what type of scene was MOST RECENTLY presented, then DELIBERATELY CHOOSE A DIFFERENT TYPE of scene or encounter to avoid repetition.
+
+VARIETY IS CRITICAL - analyze the context to determine:
+1. What types of challenges have been presented most recently (puzzle, combat, social, exploration)
+2. What environments or settings have been used recently (indoor, outdoor, urban, wilderness, underground)
+3. What NPCs or factions have been featured recently
+4. What tone has dominated recent interactions (serious, humorous, mysterious, action-oriented)
+
+THEN CHOOSE CONTRASTING ELEMENTS to create a distinctive and fresh experience. If the story has been in a:
+- Dungeon → Move to wilderness, settlement, or planar location
+- Combat sequence → Shift to puzzle solving, diplomacy, or exploration
+- Social interaction → Introduce environmental challenges or action
+- Linear path → Open up multiple interesting choices and paths
+- Known location → Discover something unexpected or previously hidden
+- Familiar tone → Shift to a contrasting emotional atmosphere
+
+Consider including one of the following advanced D&D elements (choose something you haven't used recently):
 - A moral dilemma that might affect character alignment, explaining alignment mechanics
 - A puzzle or mystery that requires an Intelligence or Wisdom check with an explanation of the ability score system
 - A potential combat encounter with appropriate challenge rating, explaining initiative and turn order
 - A social interaction that reveals important information, suggesting Charisma-based skill checks
 - An environmental challenge requiring specific saving throws, explaining the mechanic
 - A surprising twist that builds on previous story elements, tying to D&D's worldbuilding approaches
+- An encounter with a strange magical effect requiring arcana knowledge
+- An opportunity to use a specific class feature or specialized skill
+- A chance to interact with an unusual creature from the Monster Manual
 
-IMPORTANT: Include at least one suggestion for a specific dice roll in the format [Roll: d20+modifier vs DC X for Y], explaining what the DC represents in D&D terms and how modifiers are calculated. Make sure to teach actual D&D 5e rules in a natural way through the narrative.
+EDUCATIONAL ELEMENTS: Include at least one suggestion for a specific dice roll in the format [Roll: d20+modifier vs DC X for Y], explaining what the DC represents in D&D terms and how modifiers are calculated. Make sure to teach actual D&D 5e rules in a natural way through the narrative.
 
 Describe what happens next in vivid detail as the Dungeon Master, moving the story forward in an educational and open-ended way that gives the player genuine agency in how to respond.`;
     } else if (containsDiceRoll) {
@@ -164,13 +195,22 @@ Your narrative should directly respond to the roll, making it clear that the cha
 
 Player Action: ${playerAction}
 
-Provide a narrative response as the DM, describing what happens next based on this specific player action while teaching real D&D mechanics. Allow this action to meaningfully impact the world and story direction.
+Provide a narrative response as the DM, describing what happens next based on this specific player action. CAREFULLY ANALYZE the context and ensure your response is DIFFERENT in style, tone, and content from your previous responses.
+
+VARIETY AND CREATIVITY REQUIREMENTS:
+1. Review the recent narrative history to avoid repeating similar scenarios
+2. If recent responses featured combat, focus on exploration, puzzles, or social interaction
+3. If recent responses were dialogue-heavy, introduce environmental challenges or action
+4. If recent responses were static, dramatically move the plot or scene forward
+5. Introduce a surprising element that changes the trajectory of the current scene
+6. Create memorable details and sensory descriptions that weren't present before
+7. Ensure this response meaningfully advances the narrative in a fresh direction
 
 EDUCATIONAL ELEMENTS: 
 1. Explain at least one real D&D 5e game mechanic that applies to this situation (ability checks, saving throws, attack rolls, etc.)
 2. If this action could have alignment implications, explain how alignment works in D&D and how it might shift
 3. If checks or rolls would be required, explicitly suggest them in the [Roll: d20+modifier vs DC X for Y] format and explain what the DC represents and how modifiers work
-4. If applicable, teach about a relevant class feature, spell, or combat maneuver that could apply to this situation
+4. If applicable, teach about a relevant class feature, spell, or combat maneuver that could apply to this situation 
 5. Relate any relevant mechanics to the rules as written in the Player's Handbook
 
 Your response should be both narrative and educational, opening up new possibilities while teaching D&D mechanics. Adapt to the player's approach whether it's combat-focused, diplomacy, stealth, creative problem-solving, or something unexpected, and use this as an opportunity to teach relevant game mechanics.`;
@@ -188,7 +228,9 @@ Your response should be both narrative and educational, opening up new possibili
           content: userPrompt
         }
       ],
-      temperature: containsDiceRoll ? 0.7 : 0.8 // Slightly lower temperature for dice outcomes
+      temperature: containsDiceRoll ? 0.7 : 0.9, // Higher temperature for standard responses to increase variety
+      top_p: 0.9, // Use nucleus sampling to increase creative diversity
+      max_tokens: 1000 // Allow for more detailed responses
     });
 
     return response.choices[0].message.content;
