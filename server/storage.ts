@@ -156,6 +156,7 @@ export interface IStorage {
   
   // Map location methods
   getMapLocationsByCampaignId(campaignId: number): Promise<MapLocation[]>;
+  getCampaignLocations(campaignId: number): Promise<MapLocation[]>; // Alias for getMapLocationsByCampaignId
   getMapLocation(id: string): Promise<MapLocation | undefined>;
   createMapLocation(location: InsertMapLocation): Promise<MapLocation>;
   updateMapLocation(id: string, location: Partial<MapLocation>): Promise<MapLocation | undefined>;
@@ -291,6 +292,11 @@ export class DatabaseStorage implements IStorage {
       console.error("Error getting map locations:", error);
       return [];
     }
+  }
+  
+  // Alias for getMapLocationsByCampaignId for compatibility
+  async getCampaignLocations(campaignId: number): Promise<MapLocation[]> {
+    return this.getMapLocationsByCampaignId(campaignId);
   }
   
   async getMapLocation(id: string): Promise<MapLocation | undefined> {
