@@ -411,11 +411,9 @@ export function InteractiveDiceSuggestions({ narrative, character, onRollComplet
         // Wait a brief moment after the modal closes before advancing the story
         setTimeout(() => {
           console.log("Calling onAdvanceStory to progress the narrative");
-          if (onAdvanceStory) {
-            onAdvanceStory(); // This should trigger autoAdvanceMutation.mutate()
-          }
-        }, 800);
-      }, 2000); // Show roll result for 2 seconds
+          onAdvanceStory(); // This should trigger autoAdvanceMutation.mutate()
+        }, 1000);
+      }, 3000); // Show roll result for 3 seconds
       
       return () => clearTimeout(advanceTimer);
     } else if (rollResult && !isAutoRollEnabled) {

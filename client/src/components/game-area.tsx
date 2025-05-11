@@ -96,6 +96,11 @@ export const GameArea = ({
       // Create a context from recent game logs
       const recentLogs = gameLogs.slice(0, 5).map(log => log.content).join("\n");
       
+      console.log("Auto-advancing narrative with recent logs context:", { 
+        logCount: gameLogs.length,
+        contextLength: recentLogs.length
+      });
+      
       const res = await apiRequest("POST", "/api/generate/narration", {
         context: recentLogs,
         playerAction: "What happens next?",
@@ -105,6 +110,8 @@ export const GameArea = ({
       return await res.json();
     },
     onSuccess: (data) => {
+      console.log("Auto-advance narration generated successfully:", data);
+      
       // Add the new narration to game logs
       const newLog: Partial<GameLog> = {
         campaignId: campaign.id,
@@ -117,6 +124,19 @@ export const GameArea = ({
       
       // Generate new decision options
       generateDecisionOptions();
+    },
+    onError: (error) => {
+      console.error("Auto-advance narration generation failed:", error);
+      
+      // Add a system message about the failure
+      const errorLog: Partial<GameLog> = {
+        campaignId: campaign.id,
+        content: "The narrative couldn't advance automatically. Please use the 'Auto-Advance Story' button to continue.",
+        type: "system"
+      };
+      
+      // Create error log in database
+      createLogMutation.mutate(errorLog);
     }
   });
   

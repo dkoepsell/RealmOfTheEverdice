@@ -18,6 +18,7 @@ interface InteractiveSkillChecksProps {
   content: string;
   autoRoll: boolean;
   onRollSkillCheck: (skill: string, roll: number, modifier: number, dc?: number) => void;
+  onAdvanceStory?: () => void; // Add callback for auto-advancing the story
   character?: {
     stats: {
       strength: number;
@@ -74,13 +75,14 @@ const SKILL_TO_ABILITY: Record<string, string> = {
   "persuasion": "charisma"
 };
 
-export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, character }: InteractiveSkillChecksProps) {
+export function InteractiveSkillChecks({ content, autoRoll, onRollSkillCheck, onAdvanceStory, character }: InteractiveSkillChecksProps) {
   const [highlightedContent, setHighlightedContent] = useState<React.ReactNode>(null);
   const [skillChecks, setSkillChecks] = useState<SkillCheck[]>([]);
   const [selectedSkillCheck, setSelectedSkillCheck] = useState<SkillCheck | null>(null);
   const [showDiceDialog, setShowDiceDialog] = useState(false);
   const [isRolling, setIsRolling] = useState(false);
   const [dieResult, setDieResult] = useState<number | null>(null);
+  const [autoAdvanceTriggered, setAutoAdvanceTriggered] = useState(false);
   const { toast } = useToast();
   const [location] = useLocation();
   
