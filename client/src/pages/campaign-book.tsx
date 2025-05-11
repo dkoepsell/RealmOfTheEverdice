@@ -824,15 +824,7 @@ export default function CampaignPage() {
             </div>
             
             <div className="p-4 h-full overflow-y-auto">
-              {rightPanelTab === "map" && (
-                <AdventureMapPanel 
-                  campaignId={parseInt(campaignId)} 
-                  locations={mapLocations} 
-                  paths={mapPaths}
-                  isLoading={locationsLoading || pathsLoading}
-                  campaign={campaign}
-                />
-              )}
+              {/* Map panel removed */}
               
               {rightPanelTab === "chat" && (
                 <BotCompanion 
@@ -1281,15 +1273,7 @@ export default function CampaignPage() {
               
               <div className="p-4 max-h-[70vh] overflow-y-auto">
                 {/* Same content as desktop but in a slide-up panel */}
-                {rightPanelTab === "map" && (
-                  <AdventureMapPanel 
-                    campaignId={parseInt(campaignId)} 
-                    locations={mapLocations} 
-                    paths={mapPaths}
-                    isLoading={locationsLoading || pathsLoading}
-                    campaign={campaign}
-                  />
-                )}
+                {/* Map panel removed */}
                 
                 {rightPanelTab === "chat" && (
                   <BotCompanion 
