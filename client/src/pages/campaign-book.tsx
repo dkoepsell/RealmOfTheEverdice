@@ -94,6 +94,9 @@ export default function CampaignPage() {
       console.error("Error loading campaign data:", campaignError);
     }
   }, [campaign, campaignError]);
+  
+  // Check if the current user is the DM of this campaign
+  const isDm = campaign && user && campaign.dmId === user.id;
 
   // Remove character mutation
   const removeCharacterMutation = useMutation({
