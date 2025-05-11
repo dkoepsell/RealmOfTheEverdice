@@ -694,9 +694,7 @@ export default function AdminDashboard() {
                     {everdiceWorld?.mapUrl ? (
                       <div className="relative h-[400px] w-full overflow-hidden">
                         <img 
-                          src={everdiceWorld.mapUrl.startsWith('data:') ? 
-                            "https://replit.com/cdn-cgi/image/width=3840,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg" : 
-                            everdiceWorld.mapUrl} 
+                          src={everdiceWorld.mapUrl} 
                           alt="Everdice World Map" 
                           className="w-full h-full object-contain sm:object-cover"
                           style={{ 
@@ -707,7 +705,7 @@ export default function AdminDashboard() {
                           }}
                           onError={(e) => {
                             console.error(`Failed to load image from: ${everdiceWorld.mapUrl}`);
-                            // Use a remote placeholder image instead of inline base64
+                            // Use a remote placeholder image
                             e.currentTarget.src = "https://replit.com/cdn-cgi/image/width=3840,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg";
                           }}
                           loading="eager"

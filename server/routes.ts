@@ -254,15 +254,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const everdiceWorld = await storage.getEverdiceWorld();
       
       if (!everdiceWorld) {
-        return res.status(404).json({ message: "Everdice world not found" });
+        console.log("No Everdice world found, returning placeholder data");
+        // Return placeholder data instead of 404 to avoid breaking client
+        return res.json({
+          mapUrl: "https://replit.com/cdn-cgi/image/width=3840,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg",
+          name: "Everdice",
+          continents: [],
+          generatedAt: new Date()
+        });
       }
+      
+      // Make sure mapUrl exists and is valid
+      const mapUrl = everdiceWorld.mapUrl || "https://replit.com/cdn-cgi/image/width=3840,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg";
+      
+      console.log("Sending Everdice world data with map URL:", mapUrl);
       
       // Return public-facing world data
       res.json({
-        mapUrl: everdiceWorld.mapUrl,
+        mapUrl: mapUrl,
         name: everdiceWorld.name,
         continents: everdiceWorld.continents || [],
-        generatedAt: everdiceWorld.generatedAt
+        generatedAt: everdiceWorld.updatedAt || everdiceWorld.createdAt
       });
     } catch (error) {
       console.error("Error getting public Everdice world data:", error);
@@ -332,6 +344,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user!.id,
         metadata: { worldId: updatedWorld.id, worldName: updatedWorld.name }
       });
+      
+      console.log("Successfully regenerated world map for Everdice world with ID:", updatedWorld.id);
       
       // Return both the updated world and any error that might have occurred
       res.json({

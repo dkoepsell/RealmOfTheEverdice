@@ -25,10 +25,7 @@ export function useAdmin() {
       const res = await apiRequest("GET", "/api/admin/users");
       return await res.json();
     },
-    enabled: !!(isAdmin || isSuperAdmin),
-    onError: (error) => {
-      console.error("Error fetching users:", error);
-    }
+    enabled: !!(isAdmin || isSuperAdmin)
   });
 
   // Get system stats
@@ -209,7 +206,7 @@ export function useAdmin() {
         title: "World map regenerated",
         description: "The Everdice world map has been successfully regenerated.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/everdice"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/everdice/world"] });
     },
     onError: (error: Error) => {
       toast({
