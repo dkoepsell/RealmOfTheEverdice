@@ -95,6 +95,28 @@ export default function CampaignPage() {
     }
   }, [campaign, campaignError]);
 
+  // Remove character mutation
+  const removeCharacterMutation = useMutation({
+    mutationFn: async (characterId: number) => {
+      await apiRequest('DELETE', `/api/campaigns/${campaignId}/characters/${characterId}`);
+    },
+    onSuccess: () => {
+      // Refresh character list
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
+      toast({
+        title: "Character removed",
+        description: "The character has been removed from this campaign",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to remove character",
+        description: error.message || "An error occurred while removing the character",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Campaign characters query
   const {
     data: campaignCharacters = [],
