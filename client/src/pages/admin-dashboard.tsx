@@ -994,9 +994,9 @@ export default function AdminDashboard() {
                             <Loader2 className="h-12 w-12 animate-spin text-primary/50" />
                           </div>
                           
-                          {/* Actual image */}
+                          {/* Actual image - handle both absolute URLs and relative paths */}
                           <img
-                            src={world.mapUrl}
+                            src={world.mapUrl.startsWith('http') ? world.mapUrl : `/api/admin/worlds/${world.id}/map-image`}
                             alt={world.name}
                             className="object-cover w-full h-full relative z-10"
                             onLoad={(e) => {
@@ -1020,9 +1020,9 @@ export default function AdminDashboard() {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-16 w-16"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
                                   </div>
                                   <p class="mt-2 text-sm text-muted-foreground">Map image not available</p>
-                                  <p class="mt-1 text-xs text-muted-foreground">URL: ${world.mapUrl ? world.mapUrl.substring(0, 50) + '...' : 'No URL'}</p>
+                                  <p class="mt-1 text-xs text-muted-foreground">Map will be regenerated with OpenAI</p>
                                   <button class="mt-3 px-3 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-md text-sm font-medium regenerate-world-btn" data-world-id="${world.id}">
-                                    Regenerate Map
+                                    Generate New Map
                                   </button>
                                 `;
                                 
@@ -1039,7 +1039,7 @@ export default function AdminDashboard() {
                                       if (!worldId) return;
                                       
                                       // Show loading state
-                                      regenerateBtn.textContent = 'Generating...';
+                                      regenerateBtn.textContent = 'Generating with OpenAI...';
                                       regenerateBtn.setAttribute('disabled', 'true');
                                       regenerateBtn.classList.add('opacity-70');
                                       
@@ -1048,20 +1048,20 @@ export default function AdminDashboard() {
                                         const response = await apiRequest('POST', `/api/admin/worlds/${worldId}/regenerate-map`);
                                         
                                         // Show success message
-                                        regenerateBtn.textContent = 'Success! ✓';
+                                        regenerateBtn.textContent = 'Map Created Successfully! ✓';
                                         regenerateBtn.classList.add('bg-green-500');
                                         
                                         // Add refresh message
                                         const refreshMsg = document.createElement('p');
                                         refreshMsg.className = 'text-xs text-muted-foreground mt-2';
-                                        refreshMsg.textContent = 'Page will refresh shortly...';
+                                        refreshMsg.textContent = 'Page will refresh in 3 seconds...';
                                         regenerateBtn.after(refreshMsg);
                                         
                                         // Reload worlds after a delay and force refresh
                                         setTimeout(() => {
                                           queryClient.invalidateQueries({ queryKey: ['/api/admin/worlds'] });
                                           window.location.reload(); // Force a full refresh to ensure map is loaded
-                                        }, 2000);
+                                        }, 3000);
                                       } catch (error) {
                                         // Show error message
                                         console.error('Failed to regenerate map:', error);
@@ -1088,7 +1088,7 @@ export default function AdminDashboard() {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 
-                                if (!confirm('Regenerate this world map? This may take a moment.')) {
+                                if (!confirm('Generate a new world map with OpenAI? This may take a moment.')) {
                                   return;
                                 }
                                 
@@ -1096,24 +1096,23 @@ export default function AdminDashboard() {
                                 try {
                                   // Show toast for loading state
                                   toast({
-                                    title: "Regenerating map",
-                                    description: "Please wait while we create a new map...",
+                                    title: "Regenerating world map",
+                                    description: "Please wait while OpenAI creates a new map...",
                                   });
                                   
                                   const response = await apiRequest('POST', `/api/admin/worlds/${world.id}/regenerate-map`);
                                   
                                   // Show success toast
                                   toast({
-                                    title: "Map regenerated!",
-                                    description: "The world map has been regenerated successfully.",
-                                    variant: "success",
+                                    title: "Map created successfully!",
+                                    description: "The world map has been regenerated with OpenAI.",
                                   });
                                   
                                   // Refresh data
                                   setTimeout(() => {
                                     queryClient.invalidateQueries({ queryKey: ['/api/admin/worlds'] });
                                     window.location.reload(); // Force reload to refresh image cache
-                                  }, 1500);
+                                  }, 2000);
                                 } catch (error) {
                                   // Show error toast
                                   toast({

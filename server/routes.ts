@@ -133,6 +133,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Serve world map image directly for cases where the URL might be relative
+  app.get("/api/admin/worlds/:worldId/map-image", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const worldId = parseInt(req.params.worldId);
+      if (isNaN(worldId)) {
+        return res.status(400).json({ message: "Invalid world ID" });
+      }
+      
+      // Get the world data
+      const world = await storage.getEverdiceWorld(worldId);
+      if (!world) {
+        return res.status(404).json({ message: "World not found" });
+      }
+      
+      // If no map URL, generate a placeholder image
+      if (!world.mapUrl) {
+        return res.redirect("https://placehold.co/1024x1024/00345B/FFF?text=No+Map+Available");
+      }
+      
+      // If the map URL is relative, serve a placeholder
+      if (world.mapUrl.startsWith('/')) {
+        return res.redirect("https://placehold.co/1024x1024/00345B/FFF?text=Everdice+World");
+      }
+      
+      // If the map URL is absolute, redirect to it
+      res.redirect(world.mapUrl);
+    } catch (error) {
+      console.error("Error serving world map:", error);
+      res.status(500).redirect("https://placehold.co/1024x1024/CC0000/FFF?text=Error+Loading+Map");
+    }
+  });
+  
   // Create a new Everdice world
   app.post("/api/admin/worlds/create", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
