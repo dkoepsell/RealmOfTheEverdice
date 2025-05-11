@@ -1563,11 +1563,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if character is already in the campaign
       const existingCampaignCharacters = await storage.getCampaignCharacters(campaignId);
+      
+      // Check if the exact same character ID already exists in campaign
       const alreadyInCampaign = existingCampaignCharacters.some(cc => cc.characterId === characterId);
+      
+      // Also check if same character name already exists in campaign (to prevent duplicates)
+      const existingCharactersDetails = await Promise.all(
+        existingCampaignCharacters.map(cc => storage.getCharacter(cc.characterId))
+      );
+      
+      const duplicateNameExists = existingCharactersDetails
+        .filter(c => c !== undefined) // Filter out any undefined characters
+        .some(c => c.name.toLowerCase() === character.name.toLowerCase());
       
       if (alreadyInCampaign) {
         return res.status(400).json({ 
           message: "Character is already in this campaign",
+          character: character
+        });
+      }
+      
+      if (duplicateNameExists) {
+        return res.status(400).json({ 
+          message: "A character with this name is already in the campaign",
           character: character
         });
       }
@@ -2695,10 +2713,29 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
       // Create the character in the database
       const character = await storage.createCharacter(botCharacter);
       
-      // If a campaignId was provided, add the bot to the campaign
+      // If a campaignId was provided, check for duplicates and add the bot to the campaign
       if (campaignId) {
+        // Check if character with same name already exists in campaign
+        const campaignIdNum = parseInt(campaignId);
+        const existingCampaignCharacters = await storage.getCampaignCharacters(campaignIdNum);
+        const existingCharactersDetails = await Promise.all(
+          existingCampaignCharacters.map(cc => storage.getCharacter(cc.characterId))
+        );
+        
+        const duplicateNameExists = existingCharactersDetails
+          .filter(c => c !== undefined) // Filter out any undefined characters
+          .some(c => c.name.toLowerCase() === character.name.toLowerCase());
+        
+        if (duplicateNameExists) {
+          console.log(`Bot character with name ${character.name} already exists in campaign ${campaignId}, changing name`);
+          // If duplicate exists, update the name to make it unique
+          const uniqueName = `${character.name} (${Math.floor(Math.random() * 1000) + 1})`;
+          await storage.updateCharacter(character.id, { name: uniqueName });
+          character.name = uniqueName; // Update character object for use below
+        }
+        
         await storage.addCharacterToCampaign({
-          campaignId: parseInt(campaignId),
+          campaignId: campaignIdNum,
           characterId: character.id,
           isActive: true
         });
