@@ -896,6 +896,23 @@ export default function CampaignPage() {
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
                               }}
                             />
+                            {/* Remove character button (only shown for DM or character owner) */}
+                            {(isDm || character.userId === user?.id) && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (confirm(`Remove ${character.name} from this campaign?`)) {
+                                    removeCharacterMutation.mutate(character.id);
+                                  }
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
