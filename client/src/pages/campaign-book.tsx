@@ -203,17 +203,25 @@ export default function CampaignPage() {
         } catch (dmError) {
           console.error("Error generating DM response:", dmError);
           
-          // Create a fallback message and add it directly to the frontend logs
-          setGameLogs(prev => [
-            ...prev,
-            {
-              id: Date.now(), // Temporary ID
-              campaignId: parseInt(campaignId as string),
-              content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
-              type: "narrative",
-              timestamp: new Date()
-            }
-          ]);
+          // Instead of directly manipulating state, create a fallback message through the API
+          try {
+            await apiRequest(
+              "POST",
+              `/api/campaigns/${campaignId}/logs`,
+              {
+                content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
+                type: "narrative",
+                timestamp: new Date()
+              }
+            );
+            
+            // Refresh the logs to get the fallback message
+            await queryClient.invalidateQueries({
+              queryKey: [`/api/campaigns/${campaignId}/logs`],
+            });
+          } catch (fallbackError) {
+            console.error("Failed to add fallback message:", fallbackError);
+          }
           
           // Return a fallback response
           return { 
@@ -260,7 +268,7 @@ export default function CampaignPage() {
         });
       }
     },
-    onError: (error) => {
+    onError: async (error) => {
       console.error("Action submission error:", error);
       setPlayerInput(""); // Clear the input even on error for better UX
       
@@ -270,24 +278,37 @@ export default function CampaignPage() {
         variant: "destructive",
       });
       
-      // Add fallback response directly to the UI
-      setGameLogs(prev => [
-        ...prev,
-        {
-          id: Date.now(), // Temporary ID
-          campaignId: parseInt(campaignId as string),
-          content: playerInput,
-          type: "player",
-          timestamp: new Date()
-        },
-        {
-          id: Date.now() + 1, // Temporary ID
-          campaignId: parseInt(campaignId as string),
-          content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
-          type: "narrative",
-          timestamp: new Date()
-        }
-      ]);
+      // Add fallback response through the API instead of direct state manipulation
+      try {
+        // First, ensure player input is recorded
+        await apiRequest(
+          "POST",
+          `/api/campaigns/${campaignId}/logs`,
+          {
+            content: playerInput,
+            type: "player",
+            timestamp: new Date()
+          }
+        );
+        
+        // Then add the fallback narrative response
+        await apiRequest(
+          "POST",
+          `/api/campaigns/${campaignId}/logs`,
+          {
+            content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
+            type: "narrative",
+            timestamp: new Date()
+          }
+        );
+        
+        // Refresh the logs to display both messages
+        await queryClient.invalidateQueries({
+          queryKey: [`/api/campaigns/${campaignId}/logs`],
+        });
+      } catch (fallbackError) {
+        console.error("Failed to add fallback messages:", fallbackError);
+      }
       
       setIsProcessing(false);
     },
