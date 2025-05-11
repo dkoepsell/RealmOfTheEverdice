@@ -1704,8 +1704,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Add character to campaign with enhanced error handling
+      let campaignCharacter;
       try {
-        const campaignCharacter = await storage.addCharacterToCampaign({
+        campaignCharacter = await storage.addCharacterToCampaign({
           campaignId,
           characterId,
           isActive: true
@@ -1717,7 +1718,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`Failed to add character ${characterId} to campaign ${campaignId}:`, addError);
         return res.status(400).json({ 
           message: addError instanceof Error ? addError.message : "Failed to add character to campaign",
-          error: addError 
+          error: addError instanceof Error ? addError.message : String(addError)
+        });
+      }
+      
+      if (!campaignCharacter) {
+        return res.status(500).json({
+          message: "Failed to add character to campaign - no campaign character returned",
         });
       }
       
@@ -1760,8 +1767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createGameLog({
             campaignId,
             content: introText,
-            type: "narrative",
-            timestamp: new Date()
+            type: "narrative"
           });
         } catch (introError) {
           console.error("Error generating introduction:", introError);

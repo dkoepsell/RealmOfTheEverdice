@@ -1633,40 +1633,48 @@ export class DatabaseStorage implements IStorage {
 
   // Campaign Character methods
   async addCharacterToCampaign(insertCampaignCharacter: InsertCampaignCharacter): Promise<CampaignCharacter> {
-    // First check if this character is already in the campaign to prevent duplicates
-    const existingEntries = await db
-      .select()
-      .from(campaignCharacters)
-      .where(and(
-        eq(campaignCharacters.campaignId, insertCampaignCharacter.campaignId),
-        eq(campaignCharacters.characterId, insertCampaignCharacter.characterId)
-      ));
-    
-    if (existingEntries.length > 0) {
-      console.log(`Character ${insertCampaignCharacter.characterId} is already in campaign ${insertCampaignCharacter.campaignId}`);
-      return existingEntries[0]; // Return the existing record instead of creating a duplicate
-    }
-    
-    // Also check if a character with the same name already exists
-    const character = await this.getCharacter(insertCampaignCharacter.characterId);
-    if (character) {
+    try {
+      // First check if this character is already in the campaign to prevent duplicates
+      const existingEntries = await db
+        .select()
+        .from(campaignCharacters)
+        .where(and(
+          eq(campaignCharacters.campaignId, insertCampaignCharacter.campaignId),
+          eq(campaignCharacters.characterId, insertCampaignCharacter.characterId)
+        ));
+      
+      if (existingEntries.length > 0) {
+        console.log(`Character ${insertCampaignCharacter.characterId} is already in campaign ${insertCampaignCharacter.campaignId}`);
+        return existingEntries[0]; // Return the existing record instead of creating a duplicate
+      }
+      
+      // Also check if a character with the same name already exists
+      const character = await this.getCharacter(insertCampaignCharacter.characterId);
+      if (!character) {
+        console.error(`Character with ID ${insertCampaignCharacter.characterId} not found`);
+        throw new Error(`Character not found`);
+      }
+      
       const campaignChars = await this.getCampaignCharacters(insertCampaignCharacter.campaignId);
       const existingCharIds = campaignChars.map(cc => cc.characterId);
       
       if (existingCharIds.length > 0) {
-        const existingChars = await Promise.all(
-          existingCharIds.map(id => this.getCharacter(id))
-        );
+        const existingCharsPromises = existingCharIds.map(id => this.getCharacter(id));
+        const existingChars = await Promise.all(existingCharsPromises);
         
         const sameName = existingChars
           .filter(c => c !== undefined) // Remove any undefined results
-          .find(c => c.name.toLowerCase() === character.name.toLowerCase());
+          .find(c => c && c.name && character.name && 
+                c.name.toLowerCase() === character.name.toLowerCase());
         
         if (sameName) {
           console.log(`A character with the name "${character.name}" is already in campaign ${insertCampaignCharacter.campaignId}`);
           throw new Error(`A character with this name is already in the campaign`);
         }
       }
+    } catch (error) {
+      console.error("Error in addCharacterToCampaign validation:", error);
+      throw error;
     }
     
     // If no duplicates, insert the new record
