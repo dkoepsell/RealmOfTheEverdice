@@ -1685,6 +1685,19 @@ export class DatabaseStorage implements IStorage {
       .where(eq(campaignCharacters.campaignId, campaignId));
   }
 
+  async getCampaignCharacter(campaignId: number, characterId: number): Promise<CampaignCharacter | undefined> {
+    const results = await db
+      .select()
+      .from(campaignCharacters)
+      .where(
+        and(
+          eq(campaignCharacters.campaignId, campaignId),
+          eq(campaignCharacters.characterId, characterId)
+        )
+      );
+    return results[0];
+  }
+
   async removeCharacterFromCampaign(campaignId: number, characterId: number): Promise<boolean> {
     const result = await db
       .delete(campaignCharacters)

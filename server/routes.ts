@@ -3088,6 +3088,46 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
     }
   });
   
+  // Regenerate the main Everdice world map
+  app.post("/api/everdice/regenerate-map", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      // Check if user is admin or super admin
+      if (!req.user.isAdmin && !req.user.isSuperAdmin) {
+        return res.status(403).json({ message: "Only admins can regenerate the Everdice world map" });
+      }
+      
+      // Get the current Everdice world
+      const everdiceWorld = await storage.getEverdiceWorld();
+      if (!everdiceWorld) {
+        return res.status(404).json({ message: "Everdice world not found" });
+      }
+      
+      // Generate a new global map
+      const mapUrl = await generateGlobalMapImage();
+      if (!mapUrl) {
+        return res.status(500).json({ message: "Failed to generate new map image" });
+      }
+      
+      // Update the world with the new map
+      const updatedWorld = await storage.createOrUpdateEverdiceWorld({
+        ...everdiceWorld,
+        mapUrl,
+        updatedAt: new Date()
+      });
+      
+      console.log("Successfully regenerated Everdice world map");
+      res.json(updatedWorld);
+    } catch (error) {
+      console.error("Error regenerating Everdice world map:", error);
+      res.status(500).json({ 
+        message: "Failed to regenerate Everdice world map",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   // Get all campaign regions within Everdice
   app.get("/api/everdice/campaigns", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
