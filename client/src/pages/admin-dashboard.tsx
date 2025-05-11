@@ -705,8 +705,24 @@ export default function AdminDashboard() {
                           }}
                           onError={(e) => {
                             console.error(`Failed to load image from: ${everdiceWorld.mapUrl}`);
-                            // Use a remote placeholder image
-                            e.currentTarget.src = "https://replit.com/cdn-cgi/image/width=3840,quality=80/https://storage.googleapis.com/replit/images/1651764754438_2b0f110c7d15a6c95dd3154d2e76de90.jpeg";
+                            // Handle the error gracefully with a fallback
+                            e.currentTarget.style.display = 'none';
+                            
+                            // Access the parent container to add a fallback
+                            const container = e.currentTarget.parentElement;
+                            if (container) {
+                              // Create fallback element
+                              const fallback = document.createElement('div');
+                              fallback.className = "bg-accent/20 w-full h-full flex flex-col items-center justify-center";
+                              fallback.innerHTML = `
+                                <div class="text-accent/50">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="h-24 w-24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+                                </div>
+                                <p class="mt-4 text-lg text-muted-foreground">Everdice World Map could not be loaded</p>
+                                <p class="text-sm text-muted-foreground">Try regenerating the map</p>
+                              `;
+                              container.appendChild(fallback);
+                            }
                           }}
                           loading="eager"
                         />
@@ -931,14 +947,37 @@ export default function AdminDashboard() {
                   >
                     <div className="relative aspect-video w-full overflow-hidden">
                       {world.mapUrl ? (
-                        <img
-                          src={world.mapUrl}
-                          alt={world.name}
-                          className="object-cover w-full h-full"
-                        />
+                        <div className="w-full h-full">
+                          <img
+                            src={world.mapUrl}
+                            alt={world.name}
+                            className="object-cover w-full h-full"
+                            onError={(e) => {
+                              // Replace broken image with a map icon and log the error
+                              console.error("Failed to load world map image:", world.mapUrl);
+                              e.currentTarget.style.display = 'none';
+                              
+                              // Access the parent container to add a fallback
+                              const container = e.currentTarget.parentElement;
+                              if (container) {
+                                // Create fallback element
+                                const fallback = document.createElement('div');
+                                fallback.className = "bg-accent/20 w-full h-full flex flex-col items-center justify-center";
+                                fallback.innerHTML = `
+                                  <div class="text-accent/50">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-16 w-16"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+                                  </div>
+                                  <p class="mt-2 text-sm text-muted-foreground">Map image not available</p>
+                                `;
+                                container.appendChild(fallback);
+                              }
+                            }}
+                          />
+                        </div>
                       ) : (
-                        <div className="bg-accent/20 w-full h-full flex items-center justify-center">
+                        <div className="bg-accent/20 w-full h-full flex flex-col items-center justify-center">
                           <Map className="h-16 w-16 text-accent/50" />
+                          <p className="mt-2 text-sm text-muted-foreground">No map available</p>
                         </div>
                       )}
                       {world.isMainWorld && (
