@@ -283,6 +283,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Regenerate world map for superadmins
+  // Individual world map regeneration endpoint
+  app.post("/api/admin/worlds/:worldId/regenerate-map", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (req.user!.role !== "superuser" && req.user!.role !== "admin") return res.status(403).json({ message: "Not authorized" });
+    
+    try {
+      const worldId = parseInt(req.params.worldId);
+      if (isNaN(worldId)) {
+        return res.status(400).json({ message: "Invalid world ID" });
+      }
+      
+      // Get existing world data
+      const world = await storage.getEverdiceWorld(worldId);
+      if (!world) {
+        return res.status(404).json({ message: "World not found" });
+      }
+      
+      // If not superuser, check if the user has admin access to this world
+      if (req.user!.role !== "superuser") {
+        const worldAccess = await storage.getWorldAccessForUser(req.user!.id);
+        const hasAccess = worldAccess.some(access => 
+          access.worldId === worldId && access.accessLevel === "admin"
+        );
+        
+        if (!hasAccess) {
+          return res.status(403).json({ message: "You don't have admin access to this world" });
+        }
+      }
+      
+      console.log(`Regenerating map for world "${world.name}" (ID: ${world.id})...`);
+      
+      // Generate a new world map
+      const generatedMap = await generateGlobalMapImage();
+      if (!generatedMap || !generatedMap.url) {
+        return res.status(500).json({ message: "Failed to generate world map" });
+      }
+      
+      // Update the world with the new map URL and continent data
+      const updatedWorld = await storage.createOrUpdateEverdiceWorld({
+        id: world.id,
+        mapUrl: generatedMap.url,
+        continents: generatedMap?.worldData?.continents || world.continents,
+        metadata: {
+          ...(world.metadata || {}),
+          ...(generatedMap?.worldData || {})
+        }
+      });
+      
+      // Log the activity
+      await storage.createSystemActivityLog({
+        action: "world_map_regenerated",
+        userId: req.user!.id,
+        metadata: { worldId: world.id, worldName: world.name }
+      });
+      
+      res.json({ success: true, world: updatedWorld });
+    } catch (error) {
+      console.error("Error regenerating world map:", error);
+      res.status(500).json({ message: "Failed to regenerate world map" });
+    }
+  });
+
+  // Main Everdice world map regeneration endpoint
   app.post("/api/admin/regenerate-world-map", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     if (req.user!.role !== "superuser" && req.user!.role !== "admin") return res.status(403).json({ message: "Not authorized" });

@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Link } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 import {
   Card,
@@ -719,8 +720,48 @@ export default function AdminDashboard() {
                                   <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="h-24 w-24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
                                 </div>
                                 <p class="mt-4 text-lg text-muted-foreground">Everdice World Map could not be loaded</p>
-                                <p class="text-sm text-muted-foreground">Try regenerating the map</p>
+                                <p class="text-sm text-muted-foreground mb-4">The image URL may be invalid or inaccessible</p>
+                                <button id="regenerate-map-btn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                  Regenerate World Map
+                                </button>
                               `;
+                              
+                              // Add event listener to the regenerate button
+                              setTimeout(() => {
+                                const regenerateBtn = container.querySelector('#regenerate-map-btn');
+                                if (regenerateBtn) {
+                                  regenerateBtn.addEventListener('click', async (event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    
+                                    // Show loading state
+                                    regenerateBtn.textContent = 'Regenerating...';
+                                    regenerateBtn.setAttribute('disabled', 'true');
+                                    regenerateBtn.classList.add('opacity-70');
+                                    
+                                    try {
+                                      // Call the regenerate function
+                                      await regenerateWorldMap();
+                                      
+                                      // Show success message
+                                      const successMsg = document.createElement('p');
+                                      successMsg.className = 'text-green-500 text-sm mt-2';
+                                      successMsg.textContent = 'Map regenerated! Refresh the page.';
+                                      regenerateBtn.after(successMsg);
+                                    } catch (error) {
+                                      // Show error message
+                                      console.error('Failed to regenerate map:', error);
+                                      regenerateBtn.textContent = 'Regenerate Failed';
+                                      regenerateBtn.classList.add('bg-destructive');
+                                      
+                                      const errorMsg = document.createElement('p');
+                                      errorMsg.className = 'text-destructive text-sm mt-2';
+                                      errorMsg.textContent = 'Error regenerating map. Try again later.';
+                                      regenerateBtn.after(errorMsg);
+                                    }
+                                  });
+                                }
+                              }, 100);
                               container.appendChild(fallback);
                             }
                           }}
@@ -968,7 +1009,55 @@ export default function AdminDashboard() {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-16 w-16"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
                                   </div>
                                   <p class="mt-2 text-sm text-muted-foreground">Map image not available</p>
+                                  <button class="mt-2 px-2 py-1 bg-primary hover:bg-primary/90 text-white rounded-md text-xs font-medium regenerate-world-btn" data-world-id="${world.id}">
+                                    Regenerate
+                                  </button>
                                 `;
+                                
+                                // Add event listener to the regenerate button
+                                setTimeout(() => {
+                                  const regenerateBtn = container.querySelector('.regenerate-world-btn');
+                                  if (regenerateBtn) {
+                                    regenerateBtn.addEventListener('click', async (event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      
+                                      // Get the world ID
+                                      const worldId = regenerateBtn.getAttribute('data-world-id');
+                                      if (!worldId) return;
+                                      
+                                      // Show loading state
+                                      regenerateBtn.textContent = '...';
+                                      regenerateBtn.setAttribute('disabled', 'true');
+                                      regenerateBtn.classList.add('opacity-70');
+                                      
+                                      try {
+                                        // Call the API to regenerate just this world's map
+                                        const response = await apiRequest('POST', `/api/admin/worlds/${worldId}/regenerate-map`);
+                                        
+                                        // Show success message
+                                        regenerateBtn.textContent = '✓';
+                                        regenerateBtn.classList.add('bg-green-500');
+                                        
+                                        // Add refresh message
+                                        const refreshMsg = document.createElement('p');
+                                        refreshMsg.className = 'text-xs text-muted-foreground mt-1';
+                                        refreshMsg.textContent = 'Refresh to see new map';
+                                        regenerateBtn.after(refreshMsg);
+                                        
+                                        // Reload worlds after a delay
+                                        setTimeout(() => {
+                                          queryClient.invalidateQueries({ queryKey: ['/api/admin/worlds'] });
+                                        }, 2000);
+                                      } catch (error) {
+                                        // Show error message
+                                        console.error('Failed to regenerate map:', error);
+                                        regenerateBtn.textContent = '×';
+                                        regenerateBtn.classList.add('bg-destructive');
+                                      }
+                                    });
+                                  }
+                                }, 100);
                                 container.appendChild(fallback);
                               }
                             }}
