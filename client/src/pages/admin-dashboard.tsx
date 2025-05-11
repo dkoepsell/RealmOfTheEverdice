@@ -994,15 +994,17 @@ export default function AdminDashboard() {
                             <Loader2 className="h-12 w-12 animate-spin text-primary/50" />
                           </div>
                           
-                          {/* Actual image - handle both absolute URLs and relative paths */}
+                          {/* Actual image - handle data URLs, absolute URLs, and relative paths */}
                           <img
-                            src={world.mapUrl.startsWith('http') ? world.mapUrl : `/api/admin/worlds/${world.id}/map-image`}
+                            src={world.mapUrl && (world.mapUrl.startsWith('data:') || world.mapUrl.startsWith('http')) 
+                                 ? world.mapUrl 
+                                 : `/api/admin/worlds/${world.id}/map-image`}
                             alt={world.name}
                             className="object-cover w-full h-full relative z-10"
                             onLoad={(e) => {
                               // Successfully loaded - ensure full visibility
                               e.currentTarget.style.opacity = '1';
-                              console.log("Successfully loaded world map:", world.mapUrl);
+                              console.log("Successfully loaded world map");
                             }}
                             onError={(e) => {
                               // Replace broken image with a map icon and log the error
