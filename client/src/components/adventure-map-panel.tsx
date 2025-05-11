@@ -819,6 +819,53 @@ export function AdventureMapPanel({
                   />
                 )}
                 
+                {/* Display the region bounds as rectangle on Everdice world map if available */}
+                {showRegionBounds && regionBounds && everdiceWorldQuery.data?.mapUrl && (
+                  <LeafletRectangle
+                    bounds={regionBounds}
+                    pathOptions={{
+                      color: '#ca8a04', // Amber color to match theme
+                      weight: 3,
+                      fillColor: '#ca8a04',
+                      fillOpacity: 0.1,
+                      dashArray: '5, 5',
+                    }}
+                    zIndex={15}
+                  >
+                    <LeafletTooltip sticky>
+                      <div className="text-sm font-medium">
+                        Region: {regionName}
+                        <div className="text-xs text-gray-600">Part of {continentName}</div>
+                      </div>
+                    </LeafletTooltip>
+                  </LeafletRectangle>
+                )}
+                
+                {/* If region position is available, add a marker on Everdice world map */}
+                {regionPosition && everdiceWorldQuery.data?.mapUrl && (
+                  <Marker
+                    position={regionPosition as LatLngExpression}
+                    icon={new Icon({
+                      iconUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png',
+                      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon-2x.png',
+                      shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
+                      iconSize: [25, 41],
+                      iconAnchor: [12, 41],
+                      popupAnchor: [1, -34],
+                    })}
+                    zIndexOffset={1000}
+                  >
+                    <Popup>
+                      <div className="font-medium">
+                        {regionName}
+                        <div className="text-xs text-gray-600">
+                          Location in {continentName}
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
+                
                 {/* Main campaign map */}
                 {/* Main campaign map - with better fallback strategy */}
                 {worldMap ? (
