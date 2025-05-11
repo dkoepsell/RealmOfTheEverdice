@@ -5,7 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InventoryManagerWithApparel } from "@/components/inventory-management-with-apparel";
 import { CharacterInventoryButton } from "@/components/character-inventory-button";
 import CharacterPanel from "@/components/character-panel";
-import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList, Backpack, UserCircle } from "lucide-react";
+import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList, Backpack, UserCircle, HeartHandshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,6 +21,7 @@ import { LootCollectionPanel } from "@/components/loot-collection-panel";
 import { useCombatDetection } from "@/hooks/use-combat-detection";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
 import { ModeToggle } from "@/components/mode-toggle";
+import CampaignRelationships from "@/components/campaign-relationships";
 
 // Campaign book / main adventure interface
 export default function CampaignPage() {
@@ -519,6 +520,7 @@ export default function CampaignPage() {
       case "characters": return "Party Members";
       case "loot": return "Treasure & Loot";
       case "comments": return "Campaign Notes";
+      case "relationships": return "Character Relationships";
       default: return "";
     }
   };
@@ -658,6 +660,28 @@ export default function CampaignPage() {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>View party members</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Relationships panel */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={rightPanelTab === "relationships" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleRightPanel("relationships")}
+                    className={rightPanelTab === "relationships" 
+                      ? "bg-amber-700 hover:bg-amber-600" 
+                      : "border-amber-300 hover:bg-amber-100 text-amber-900"}
+                  >
+                    <HeartHandshake className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Relations</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Character relationships and dynamics</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -838,6 +862,15 @@ export default function CampaignPage() {
                 <DiceRoller
                   characterName={userCharacter?.name || "Adventurer"}
                   characterModifiers={userCharacter?.stats}
+                />
+              )}
+              
+              {rightPanelTab === "relationships" && (
+                <CampaignRelationships
+                  campaignId={campaignId}
+                  isDm={isDm}
+                  currentUserId={user?.id || 0}
+                  characterId={userCharacter?.id}
                 />
               )}
               
@@ -1279,6 +1312,15 @@ export default function CampaignPage() {
                   <DiceRoller
                     characterName={userCharacter?.name || "Adventurer"}
                     characterModifiers={userCharacter?.stats}
+                  />
+                )}
+                
+                {rightPanelTab === "relationships" && (
+                  <CampaignRelationships
+                    campaignId={campaignId}
+                    isDm={isDm}
+                    currentUserId={user?.id || 0}
+                    characterId={userCharacter?.id}
                   />
                 )}
                 
