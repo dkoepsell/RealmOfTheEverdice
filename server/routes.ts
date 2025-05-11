@@ -1722,13 +1722,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get all game logs for context
-      const gameLogs = await storage.getGameLogsByCampaignId(campaignId);
+      // Get campaign details for additional context
+      const campaignDetails = await storage.getCampaign(campaignId);
       
-      // Format logs for context
-      const context = gameLogs.map(log => {
-        return `${log.type.toUpperCase()}: ${log.content}`;
-      }).join("\n");
+      // Get locations in the campaign for scene diversity
+      const locations = await storage.getCampaignLocations(campaignId);
+      
+      // Get all game logs for context, but only use the last 30 for processing
+      const allGameLogs = await storage.getGameLogsByCampaignId(campaignId, 30);
+      
+      // Process logs with intelligent filtering and summarization
+      // Group logs by type and extract the most relevant ones
+      const narrativeLogs = allGameLogs.filter(log => log.type === "narrative").slice(-8);
+      const playerLogs = allGameLogs.filter(log => log.type === "player").slice(-8);
+      const systemLogs = allGameLogs.filter(log => log.type === "system" && log.content.includes("roll")).slice(-5);
+      
+      // Format campaign details for context
+      const campaignContext = `
+CAMPAIGN: "${campaignDetails.title || campaignDetails.name}"
+SETTING: ${campaignDetails.setting || "Fantasy world"}
+THEME: ${campaignDetails.theme || "Adventure"}
+CURRENT CHARACTER: ${userCharacter ? `${userCharacter.name}, a level ${userCharacter.level || 1} ${userCharacter.race} ${userCharacter.class}` : "Unknown"}
+
+KNOWN LOCATIONS: ${locations.map(loc => loc.name).join(", ") || "None yet"}
+
+CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the world of Everdice."}
+`;
+      
+      // Combine and sort the filtered logs by timestamp
+      const relevantLogs = [...narrativeLogs, ...playerLogs, ...systemLogs]
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        .slice(-12); // Only use the most recent logs after sorting
+      
+      // Format logs into a context string with clear structure
+      let context = campaignContext + "\n\nRECENT EVENTS:\n";
+      
+      context += relevantLogs.map(log => {
+        // Format each log entry with clear labels and structure
+        if (log.type === "player") {
+          return `PLAYER ACTION: ${log.content}`;
+        } else if (log.type === "narrative") {
+          return `NARRATIVE: ${log.content}`;
+        } else if (log.type === "system") {
+          return `GAME MECHANIC: ${log.content}`;
+        }
+        return "";
+      }).join("\n\n");
       
       // Get player action from request
       const { playerAction, isAutoAdvance = false } = req.body;
@@ -1746,12 +1785,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       try {
-        // Use OpenAI to generate a response
-        const narrativeResponse = await generateGameNarration(
-          context, 
-          playerAction,
-          isAutoAdvance
+        // Get any previously used narrative patterns for this campaign
+      // This helps avoid repetitive scenarios
+      let narrativePatterns = {};
+      try {
+        const campaignMetadata = await storage.getCampaignMetadata(campaignId);
+        if (campaignMetadata && campaignMetadata.narrativePatterns) {
+          narrativePatterns = JSON.parse(campaignMetadata.narrativePatterns);
+        }
+      } catch (error) {
+        console.warn("Error fetching narrative patterns:", error);
+        // Continue even if we can't fetch patterns
+      }
+      
+      // Add pattern tracking to context
+      const patternContext = Object.entries(narrativePatterns)
+        .map(([pattern, count]) => `PREVIOUSLY USED (${count} times): ${pattern}`)
+        .join('\n');
+      
+      if (patternContext) {
+        context += "\n\nAVOID REPEATING THESE PATTERNS:\n" + patternContext;
+      }
+      
+      // Use OpenAI to generate a response with enhanced context
+      const narrativeResponse = await generateGameNarration(
+        context, 
+        playerAction,
+        isAutoAdvance
+      );
+      
+      // Update pattern tracking (simplified implementation)
+      try {
+        // Extract key narrative patterns from the response
+        const patterns = [
+          narrativeResponse.includes("combat") ? "combat" : null,
+          narrativeResponse.includes("puzzle") ? "puzzle" : null,
+          narrativeResponse.includes("social interaction") ? "social" : null,
+          narrativeResponse.includes("dungeon") ? "dungeon" : null,
+          narrativeResponse.includes("forest") ? "forest" : null,
+          narrativeResponse.includes("town") ? "town" : null,
+          narrativeResponse.includes("cave") ? "cave" : null,
+          narrativeResponse.includes("mountain") ? "mountain" : null,
+          narrativeResponse.includes("skill check") ? "skill check" : null,
+          narrativeResponse.includes("saving throw") ? "saving throw" : null,
+          narrativeResponse.includes("attack roll") ? "attack roll" : null,
+        ].filter(Boolean);
+        
+        // Update pattern counts
+        patterns.forEach(pattern => {
+          narrativePatterns[pattern] = (narrativePatterns[pattern] || 0) + 1;
+        });
+        
+        // Store pattern tracking for future reference
+        await storage.updateCampaignMetadata(
+          campaignId, 
+          { narrativePatterns: JSON.stringify(narrativePatterns) }
         );
+      } catch (error) {
+        console.warn("Error updating narrative patterns:", error);
+        // Continue even if pattern tracking fails
+      }
         
         // Add the narrative response to the game logs
         const narrativeLog = await storage.createGameLog({

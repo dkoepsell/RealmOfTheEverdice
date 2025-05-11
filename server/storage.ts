@@ -163,6 +163,10 @@ export interface IStorage {
   
   // Journey path methods
   getJourneyPathsByCampaignId(campaignId: number): Promise<JourneyPath[]>;
+  
+  // Campaign metadata methods
+  getCampaignMetadata(campaignId: number): Promise<Record<string, any> | undefined>;
+  updateCampaignMetadata(campaignId: number, metadata: Record<string, any>): Promise<Record<string, any>>;
   getJourneyPath(id: string): Promise<JourneyPath | undefined>;
   createJourneyPath(path: InsertJourneyPath): Promise<JourneyPath>;
   updateJourneyPath(id: string, path: Partial<JourneyPath>): Promise<JourneyPath | undefined>;
