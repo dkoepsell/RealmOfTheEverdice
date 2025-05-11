@@ -1,14 +1,7 @@
-[![Пиксельные RPG на ПК: топ ролевых игр с пиксельной графикой](https://tse1.mm.bing.net/th?id=OIP.nHqV_o2f6zNtaezvqQR_TwHaEK\&pid=Api)](https://gametarget.ru/podborki/luchshie-pikselnye-rpg/)
-
-Certainly! Here's a comprehensive README file tailored for your GitHub repository, [Realm of The Everdice](https://github.com/dkoepsell/RealmOfTheEverdice):
-
----
 
 # Realm of The Everdice
 
 **Realm of The Everdice** is a browser-based, turn-based roguelike adventure game that immerses players in a procedurally generated fantasy world. Drawing inspiration from classic tabletop RPGs, the game emphasizes strategic decision-making, character progression, and challenging encounters.
-
-![Gameplay Screenshot](https://github.com/dkoepsell/RealmOfTheEverdice/raw/main/path-to-screenshot.png)
 
 ## 🎮 Gameplay Overview
 
