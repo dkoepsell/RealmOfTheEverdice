@@ -1,5 +1,16 @@
 import OpenAI from "openai";
-import { safeJsonParse } from "./openai";
+import OpenAI from "openai";
+
+// Helper function copied from openai.ts to avoid circular dependency
+function safeJsonParse(content: string | null | undefined) {
+  if (!content) return {};
+  try {
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("Error parsing JSON from OpenAI response:", error);
+    return {};
+  }
+}
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
