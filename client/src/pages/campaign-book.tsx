@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InventoryManagerWithApparel } from "@/components/inventory-management-with-apparel";
 import { CharacterInventoryButton } from "@/components/character-inventory-button";
+import CharacterPanel from "@/components/character-panel";
 import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList, Backpack, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -848,18 +849,28 @@ export default function CampaignPage() {
                   <h3 className="text-lg font-semibold border-b pb-2">Player Characters</h3>
                   <div className="space-y-3">
                     {campaignCharacters.filter(c => !c.isBot).map(character => (
-                      <div key={character.id} className="border rounded-lg p-3 bg-card">
-                        <div className="flex items-start justify-between">
+                      <div key={character.id} className="border rounded-lg p-3 bg-card shadow-sm hover:shadow-md transition-all">
+                        <div className="flex items-start justify-between mb-2">
                           <div>
                             <h4 className="font-bold text-amber-900">{character.name}</h4>
                             <p className="text-sm text-muted-foreground">
                               Level {character.level} {character.race} {character.class}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                               HP: {character.hp}/{character.maxHp}
                             </div>
+                            <InventoryManagerWithApparel
+                              characterId={character.id}
+                              campaignId={campaignId}
+                              character={character}
+                              campaignCharacters={campaignCharacters}
+                              onItemUpdate={() => {
+                                // Refresh character data
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
+                              }}
+                            />
                           </div>
                         </div>
                       </div>
@@ -870,18 +881,28 @@ export default function CampaignPage() {
                   <h3 className="text-lg font-semibold border-b pb-2 mt-6">NPC Companions</h3>
                   <div className="space-y-3">
                     {campaignCharacters.filter(c => c.isBot).map(character => (
-                      <div key={character.id} className="border rounded-lg p-3 bg-card">
-                        <div className="flex items-start justify-between">
+                      <div key={character.id} className="border rounded-lg p-3 bg-card shadow-sm hover:shadow-md transition-all">
+                        <div className="flex items-start justify-between mb-2">
                           <div>
                             <h4 className="font-bold text-amber-900">{character.name}</h4>
                             <p className="text-sm text-muted-foreground">
                               Level {character.level} {character.race} {character.class}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                               HP: {character.hp}/{character.maxHp}
                             </div>
+                            <InventoryManagerWithApparel
+                              characterId={character.id}
+                              campaignId={campaignId}
+                              character={character}
+                              campaignCharacters={campaignCharacters}
+                              onItemUpdate={() => {
+                                // Refresh character data
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
+                              }}
+                            />
                           </div>
                         </div>
                       </div>
