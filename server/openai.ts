@@ -39,6 +39,28 @@ export interface CharacterGenerationOptions {
   alignment?: string;
 }
 
+export interface BackstoryNodeGenerationOptions {
+  race?: string;
+  class?: string;
+  alignment?: string;
+  theme?: string;
+}
+
+export interface BackstoryPathOptions {
+  race?: string;
+  class?: string;
+  narrativePath: Array<{
+    nodeText: string;
+    choiceText: string | null;
+  }>;
+  personalityTraits: Record<string, number>;
+  backgroundElements: string[];
+  alignmentTendencies: {
+    lawChaos: number;
+    goodEvil: number;
+  };
+}
+
 export interface NPCGenerationOptions {
   race?: string;
   role?: string;
