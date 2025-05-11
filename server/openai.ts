@@ -236,9 +236,11 @@ Your response should be both narrative and educational, opening up new possibili
           content: userPrompt
         }
       ],
-      temperature: containsDiceRoll ? 0.7 : 0.9, // Higher temperature for standard responses to increase variety
+      temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
       top_p: 0.9, // Use nucleus sampling to increase creative diversity
-      max_tokens: 1000 // Allow for more detailed responses
+      max_tokens: 1000, // Allow for more detailed responses
+      frequency_penalty: 0.5, // Reduce repetition of same tokens
+      presence_penalty: 0.5  // Encourages model to introduce new concepts
     });
 
     return response.choices[0].message.content;
