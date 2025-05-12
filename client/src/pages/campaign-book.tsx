@@ -700,26 +700,6 @@ export default function CampaignPage() {
             
             {/* Map feature removed */}
             
-            {/* Manage Characters button */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddCharacterDialog(true)}
-                    className="border-amber-300 hover:bg-amber-100 text-amber-900"
-                  >
-                    <UserCircle className="h-4 w-4 mr-1 md:mr-2" />
-                    <span className="hidden md:inline">Add Character</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Add a character to this campaign</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
             {/* Loot panel */}
             <TooltipProvider>
               <Tooltip>
