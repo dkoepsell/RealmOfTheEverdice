@@ -76,8 +76,57 @@ export default function CharactersPanel({
     }
   };
 
+  // Render an NPC character card with simpler structure
+  const renderNpcCard = (character: any) => {
+    if (!character || typeof character !== 'object' || !character.id) {
+      console.error("Invalid NPC character data:", character);
+      return (
+        <div className="border rounded-lg p-2 bg-card/50 text-center text-muted-foreground">
+          <p>Invalid NPC data</p>
+        </div>
+      );
+    }
+    
+    const isExpanded = expandedCharacter === character.id;
+    
+    // Use a simpler card layout for NPCs to avoid rendering issues
+    return (
+      <div 
+        key={character.id} 
+        className={`border rounded-lg p-3 bg-card shadow-sm hover:shadow-md transition-all cursor-pointer ${isExpanded ? 'ring-1 ring-amber-400' : ''}`}
+        onClick={() => toggleCharacterExpand(character.id)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-amber-700 flex-shrink-0" />
+            <h4 className="font-medium text-amber-900">{character.name || 'NPC Companion'}</h4>
+          </div>
+          <div className="text-xs bg-primary/10 px-2 py-0.5 text-primary rounded-full whitespace-nowrap">
+            HP: {character.hp || 0}/{character.maxHp || 0}
+          </div>
+        </div>
+        
+        {isExpanded && (
+          <div className="mt-2 pt-2 border-t">
+            <div className="text-xs text-muted-foreground mb-1">
+              {character.race || 'Unknown'} {character.class || 'NPC'}
+            </div>
+            <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
+              {character.background || 'No background information available for this NPC.'}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render a compact or detailed character card based on the view mode
   const renderCharacterCard = (character: any, isPlayerCharacter: boolean) => {
+    // For NPC characters, use the simplified NPC card renderer
+    if (!isPlayerCharacter) {
+      return renderNpcCard(character);
+    }
+    
     // Defensive check for valid character object
     if (!character || typeof character !== 'object' || !character.id) {
       console.error("Invalid character data:", character);
@@ -252,7 +301,11 @@ export default function CharactersPanel({
         </div>
       ) : (
         <div className="space-y-2">
-          {npcCharacters.map(character => renderCharacterCard(character, false))}
+          {npcCharacters.map(character => (
+            <div key={character.id}>
+              {renderCharacterCard(character, false)}
+            </div>
+          ))}
         </div>
       )}
     </div>

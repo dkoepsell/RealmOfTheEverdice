@@ -9,6 +9,10 @@ import { Shirt } from 'lucide-react';
 // Define a proper type to ensure compatibility with the Character type
 type CharacterWithStats = Omit<Character, 'stats'> & {
   stats?: CharacterStats;
+  // Add the properties we access for NPC characters
+  isBot?: boolean;
+  inventory?: any;
+  equipment?: any;
 };
 
 interface InventoryManagerWithApparelProps {
@@ -35,14 +39,24 @@ export function InventoryManagerWithApparel({
   
   // Check if this is an NPC character and make sure it has the necessary properties
   const isNPC = character.isBot === true;
-  if (isNPC) {
-    // For NPCs, ensure we have the minimal required properties
-    console.log("NPC character in inventory manager:", character);
-    
-    // If the NPC doesn't have inventory/equipment, don't show buttons
-    if (!character.inventory && !character.equipment) {
-      return null;
+  
+  try {
+    // If this is an NPC that doesn't have inventory data structure, don't show buttons
+    if (isNPC) {
+      console.log("NPC character in inventory manager:", character);
+      
+      // Basic property validation for NPC characters
+      const hasInventory = character.inventory !== undefined;
+      const hasEquipment = character.equipment !== undefined;
+      
+      if (!hasInventory && !hasEquipment) {
+        console.log("NPC is missing inventory/equipment data, not rendering inventory buttons");
+        return null;
+      }
     }
+  } catch (error) {
+    console.error("Error checking NPC inventory:", error);
+    return null;
   }
 
   return (
