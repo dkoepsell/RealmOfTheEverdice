@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { X, UserCircle, Users, Shield, Swords, ScrollText } from "lucide-react";
 import { InventoryManagerWithApparel } from "@/components/inventory-management-with-apparel";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import ErrorBoundary from "@/components/error-boundary";
 
 interface CharactersPanelProps {
   campaignId: number;
@@ -54,6 +55,9 @@ export default function CharactersPanel({
     );
   }
 
+  // Add logging to debug character data
+  console.log("Campaign characters data:", campaignCharacters);
+  
   const playerCharacters = Array.isArray(campaignCharacters) 
     ? campaignCharacters.filter(c => !c.isBot) 
     : [];
@@ -61,6 +65,8 @@ export default function CharactersPanel({
   const npcCharacters = Array.isArray(campaignCharacters)
     ? campaignCharacters.filter(c => c.isBot)
     : [];
+    
+  console.log("NPC characters:", npcCharacters);
 
   const toggleCharacterExpand = (id: number) => {
     if (expandedCharacter === id) {
@@ -72,6 +78,16 @@ export default function CharactersPanel({
 
   // Render a compact or detailed character card based on the view mode
   const renderCharacterCard = (character: any, isPlayerCharacter: boolean) => {
+    // Defensive check for valid character object
+    if (!character || typeof character !== 'object' || !character.id) {
+      console.error("Invalid character data:", character);
+      return (
+        <div className="border rounded-lg p-2 bg-card/50 text-center text-muted-foreground">
+          <p>Invalid character data</p>
+        </div>
+      );
+    }
+    
     const isExpanded = expandedCharacter === character.id;
     
     if (compactView) {
@@ -89,11 +105,11 @@ export default function CharactersPanel({
               ) : (
                 <Users className="h-4 w-4 text-amber-700 flex-shrink-0" />
               )}
-              <h4 className="font-medium text-amber-900 truncate">{character.name}</h4>
+              <h4 className="font-medium text-amber-900 truncate">{character.name || 'Unnamed Character'}</h4>
             </div>
             <div className="flex items-center gap-1">
               <div className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full whitespace-nowrap">
-                HP: {character.hp}/{character.maxHp}
+                HP: {character.hp || 0}/{character.maxHp || 0}
               </div>
             </div>
           </div>
@@ -101,7 +117,7 @@ export default function CharactersPanel({
           {isExpanded && (
             <div className="mt-2 pt-2 border-t">
               <div className="text-xs text-muted-foreground mb-1.5">
-                Level {character.level} {character.race} {character.class}
+                Level {character.level || 1} {character.race || 'Unknown'} {character.class || 'Unknown'}
               </div>
               
               {/* Equipment Summary */}
@@ -155,14 +171,14 @@ export default function CharactersPanel({
         <div key={character.id} className="border rounded-lg p-3 bg-card shadow-sm hover:shadow-md transition-all">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <h4 className="font-bold text-amber-900">{character.name}</h4>
+              <h4 className="font-bold text-amber-900">{character.name || 'Unnamed Character'}</h4>
               <p className="text-sm text-muted-foreground">
-                Level {character.level} {character.race} {character.class}
+                Level {character.level || 1} {character.race || 'Unknown'} {character.class || 'Unknown'}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                HP: {character.hp}/{character.maxHp}
+                HP: {character.hp || 0}/{character.maxHp || 0}
               </div>
               <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                 <InventoryManagerWithApparel
@@ -185,7 +201,7 @@ export default function CharactersPanel({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (confirm(`Remove ${character.name} from this campaign?`)) {
+                    if (confirm(`Remove ${character.name || 'this character'} from this campaign?`)) {
                       removeCharacterMutation.mutate(character.id);
                     }
                   }}

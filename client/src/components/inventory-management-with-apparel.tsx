@@ -28,9 +28,21 @@ export function InventoryManagerWithApparel({
 }: InventoryManagerWithApparelProps) {
   const [isApparelOpen, setIsApparelOpen] = useState(false);
 
-  // Only render if we have a character
+  // Only render if we have a valid character
   if (!character) {
     return null;
+  }
+  
+  // Check if this is an NPC character and make sure it has the necessary properties
+  const isNPC = character.isBot === true;
+  if (isNPC) {
+    // For NPCs, ensure we have the minimal required properties
+    console.log("NPC character in inventory manager:", character);
+    
+    // If the NPC doesn't have inventory/equipment, don't show buttons
+    if (!character.inventory && !character.equipment) {
+      return null;
+    }
   }
 
   return (
