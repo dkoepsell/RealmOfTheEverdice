@@ -107,15 +107,17 @@ export default function CharactersPanel({
               {/* Equipment Summary */}
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {/* Equipment Buttons - Direct placement without wrapping in another button */}
-                <InventoryManagerWithApparel
-                  characterId={character.id}
-                  campaignId={campaignId}
-                  character={character}
-                  campaignCharacters={campaignCharacters}
-                  onItemUpdate={() => {
-                    queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
-                  }}
-                />
+                <div onClick={(e) => e.stopPropagation()}>
+                  <InventoryManagerWithApparel
+                    characterId={character.id}
+                    campaignId={campaignId}
+                    character={character}
+                    campaignCharacters={campaignCharacters}
+                    onItemUpdate={() => {
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
+                    }}
+                  />
+                </div>
 
                 {(isDm || character.userId === userId) && (
                   <TooltipProvider>
@@ -194,11 +196,13 @@ export default function CharactersPanel({
             </div>
           </div>
           
-          {!isPlayerCharacter || (
-            <div className="text-sm text-muted-foreground line-clamp-2">
-              {character.background} {character.appearance && `- ${character.appearance}`}
-            </div>
-          )}
+          {/* Character background/appearance - shown for both players and NPCs */}
+          <div className="text-sm text-muted-foreground line-clamp-2">
+            {isPlayerCharacter 
+              ? `${character.background || ''} ${character.appearance ? `- ${character.appearance}` : ''}` 
+              : `NPC companion - ${character.background || 'No background information'}`
+            }
+          </div>
         </div>
       );
     }
