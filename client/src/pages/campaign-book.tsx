@@ -696,11 +696,11 @@ export default function CampaignPage() {
                       : "border-amber-300 hover:bg-amber-100 text-amber-900"}
                   >
                     <Users className="h-4 w-4 mr-1 md:mr-2" />
-                    <span className="hidden md:inline">Party</span>
+                    <span className="hidden md:inline">Characters</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>View party members</p>
+                  <p>View campaign characters</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
