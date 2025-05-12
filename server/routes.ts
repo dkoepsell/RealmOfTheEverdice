@@ -2253,6 +2253,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
+      const { generateDefaultEquipment, generateDefaultAlignment } = require('./character-equipment');
+      
       const options = {
         race: req.body.race,
         class: req.body.class,
@@ -2260,135 +2262,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
         alignment: req.body.alignment
       };
       
+      // Generate AI-based character
       const generatedCharacter = await generateCharacter(options);
       
-      // Ensure the character has proper equipment structure with apparel
-      if (!generatedCharacter.equipment || !generatedCharacter.equipment.apparel) {
-        // Initialize proper equipment structure
-        let defaultEquipment = {
-          weapons: generatedCharacter.equipment?.weapons || [],
-          armor: generatedCharacter.equipment?.armor || "",
-          apparel: {
-            head: "",
-            chest: "",
-            legs: "",
-            feet: "",
-            hands: "",
-            back: "",
-            neck: "",
-            finger: "",
-            waist: ""
-          },
-          items: generatedCharacter.equipment?.items || [],
-          inventory: generatedCharacter.equipment?.inventory || []
-        };
-        
-        // Add class-specific equipment if needed
-        if (defaultEquipment.weapons.length === 0 && defaultEquipment.inventory.length === 0) {
-          // Add appropriate defaults based on class
-          const charClass = generatedCharacter.class?.toLowerCase();
-          if (charClass) {
-            if (['fighter', 'warrior', 'barbarian'].includes(charClass)) {
-              defaultEquipment.weapons = ["Longsword"];
-              defaultEquipment.armor = "Chain Mail";
-              defaultEquipment.apparel.chest = "Sturdy Breastplate";
-              defaultEquipment.apparel.legs = "Reinforced Leggings";
-              defaultEquipment.inventory = [
-                {
-                  slot: 0,
-                  name: "Longsword",
-                  description: "A well-balanced blade favored by fighters",
-                  quantity: 1,
-                  isEquipped: true,
-                  type: "weapon"
-                },
-                {
-                  slot: 1,
-                  name: "Shield",
-                  description: "A sturdy wooden shield reinforced with iron",
-                  quantity: 1,
-                  isEquipped: true,
-                  type: "armor"
-                }
-              ];
-            } else if (['ranger', 'rogue'].includes(charClass)) {
-              defaultEquipment.weapons = ["Shortbow", "Shortsword"];
-              defaultEquipment.armor = "Leather Armor";
-              defaultEquipment.apparel.chest = "Fitted Leather Vest";
-              defaultEquipment.apparel.legs = "Light Leather Pants";
-              defaultEquipment.inventory = [
-                {
-                  slot: 0,
-                  name: "Shortbow",
-                  description: "A compact bow ideal for hunting and skirmishing",
-                  quantity: 1,
-                  isEquipped: true,
-                  type: "weapon"
-                },
-                {
-                  slot: 1,
-                  name: "Shortsword",
-                  description: "A quick blade favored by rogues and rangers",
-                  quantity: 1,
-                  isEquipped: true,
-                  type: "weapon"
-                }
-              ];
-            } else if (['cleric', 'paladin'].includes(charClass)) {
-              defaultEquipment.weapons = ["Mace"];
-              defaultEquipment.armor = "Chain Mail";
-              defaultEquipment.apparel.chest = "Blessed Breastplate";
-              defaultEquipment.apparel.neck = "Holy Symbol";
-              defaultEquipment.inventory = [
-                {
-                  slot: 0,
-                  name: "Mace",
-                  description: "A blessed weapon channeling divine power",
-                  quantity: 1,
-                  isEquipped: true,
-                  type: "weapon"
-                },
-                {
-                  slot: 1,
-                  name: "Shield",
-                  description: "A shield emblazoned with a holy symbol",
-                  quantity: 1,
-                  isEquipped: true,
-                  type: "armor"
-                }
-              ];
-            } else if (['wizard', 'sorcerer', 'warlock'].includes(charClass)) {
-              defaultEquipment.weapons = ["Quarterstaff"];
-              defaultEquipment.armor = "Cloth Robes";
-              defaultEquipment.apparel.chest = "Arcane Robes";
-              defaultEquipment.apparel.head = "Scholar's Cap";
-              defaultEquipment.inventory = [
-                {
-                  slot: 0,
-                  name: "Quarterstaff",
-                  description: "A wooden staff imbued with arcane energy",
-                  quantity: 1,
-                  isEquipped: true,
-                  type: "weapon"
-                },
-                {
-                  slot: 1,
-                  name: "Spellbook",
-                  description: "A book containing arcane knowledge",
-                  quantity: 1,
-                  isEquipped: false,
-                  type: "miscellaneous"
-                }
-              ];
-            }
+      // Generate class-specific equipment and apparel
+      const characterClass = generatedCharacter.class?.toLowerCase() || 'fighter';
+      const characterLevel = generatedCharacter.level || 1;
+      const characterRace = generatedCharacter.race?.toLowerCase() || 'human';
+      
+      // Get equipment and apparel based on class and level
+      const { equipment, apparel } = generateDefaultEquipment(characterClass, characterLevel);
+      
+      // Convert the equipment from our format to the format expected by the client
+      const formattedEquipment = {
+        weapons: equipment.weapons.map(item => item.name),
+        armor: equipment.armor.length > 0 ? equipment.armor[0].name : "",
+        apparel: {
+          head: apparel.head?.name || "",
+          chest: apparel.body?.name || "",
+          legs: "",
+          feet: apparel.feet?.name || "",
+          hands: apparel.hands?.name || "",
+          back: apparel.back?.name || "",
+          neck: apparel.neck?.name || "",
+          finger: apparel.ring1?.name || "",
+          waist: ""
+        },
+        items: [...equipment.potions, ...equipment.magicItems, ...equipment.tools].map(item => item.name),
+        inventory: []
+      };
+      
+      // Create inventory items from equipment
+      let inventoryItems = [];
+      let slotCounter = 0;
+      
+      // Add weapons to inventory
+      equipment.weapons.forEach(weapon => {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: weapon.name,
+          description: weapon.description,
+          quantity: weapon.quantity,
+          isEquipped: weapon.equipped || false,
+          type: "weapon",
+          rarity: weapon.rarity || "common",
+          weight: weapon.weight,
+          value: weapon.value
+        });
+      });
+      
+      // Add armor to inventory
+      equipment.armor.forEach(armor => {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: armor.name,
+          description: armor.description,
+          quantity: armor.quantity,
+          isEquipped: armor.equipped || false,
+          type: "armor",
+          rarity: armor.rarity || "common",
+          weight: armor.weight,
+          value: armor.value
+        });
+      });
+      
+      // Add apparel to inventory
+      if (apparel.head) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.head.name,
+          description: apparel.head.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.head.rarity || "common",
+          weight: apparel.head.weight,
+          value: apparel.head.value,
+          apparelSlot: "head"
+        });
+      }
+      
+      if (apparel.body) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.body.name,
+          description: apparel.body.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.body.rarity || "common",
+          weight: apparel.body.weight,
+          value: apparel.body.value,
+          apparelSlot: "chest"
+        });
+      }
+      
+      if (apparel.hands) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.hands.name,
+          description: apparel.hands.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.hands.rarity || "common",
+          weight: apparel.hands.weight,
+          value: apparel.hands.value,
+          apparelSlot: "hands"
+        });
+      }
+      
+      if (apparel.feet) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.feet.name,
+          description: apparel.feet.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.feet.rarity || "common",
+          weight: apparel.feet.weight,
+          value: apparel.feet.value,
+          apparelSlot: "feet"
+        });
+      }
+      
+      if (apparel.neck) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.neck.name,
+          description: apparel.neck.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.neck.rarity || "common",
+          weight: apparel.neck.weight,
+          value: apparel.neck.value,
+          apparelSlot: "neck"
+        });
+      }
+      
+      // Add other gear
+      equipment.gear.forEach(item => {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: item.name,
+          description: item.description,
+          quantity: item.quantity,
+          isEquipped: false,
+          type: item.type || "gear",
+          rarity: item.rarity || "common",
+          weight: item.weight,
+          value: item.value
+        });
+      });
+      
+      // Add default alignment values that match D&D's alignment system
+      const defaultAlignment = generateDefaultAlignment(characterClass, characterRace);
+      
+      // Create alignment object for storing in the database
+      const alignment = {
+        lawChaos: defaultAlignment.lawChaos,
+        goodEvil: defaultAlignment.goodEvil,
+        alignmentHistory: [
+          {
+            lawChaos: defaultAlignment.lawChaos,
+            goodEvil: defaultAlignment.goodEvil,
+            reason: "Initial character creation alignment",
+            date: new Date().toISOString()
           }
-        }
-        
-        generatedCharacter.equipment = defaultEquipment;
+        ]
+      };
+      
+      // Update the character with generated equipment, inventory, and alignment
+      generatedCharacter.equipment = formattedEquipment;
+      generatedCharacter.inventory = inventoryItems;
+      generatedCharacter.alignment = alignment;
+      
+      // If AI didn't provide reasonable values for lawChaosValue/goodEvilValue, update them
+      if (!generatedCharacter.lawChaosValue || generatedCharacter.lawChaosValue < 0 || generatedCharacter.lawChaosValue > 100) {
+        generatedCharacter.lawChaosValue = Math.round((defaultAlignment.lawChaos + 10) * 5); // -10 to +10 -> 0 to 100
+      }
+      
+      if (!generatedCharacter.goodEvilValue || generatedCharacter.goodEvilValue < 0 || generatedCharacter.goodEvilValue > 100) {
+        generatedCharacter.goodEvilValue = Math.round((defaultAlignment.goodEvil + 10) * 5); // -10 to +10 -> 0 to 100
       }
       
       res.json(generatedCharacter);
     } catch (error) {
+      console.error("Error generating character:", error);
       res.status(500).json({ message: "Failed to generate character" });
     }
   });
