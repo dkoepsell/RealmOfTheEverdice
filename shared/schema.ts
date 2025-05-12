@@ -45,6 +45,17 @@ export const characters = pgTable("characters", {
     abilitiesGained: string[],
     date: string
   }>>(),
+  // Ethical alignment tracking
+  alignment: json("alignment").$type<{
+    lawChaos: number, // Range from -10 (chaotic) to 10 (lawful)
+    goodEvil: number, // Range from -10 (evil) to 10 (good)
+    alignmentHistory: Array<{
+      lawChaos: number,
+      goodEvil: number,
+      reason: string,
+      date: string
+    }>
+  }>(),
   isBot: boolean("is_bot").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow()
 });
@@ -58,7 +69,8 @@ export const insertCharacterSchema = createInsertSchema(characters)
     experience: true,
     milestones: true,
     achievements: true,
-    progression: true
+    progression: true,
+    alignment: true
   });
 
 // Campaign model
