@@ -6,7 +6,7 @@ import { InventoryManagerWithApparel } from "@/components/inventory-management-w
 import { CharacterInventoryButton } from "@/components/character-inventory-button";
 import CharacterPanel from "@/components/character-panel";
 import CharactersPanel from "@/components/characters-panel";
-import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList, Backpack, UserCircle } from "lucide-react";
+import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList, Backpack, UserCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -81,6 +81,8 @@ export default function CampaignPage() {
   
   // NPC characters that have joined the party
   const [npcPartyMembers, setNpcPartyMembers] = useState([]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState("");
 
   
   // Show campaign settings dialog
@@ -108,6 +110,59 @@ export default function CampaignPage() {
   
   // Check if the current user is the DM of this campaign
   const isDm = campaign && user && campaign.dmId === user.id;
+  
+  // Fetch chat messages for this campaign
+  const {
+    data: chatMessagesData,
+    isLoading: isLoadingChatMessages,
+    error: chatMessagesError
+  } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "chat"],
+    enabled: !!campaignId,
+    onSuccess: (data) => {
+      setChatMessages(data || []);
+    }
+  });
+  
+  // Send chat message mutation
+  const sendChatMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          content,
+          campaignId,
+          userId: user?.id,
+          characterId: userCharacter?.id
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: (newMessage) => {
+      setChatMessages(prev => [...prev, newMessage]);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error sending message",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Function to send a chat message
+  const sendChatMessage = (content: string) => {
+    if (!content.trim()) return;
+    sendChatMessageMutation.mutate(content);
+  };
 
   // Remove character mutation
   const removeCharacterMutation = useMutation({
@@ -205,16 +260,7 @@ export default function CampaignPage() {
     enabled: !!validMapCampaignId
   });
 
-  // Get chat messages
-  const {
-    data: chatMessages = [],
-    isLoading: chatMessagesLoading,
-    error: chatMessagesError,
-    refetch: refetchChatMessages
-  } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/chat`],
-    enabled: !!campaignId && rightPanelTab === "chat"
-  });
+  // Get chat messages - This query already exists above, so removing duplicate
 
   // Get loot items
   const {
