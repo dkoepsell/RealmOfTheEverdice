@@ -254,36 +254,34 @@ Your response should be both narrative and educational, opening up new possibili
     });
     
     try {
+      // For testing purposes, use shorter prompt and fewer tokens
+      console.log("DEBUG: Simplifying request for testing");
+      
       const response = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
             role: "system",
-            content: systemPrompt
+            content: "You are a helpful D&D dungeon master."
           },
           {
             role: "user",
-            content: userPrompt
+            content: "Describe a tavern scene briefly."
           }
         ],
-        temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
-        top_p: 0.9, // Use nucleus sampling to increase creative diversity
-        max_tokens: 1000, // Allow for more detailed responses
-        frequency_penalty: 0.5, // Reduce repetition of same tokens
-        presence_penalty: 0.5  // Encourages model to introduce new concepts
+        temperature: 0.7,
+        max_tokens: 150
       });
       
       console.log("DEBUG: OpenAI response received in generateGameNarration", {
         responseLength: response.choices[0].message.content?.length || 0
       });
       
-      return response;
+      return response.choices[0].message.content;
     } catch (openaiError) {
       console.error("DEBUG: OpenAI API error in generateGameNarration:", openaiError);
       throw openaiError;
     }
-
-    return response.choices[0].message.content;
   } catch (error) {
     console.error("Error generating narration:", error);
     throw new Error("Failed to generate game narration");
