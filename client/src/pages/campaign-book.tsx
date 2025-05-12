@@ -667,8 +667,9 @@ export default function CampaignPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setLocation(`/party-planning/${campaignId}`)}
-                    className="border-amber-300 hover:bg-amber-100 text-amber-900"
+                    // This button is disabled to prevent navigation to blank pages
+                    onClick={() => {}}
+                    className="border-amber-300 hover:bg-amber-100 text-amber-900 opacity-50 cursor-not-allowed"
                   >
                     <ClipboardList className="h-4 w-4 mr-1 md:mr-2" />
                     <span className="hidden md:inline">Party Planning</span>

@@ -12,7 +12,7 @@ import CharacterCreation from "@/pages/character-creation";
 import CharacterDetail from "@/pages/character-detail";
 import CampaignCreation from "@/pages/campaign-creation";
 import CampaignPage from "@/pages/campaign-book";
-import PartyPlanning from "@/pages/party-planning";
+// Party Planning feature removed to prevent blank screens
 import LearnPage from "@/pages/learn-page";
 import SocialPage from "@/pages/social-page";
 import SettingsPage from "@/pages/settings-page";
@@ -44,7 +44,10 @@ function Router() {
       <ProtectedRoute path="/characters/:id" component={CharacterDetail} />
       <ProtectedRoute path="/campaigns/create" component={CampaignCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
-      <ProtectedRoute path="/party-planning/:id" component={PartyPlanning} />
+      {/* Redirect party planning to campaign page to prevent blank screens */}
+      <Route path="/party-planning/:id">
+        {(params) => <Redirect to={`/campaigns/${params.id}`} />}
+      </Route>
       <ProtectedRoute path="/learn" component={LearnPage} />
       <ProtectedRoute path="/about" component={AboutPage} />
       <ProtectedRoute path="/social" component={SocialPage} />
