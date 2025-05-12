@@ -34,6 +34,18 @@ export const characters = pgTable("characters", {
   hp: integer("hp").notNull(),
   maxHp: integer("max_hp").notNull(),
   equipment: json("equipment"),
+  inventory: json("inventory").$type<Array<{
+    slot: number;
+    name: string;
+    description: string; 
+    quantity: number;
+    weight?: number;
+    value?: number;
+    isEquipped: boolean;
+    type: string;
+    rarity?: string;
+    apparelSlot?: string | null;
+  }>>(),
   spells: json("spells"),
   abilities: json("abilities"),
   experience: integer("experience").default(0),
