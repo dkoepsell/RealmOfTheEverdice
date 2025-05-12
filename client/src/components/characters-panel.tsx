@@ -162,7 +162,7 @@ export default function CharactersPanel({
               <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                 HP: {character.hp}/{character.maxHp}
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                 <InventoryManagerWithApparel
                   characterId={character.id}
                   campaignId={campaignId}
