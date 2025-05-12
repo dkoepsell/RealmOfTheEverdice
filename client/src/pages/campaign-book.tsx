@@ -658,13 +658,10 @@ export default function CampaignPage() {
               </Tooltip>
             </TooltipProvider>
             
-            {/* Campaign settings */}
-            <TooltipProvider>
-{/* Settings button removed as requested */}
-            </TooltipProvider>
+            {/* Campaign settings button removed as requested */}
             
-            {/* Party Planning */}
-            <TooltipProvider>
+            {/* Party Planning button temporarily hidden until functionality is fully fixed */}
+            {/* <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -681,7 +678,7 @@ export default function CampaignPage() {
                   <p>Collaborative party planning</p>
                 </TooltipContent>
               </Tooltip>
-            </TooltipProvider>
+            </TooltipProvider> */}
             
             {/* Map feature removed */}
             
