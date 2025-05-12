@@ -1478,6 +1478,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Import alignment generator function
+      const { generateDefaultAlignment } = require('./character-equipment');
+      
+      // Generate default ethical alignment based on character class and race
+      const charClass = req.body.class || '';
+      const charRace = req.body.race || '';
+      const { lawChaos, goodEvil } = generateDefaultAlignment(charClass, charRace);
+      
+      // Create alignment tracking structure
+      const alignmentData = {
+        lawChaos,
+        goodEvil,
+        alignmentHistory: [
+          {
+            lawChaos,
+            goodEvil,
+            reason: "Initial character creation",
+            date: new Date().toISOString()
+          }
+        ]
+      };
+      
       // Add the userId and default values for the new fields
       const characterData = {
         ...req.body,
@@ -1486,7 +1508,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         milestones: [],
         achievements: [],
         progression: [],
-        equipment: req.body.equipment || defaultEquipment
+        equipment: req.body.equipment || defaultEquipment,
+        alignment: alignmentData
       };
       
       const validatedData = insertCharacterSchema.parse(characterData);
@@ -6275,6 +6298,78 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
     } catch (error) {
       console.error("Error logging system stat:", error);
       res.status(500).json({ message: "Failed to log system stat" });
+    }
+  });
+
+  // Add endpoint to update character ethical alignment
+  app.put("/api/characters/:id/alignment", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    try {
+      const characterId = parseInt(req.params.id);
+      const character = await storage.getCharacter(characterId);
+      
+      if (!character) {
+        return res.status(404).json({ message: "Character not found" });
+      }
+      
+      // Only character owner or DM can update alignment
+      if (character.userId !== req.user.id) {
+        // Check if user is DM of the campaigns this character is in
+        const campaigns = await storage.getCampaignsForCharacter(characterId);
+        const isDm = campaigns.some(c => c.dmId === req.user.id);
+        
+        if (!isDm) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+      
+      // Get alignment change data
+      const { lawChaos, goodEvil, reason } = req.body;
+      
+      if (typeof lawChaos !== 'number' || typeof goodEvil !== 'number' || !reason) {
+        return res.status(400).json({ 
+          message: "Invalid alignment data. Must include lawChaos (-10 to 10), goodEvil (-10 to 10), and reason." 
+        });
+      }
+      
+      // Clamp values to -10 to 10 range
+      const clampedLawChaos = Math.max(-10, Math.min(10, lawChaos));
+      const clampedGoodEvil = Math.max(-10, Math.min(10, goodEvil));
+      
+      // Get current alignment data or initialize new
+      const currentAlignment = character.alignment || {
+        lawChaos: 0,
+        goodEvil: 0,
+        alignmentHistory: []
+      };
+      
+      // Create new alignment history entry
+      const alignmentEntry = {
+        lawChaos: clampedLawChaos,
+        goodEvil: clampedGoodEvil,
+        reason,
+        date: new Date().toISOString()
+      };
+      
+      // Update the alignment data
+      const updatedAlignment = {
+        lawChaos: clampedLawChaos,
+        goodEvil: clampedGoodEvil,
+        alignmentHistory: [...(currentAlignment.alignmentHistory || []), alignmentEntry]
+      };
+      
+      // Update character with new alignment
+      const characterData = {
+        ...character,
+        alignment: updatedAlignment
+      };
+      
+      const updatedCharacter = await storage.updateCharacter(characterId, characterData);
+      res.json(updatedCharacter);
+    } catch (error) {
+      console.error("Error updating character alignment:", error);
+      res.status(500).json({ message: "Failed to update character alignment" });
     }
   });
 
