@@ -14,7 +14,7 @@ import {
   generateWorldMap,
   generateGlobalMapImage
 } from "./openai";
-import { generateStartingEquipment } from "./character-equipment";
+import { generateDefaultEquipment, generateDefaultAlignment } from "./character-equipment";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { 
