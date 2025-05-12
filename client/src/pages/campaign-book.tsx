@@ -756,10 +756,10 @@ export default function CampaignPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={rightPanelTab === "chat" ? "default" : "outline"}
+                    variant={rightPanelTab === "companion" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => handleToggleRightPanel("chat")}
-                    className={rightPanelTab === "chat" 
+                    onClick={() => handleToggleRightPanel("companion")}
+                    className={rightPanelTab === "companion" 
                       ? "bg-amber-700 hover:bg-amber-600" 
                       : "border-amber-300 hover:bg-amber-100 text-amber-900"}
                   >
@@ -866,24 +866,51 @@ export default function CampaignPage() {
                 />
               )}
               
-              {rightPanelTab === "comments" && (
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    {comments.map(comment => (
-                      <div key={comment.id} className="border rounded-lg p-3 bg-card">
+              {rightPanelTab === "chat" && (
+                <div className="flex flex-col h-full">
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                    {chatMessages.map(message => (
+                      <div key={message.id} className="border rounded-lg p-3 bg-card">
                         <p className="text-sm text-muted-foreground mb-1">
-                          {comment.authorName} • {new Date(comment.createdAt).toLocaleDateString()}
+                          {message.userName || 'User'} • {new Date(message.timestamp).toLocaleTimeString()}
                         </p>
-                        <p>{comment.content}</p>
+                        <p>{message.content}</p>
                       </div>
                     ))}
                     
-                    {comments.length === 0 && (
+                    {chatMessages.length === 0 && (
                       <div className="text-center p-6 border border-dashed rounded-lg">
-                        <p className="text-muted-foreground mb-2">No campaign notes yet</p>
-                        <Button size="sm">Add Note</Button>
+                        <p className="text-muted-foreground mb-2">No chat messages yet</p>
+                        <p className="text-sm text-muted-foreground">Use the form below to start a conversation</p>
                       </div>
                     )}
+                  </div>
+                  {/* Chat input form */}
+                  <div className="mt-4 border-t pt-3">
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!chatInput.trim()) return;
+                      
+                      // Send chat message
+                      sendChatMessage(chatInput);
+                      setChatInput("");
+                    }}>
+                      <div className="flex gap-2">
+                        <Textarea 
+                          placeholder="Type your message here..." 
+                          className="min-h-[60px] resize-none" 
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                        />
+                        <Button 
+                          type="submit" 
+                          size="icon" 
+                          className="h-[60px] bg-amber-600 hover:bg-amber-700"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </form>
                   </div>
                 </div>
               )}
@@ -1213,24 +1240,51 @@ export default function CampaignPage() {
                   />
                 )}
                 
-                {rightPanelTab === "comments" && (
-                  <div className="space-y-4">
-                    <div className="space-y-3">
-                      {comments.map(comment => (
-                        <div key={comment.id} className="border rounded-lg p-3 bg-card">
+                {rightPanelTab === "chat" && (
+                  <div className="flex flex-col h-full">
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                      {chatMessages.map(message => (
+                        <div key={message.id} className="border rounded-lg p-3 bg-card">
                           <p className="text-sm text-muted-foreground mb-1">
-                            {comment.authorName} • {new Date(comment.createdAt).toLocaleDateString()}
+                            {message.userName || 'User'} • {new Date(message.timestamp).toLocaleTimeString()}
                           </p>
-                          <p>{comment.content}</p>
+                          <p>{message.content}</p>
                         </div>
                       ))}
                       
-                      {comments.length === 0 && (
+                      {chatMessages.length === 0 && (
                         <div className="text-center p-6 border border-dashed rounded-lg">
-                          <p className="text-muted-foreground mb-2">No campaign notes yet</p>
-                          <Button size="sm">Add Note</Button>
+                          <p className="text-muted-foreground mb-2">No chat messages yet</p>
+                          <p className="text-sm text-muted-foreground">Use the form below to start a conversation</p>
                         </div>
                       )}
+                    </div>
+                    {/* Chat input form */}
+                    <div className="mt-4 border-t pt-3">
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!chatInput.trim()) return;
+                        
+                        // Send chat message
+                        sendChatMessage(chatInput);
+                        setChatInput("");
+                      }}>
+                        <div className="flex gap-2">
+                          <Textarea 
+                            placeholder="Type your message here..." 
+                            className="min-h-[60px] resize-none" 
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                          />
+                          <Button 
+                            type="submit" 
+                            size="icon" 
+                            className="h-[60px] bg-amber-600 hover:bg-amber-700"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </form>
                     </div>
                   </div>
                 )}
