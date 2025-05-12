@@ -7,17 +7,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Add health check endpoint for Autoscale deployment
-app.get("/", (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
 
 // Add static file serving early in the middleware chain
 app.use(express.static("dist/public"));
-
-// Add explicit health check endpoint
-app.get("/", (req, res) => {
-  res.status(200).send("OK");
-});
 
 app.use((req, res, next) => {
   const start = Date.now();
