@@ -5,6 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InventoryManagerWithApparel } from "@/components/inventory-management-with-apparel";
 import { CharacterInventoryButton } from "@/components/character-inventory-button";
 import CharacterPanel from "@/components/character-panel";
+import CharactersPanel from "@/components/characters-panel";
 import { MessageSquare, X, Save, Map, Dice5, Settings, ChevronDown, ChevronUp, Briefcase, Dices as DicesIcon, Book, Users, MessageCircle, Clock, CalendarDays, ClipboardList, Backpack, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -120,14 +121,22 @@ export default function CampaignPage() {
     }
   });
 
-  // Campaign characters query
+  // Campaign characters query with explicit typing and error handling
   const {
     data: campaignCharacters = [],
     isLoading: charactersLoading,
     error: charactersError,
-  } = useQuery({
+  } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignId}/characters`],
-    enabled: !!campaignId
+    enabled: !!campaignId,
+    onError: (error) => {
+      console.error("Failed to fetch campaign characters:", error);
+      toast({
+        title: "Warning: Unable to load characters",
+        description: "There was a problem loading character information. Some features may be limited.",
+        variant: "destructive",
+      });
+    }
   });
 
   // Campaign game logs query with improved error handling
@@ -840,110 +849,15 @@ export default function CampaignPage() {
               )}
               
               {rightPanelTab === "characters" && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b pb-2">Player Characters</h3>
-                  <div className="space-y-3">
-                    {campaignCharacters.filter(c => !c.isBot).map(character => (
-                      <div key={character.id} className="border rounded-lg p-3 bg-card shadow-sm hover:shadow-md transition-all">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-bold text-amber-900">{character.name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Level {character.level} {character.race} {character.class}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                              HP: {character.hp}/{character.maxHp}
-                            </div>
-                            <InventoryManagerWithApparel
-                              characterId={character.id}
-                              campaignId={campaignId}
-                              character={character}
-                              campaignCharacters={campaignCharacters}
-                              onItemUpdate={() => {
-                                // Refresh character data
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
-                              }}
-                            />
-                            {/* Remove character button (only shown for DM or character owner) */}
-                            {(isDm || character.userId === user?.id) && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (confirm(`Remove ${character.name} from this campaign?`)) {
-                                    removeCharacterMutation.mutate(character.id);
-                                  }
-                                }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* NPC Party Members */}
-                  <h3 className="text-lg font-semibold border-b pb-2 mt-6">NPC Companions</h3>
-                  <div className="space-y-3">
-                    {campaignCharacters.filter(c => c.isBot).map(character => (
-                      <div key={character.id} className="border rounded-lg p-3 bg-card shadow-sm hover:shadow-md transition-all">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-bold text-amber-900">{character.name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Level {character.level} {character.race} {character.class}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                              HP: {character.hp}/{character.maxHp}
-                            </div>
-                            <InventoryManagerWithApparel
-                              characterId={character.id}
-                              campaignId={campaignId}
-                              character={character}
-                              campaignCharacters={campaignCharacters}
-                              onItemUpdate={() => {
-                                // Refresh character data
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
-                              }}
-                            />
-                            {/* Only DM can remove NPCs */}
-                            {isDm && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (confirm(`Remove ${character.name} from this campaign?`)) {
-                                    removeCharacterMutation.mutate(character.id);
-                                  }
-                                }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {campaignCharacters.filter(c => c.isBot).length === 0 && (
-                      <div className="text-center p-4 border border-dashed rounded-lg">
-                        <p className="text-muted-foreground text-sm">No NPC companions in the party yet</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <CharactersPanel
+                  campaignId={campaignId}
+                  campaignCharacters={campaignCharacters}
+                  charactersLoading={charactersLoading}
+                  charactersError={charactersError}
+                  isDm={isDm}
+                  userId={user?.id}
+                  removeCharacterMutation={removeCharacterMutation}
+                />
               )}
               
               {rightPanelTab === "loot" && (
@@ -1282,56 +1196,15 @@ export default function CampaignPage() {
                 )}
                 
                 {rightPanelTab === "characters" && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold border-b pb-2">Player Characters</h3>
-                    <div className="space-y-3">
-                      {campaignCharacters.filter(c => !c.isBot).map(character => (
-                        <div key={character.id} className="border rounded-lg p-3 bg-card">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-bold text-amber-900">{character.name}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                Level {character.level} {character.race} {character.class}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                                HP: {character.hp}/{character.maxHp}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* NPC Party Members */}
-                    <h3 className="text-lg font-semibold border-b pb-2 mt-6">NPC Companions</h3>
-                    <div className="space-y-3">
-                      {campaignCharacters.filter(c => c.isBot).map(character => (
-                        <div key={character.id} className="border rounded-lg p-3 bg-card">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-bold text-amber-900">{character.name}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                Level {character.level} {character.race} {character.class}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                                HP: {character.hp}/{character.maxHp}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {campaignCharacters.filter(c => c.isBot).length === 0 && (
-                        <div className="text-center p-4 border border-dashed rounded-lg">
-                          <p className="text-muted-foreground text-sm">No NPC companions in the party yet</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <CharactersPanel
+                    campaignId={campaignId}
+                    campaignCharacters={campaignCharacters}
+                    charactersLoading={charactersLoading}
+                    charactersError={charactersError}
+                    isDm={isDm}
+                    userId={user?.id}
+                    removeCharacterMutation={removeCharacterMutation}
+                  />
                 )}
                 
                 {rightPanelTab === "loot" && (
