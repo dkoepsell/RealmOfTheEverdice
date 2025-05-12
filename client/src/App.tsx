@@ -19,7 +19,7 @@ import SettingsPage from "@/pages/settings-page";
 import ProfilePage from "@/pages/profile-page";
 import TavernLobby from "@/pages/tavern-lobby";
 import TavernBoard from "@/pages/tavern-board";
-import AdminDashboard from "@/pages/admin-dashboard";
+import AdminDashboard from "@/pages/admin-dashboard-new";
 import AboutPage from "@/pages/about-page";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";

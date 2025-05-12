@@ -302,10 +302,9 @@ export default function AdminDashboard() {
       </div>
       
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 mb-8 w-full max-w-4xl">
+        <TabsList className="grid grid-cols-4 mb-8 w-full max-w-4xl">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="worlds">Worlds</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -722,27 +721,9 @@ export default function AdminDashboard() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Worlds tab removed */}
         
-        <TabsContent value="worlds">
-          <div className="bg-white p-6 rounded-lg">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-bold">Everdice Worlds</h2>
-                <p className="text-muted-foreground">Manage multiple Everdice worlds for your campaigns.</p>
-              </div>
-              
-              {isSuperAdmin && (
-                <Button onClick={() => setShowCreateWorldDialog(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Create New World
-                </Button>
-              )}
-            </div>
-            
-            {worldsLoading ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {worlds.map(world => (
                   <Card 
