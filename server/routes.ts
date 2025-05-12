@@ -6078,6 +6078,25 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
           }));
         }
         
+        // Handle room leaving
+        if (data.type === 'leave_room' && data.campaignId) {
+          const campaignId = parseInt(data.campaignId);
+          
+          if (connections[campaignId]) {
+            // Remove this connection from the campaign's connections
+            connections[campaignId] = connections[campaignId].filter(conn => conn !== ws);
+            
+            // Send confirmation
+            ws.send(JSON.stringify({
+              type: 'leave_confirm',
+              campaignId,
+              timestamp: new Date()
+            }));
+            
+            console.log(`Client left room for campaign ${campaignId}. Remaining connections: ${connections[campaignId].length}`);
+          }
+        }
+        
         // Handle party planning updates (item added, updated, deleted, etc.)
         if (data.type === 'planning' && data.campaignId) {
           const campaignId = parseInt(data.campaignId);

@@ -44,7 +44,7 @@ function Router() {
       <ProtectedRoute path="/characters/:id" component={CharacterDetail} />
       <ProtectedRoute path="/campaigns/create" component={CampaignCreation} />
       <ProtectedRoute path="/campaigns/:id" component={CampaignPage} />
-      <ProtectedRoute path="/campaigns/:id/planning" component={PartyPlanning} />
+      <ProtectedRoute path="/party-planning/:id" component={PartyPlanning} />
       <ProtectedRoute path="/learn" component={LearnPage} />
       <ProtectedRoute path="/about" component={AboutPage} />
       <ProtectedRoute path="/social" component={SocialPage} />
