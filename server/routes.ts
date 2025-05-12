@@ -1674,10 +1674,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(character);
     } catch (error) {
       console.error("Error creating character:", error);
+      
+      // Print more detailed error info
+      console.log("Character data that failed:", JSON.stringify(characterData, null, 2));
+      
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid character data", errors: error.errors });
+        console.log("Validation errors:", JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ 
+          message: "Invalid character data", 
+          errors: error.errors,
+          data: characterData
+        });
       }
-      res.status(500).json({ message: "Failed to create character" });
+      
+      // Send detailed error info to help debugging
+      res.status(500).json({ 
+        message: "Failed to create character", 
+        error: error.message,
+        stack: error.stack,
+        data: characterData
+      });
     }
   });
   

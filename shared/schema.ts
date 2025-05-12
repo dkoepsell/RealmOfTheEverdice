@@ -68,6 +68,8 @@ export const characters = pgTable("characters", {
       date: string
     }>
   }>(),
+  lawChaosValue: integer("law_chaos_value"),
+  goodEvilValue: integer("good_evil_value"),
   isBot: boolean("is_bot").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow()
 });
@@ -82,7 +84,10 @@ export const insertCharacterSchema = createInsertSchema(characters)
     milestones: true,
     achievements: true,
     progression: true,
-    alignment: true
+    alignment: true,
+    inventory: true,
+    lawChaosValue: true,
+    goodEvilValue: true
   });
 
 // Campaign model
