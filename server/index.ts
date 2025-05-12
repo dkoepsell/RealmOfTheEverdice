@@ -11,6 +11,14 @@ app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
+// Add static file serving early in the middleware chain
+app.use(express.static("dist/public"));
+
+// Add explicit health check endpoint
+app.get("/", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -65,11 +73,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  server.listen({
-    port: 5000,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  server.listen(5000, "0.0.0.0", () => {
+    log(`Server running at http://0.0.0.0:5000`);
   });
 })();
