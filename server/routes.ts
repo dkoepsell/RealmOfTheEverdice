@@ -1021,8 +1021,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           case 'barbarian':
             defaultEquipment.weapons = ["Longsword"];
             defaultEquipment.armor = "Chain Mail";
-            defaultEquipment.apparel.chest = "Sturdy Breastplate";
-            defaultEquipment.apparel.legs = "Reinforced Leggings";
+            defaultEquipment.apparel = {
+              head: "Warrior's Helm",
+              chest: "Sturdy Breastplate",
+              legs: "Reinforced Leggings",
+              feet: "Steel-toed Boots",
+              hands: "Leather Gauntlets",
+              back: "Battle-worn Cloak",
+              neck: "",
+              finger: "",
+              waist: "Weapon Belt"
+            };
             defaultEquipment.items = ["Shield", "Adventurer's Pack"];
             defaultEquipment.inventory = [
               {
@@ -1031,7 +1040,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 description: "A well-balanced blade favored by fighters",
                 quantity: 1,
                 isEquipped: true,
-                type: "weapon"
+                type: "weapon",
+                rarity: "common",
+                weight: 3.0,
+                value: 15,
+                apparelSlot: null
               },
               {
                 slot: 1,
@@ -1039,41 +1052,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 description: "A sturdy wooden shield reinforced with iron",
                 quantity: 1,
                 isEquipped: true,
-                type: "armor"
+                type: "armor",
+                rarity: "common",
+                weight: 6.0,
+                value: 10,
+                apparelSlot: null
               },
               {
                 slot: 2,
                 name: "Adventurer's Pack",
-                description: "Includes basic survival gear",
+                description: "Includes basic survival gear like a bedroll, rations, and more",
                 quantity: 1,
                 isEquipped: false,
-                type: "miscellaneous"
+                type: "miscellaneous",
+                rarity: "common",
+                weight: 5.0,
+                value: 12,
+                apparelSlot: null
+              },
+              {
+                slot: 3,
+                name: "Warrior's Helm",
+                description: "A sturdy metal helmet that protects the head",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 2.0,
+                value: 20,
+                apparelSlot: "head"
+              },
+              {
+                slot: 4,
+                name: "Sturdy Breastplate",
+                description: "Provides excellent protection for vital organs",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 10.0,
+                value: 50,
+                apparelSlot: "chest"
+              },
+              {
+                slot: 5,
+                name: "Reinforced Leggings",
+                description: "Heavy leg armor with extra protection at the knees",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 4.0,
+                value: 30,
+                apparelSlot: "legs"
+              },
+              {
+                slot: 6,
+                name: "Steel-toed Boots",
+                description: "Sturdy boots with metal reinforcements",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 2.0,
+                value: 15,
+                apparelSlot: "feet"
+              },
+              {
+                slot: 7,
+                name: "Leather Gauntlets",
+                description: "Gloves that protect the hands and forearms",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 1.0,
+                value: 8,
+                apparelSlot: "hands"
+              },
+              {
+                slot: 8,
+                name: "Battle-worn Cloak",
+                description: "A durable cloak that's seen many battles",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 1.0,
+                value: 5,
+                apparelSlot: "back"
+              },
+              {
+                slot: 9,
+                name: "Weapon Belt",
+                description: "A sturdy belt with loops for holding weapons",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 0.5,
+                value: 3,
+                apparelSlot: "waist"
               }
             ];
             break;
           case 'ranger':
           case 'rogue':
-            defaultEquipment.weapons = ["Shortbow", "Shortsword"];
+          case 'thief':
+            defaultEquipment.weapons = ["Dagger", "Shortbow"];
             defaultEquipment.armor = "Leather Armor";
-            defaultEquipment.apparel.chest = "Fitted Leather Vest";
-            defaultEquipment.apparel.legs = "Light Leather Pants";
-            defaultEquipment.items = ["Thieves' Tools", "Adventurer's Pack"];
+            defaultEquipment.apparel = {
+              head: "Hood",
+              chest: "Dark Leather Vest",
+              legs: "Flexible Leather Pants",
+              feet: "Silent Step Boots",
+              hands: "Nimble Gloves",
+              back: "Concealing Cloak",
+              neck: "Lucky Charm",
+              finger: "Lockpick Ring",
+              waist: "Pouch Belt"
+            };
+            defaultEquipment.items = ["Thieves' Tools", "Burglar's Pack"];
             defaultEquipment.inventory = [
               {
                 slot: 0,
-                name: "Shortbow",
-                description: "A compact bow ideal for hunting and skirmishing",
-                quantity: 1,
+                name: "Dagger",
+                description: "A sharp blade, perfect for quick strikes",
+                quantity: 2,
                 isEquipped: true,
-                type: "weapon"
+                type: "weapon",
+                rarity: "common",
+                weight: 1.0,
+                value: 2,
+                apparelSlot: null
               },
               {
                 slot: 1,
-                name: "Shortsword",
-                description: "A quick blade favored by rogues and rangers",
+                name: "Shortbow",
+                description: "A compact bow well-suited for sneak attacks",
                 quantity: 1,
                 isEquipped: true,
-                type: "weapon"
+                type: "weapon",
+                rarity: "common",
+                weight: 2.0,
+                value: 25,
+                apparelSlot: null
               },
               {
                 slot: 2,
@@ -1081,7 +1204,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 description: "A set of tools for picking locks and disarming traps",
                 quantity: 1,
                 isEquipped: false,
-                type: "tool"
+                type: "tool",
+                rarity: "common",
+                weight: 1.0,
+                value: 25,
+                apparelSlot: null
+              },
+              {
+                slot: 3,
+                name: "Hood",
+                description: "A dark hood that helps conceal your identity",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 0.5,
+                value: 5,
+                apparelSlot: "head"
+              },
+              {
+                slot: 4,
+                name: "Dark Leather Vest",
+                description: "A flexible, quiet vest that doesn't hinder movement",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 3.0,
+                value: 10,
+                apparelSlot: "chest"
+              },
+              {
+                slot: 5,
+                name: "Flexible Leather Pants",
+                description: "Allows for quick and silent movement",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 2.0,
+                value: 8,
+                apparelSlot: "legs"
+              },
+              {
+                slot: 6,
+                name: "Silent Step Boots",
+                description: "Specially crafted to muffle footsteps",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 1.0,
+                value: 20,
+                apparelSlot: "feet"
+              },
+              {
+                slot: 7,
+                name: "Nimble Gloves",
+                description: "Thin gloves that enhance dexterity",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 0.5,
+                value: 10,
+                apparelSlot: "hands"
+              },
+              {
+                slot: 8,
+                name: "Concealing Cloak",
+                description: "A dark cloak that helps you blend into shadows",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 1.0,
+                value: 8,
+                apparelSlot: "back"
+              },
+              {
+                slot: 9,
+                name: "Lucky Charm",
+                description: "A small trinket that seems to bring good fortune",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 0.1,
+                value: 5,
+                apparelSlot: "neck"
+              },
+              {
+                slot: 10,
+                name: "Lockpick Ring",
+                description: "A ring with a small hidden lockpick",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "uncommon",
+                weight: 0.1,
+                value: 15,
+                apparelSlot: "finger"
+              },
+              {
+                slot: 11,
+                name: "Pouch Belt",
+                description: "A belt with various pouches for small items",
+                quantity: 1,
+                isEquipped: true,
+                type: "apparel",
+                rarity: "common",
+                weight: 0.5,
+                value: 5,
+                apparelSlot: "waist"
               }
             ];
             break;
