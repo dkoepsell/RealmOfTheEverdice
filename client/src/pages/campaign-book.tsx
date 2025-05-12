@@ -585,6 +585,51 @@ export default function CampaignPage() {
             <h1 className="text-lg md:text-xl font-bold text-amber-900 truncate">
               {campaign?.title || "Campaign"}
             </h1>
+            
+            {/* Font Size Buttons (moved to left side) */}
+            <div className="flex items-center gap-1 pl-1 ml-4">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleFontSizeAdjust(false)}
+                      className="h-8 w-8 p-0 text-amber-900"
+                      disabled={fontSizeMultiplier <= 0.8}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Decrease font size</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <span className="text-xs text-muted-foreground">
+                Text Size
+              </span>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm" 
+                      onClick={() => handleFontSizeAdjust(true)}
+                      className="h-8 w-8 p-0 text-amber-900"
+                      disabled={fontSizeMultiplier >= 1.5}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Increase font size</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
           
           <div className="flex items-center gap-1 md:gap-2">
@@ -755,51 +800,6 @@ export default function CampaignPage() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
-            {/* Font Size Buttons */}
-            <div className="hidden md:flex items-center gap-1 pl-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFontSizeAdjust(false)}
-                      className="h-8 w-8 p-0 text-amber-900"
-                      disabled={fontSizeMultiplier <= 0.8}
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Decrease font size</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <span className="text-xs text-muted-foreground">
-                Text Size
-              </span>
-              
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm" 
-                      onClick={() => handleFontSizeAdjust(true)}
-                      className="h-8 w-8 p-0 text-amber-900"
-                      disabled={fontSizeMultiplier >= 1.5}
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Increase font size</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
           </div>
         </div>
       </div>
