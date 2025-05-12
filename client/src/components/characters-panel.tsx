@@ -106,30 +106,16 @@ export default function CharactersPanel({
               
               {/* Equipment Summary */}
               <div className="flex flex-wrap gap-1 mt-1.5">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                      >
-                        <InventoryManagerWithApparel
-                          characterId={character.id}
-                          campaignId={campaignId}
-                          character={character}
-                          campaignCharacters={campaignCharacters}
-                          onItemUpdate={() => {
-                            queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
-                          }}
-                        />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Manage inventory and equipment</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Equipment Buttons - Direct placement without wrapping in another button */}
+                <InventoryManagerWithApparel
+                  characterId={character.id}
+                  campaignId={campaignId}
+                  character={character}
+                  campaignCharacters={campaignCharacters}
+                  onItemUpdate={() => {
+                    queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
+                  }}
+                />
 
                 {(isDm || character.userId === userId) && (
                   <TooltipProvider>
@@ -176,16 +162,18 @@ export default function CharactersPanel({
               <div className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                 HP: {character.hp}/{character.maxHp}
               </div>
-              <InventoryManagerWithApparel
-                characterId={character.id}
-                campaignId={campaignId}
-                character={character}
-                campaignCharacters={campaignCharacters}
-                onItemUpdate={() => {
-                  // Refresh character data
-                  queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
-                }}
-              />
+              <div className="flex gap-1">
+                <InventoryManagerWithApparel
+                  characterId={character.id}
+                  campaignId={campaignId}
+                  character={character}
+                  campaignCharacters={campaignCharacters}
+                  onItemUpdate={() => {
+                    // Refresh character data
+                    queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/characters`] });
+                  }}
+                />
+              </div>
               {/* Remove character button (only shown for DM or character owner) */}
               {(isDm || character.userId === userId) && (
                 <Button 
