@@ -3729,6 +3729,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
+      console.log("DEBUG: generate-response request received", {
+        params: req.params,
+        body: req.body,
+        user: req.user ? req.user.id : 'not authenticated'
+      });
+      
       const campaignId = parseInt(req.params.id);
       if (isNaN(campaignId)) {
         return res.status(400).json({ message: "Invalid campaign ID" });
@@ -3913,11 +3919,27 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
       }
       
       // Use OpenAI to generate a response with enhanced context
-      const narrativeResponse = await generateGameNarration(
-        context, 
+      console.log("DEBUG: Calling OpenAI for narration in generate-response endpoint", {
+        contextLength: context.length,
         playerAction,
         isAutoAdvance
-      );
+      });
+      
+      let narrativeResponse;
+      try {
+        narrativeResponse = await generateGameNarration(
+          context, 
+          playerAction,
+          isAutoAdvance
+        );
+        
+        console.log("DEBUG: OpenAI narration generated successfully in generate-response endpoint", {
+          responseLength: narrativeResponse ? narrativeResponse.length : 0
+        });
+      } catch (openaiError) {
+        console.error("DEBUG: OpenAI narration generation error in generate-response endpoint:", openaiError);
+        throw openaiError;
+      }
       
       // Advanced pattern detection and tracking system
       try {

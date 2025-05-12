@@ -246,24 +246,42 @@ EDUCATIONAL ELEMENTS:
 Your response should be both narrative and educational, opening up new possibilities while teaching D&D mechanics. Adapt to the player's approach whether it's combat-focused, diplomacy, stealth, creative problem-solving, or something unexpected, and use this as an opportunity to teach relevant game mechanics.`;
     }
     
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
-        {
-          role: "user",
-          content: userPrompt
-        }
-      ],
-      temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
-      top_p: 0.9, // Use nucleus sampling to increase creative diversity
-      max_tokens: 1000, // Allow for more detailed responses
-      frequency_penalty: 0.5, // Reduce repetition of same tokens
-      presence_penalty: 0.5  // Encourages model to introduce new concepts
+    console.log("DEBUG: Calling OpenAI in generateGameNarration", {
+      model: "gpt-4o",
+      systemPromptLength: systemPrompt.length,
+      userPromptLength: userPrompt.length,
+      containsDiceRoll
     });
+    
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: userPrompt
+          }
+        ],
+        temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
+        top_p: 0.9, // Use nucleus sampling to increase creative diversity
+        max_tokens: 1000, // Allow for more detailed responses
+        frequency_penalty: 0.5, // Reduce repetition of same tokens
+        presence_penalty: 0.5  // Encourages model to introduce new concepts
+      });
+      
+      console.log("DEBUG: OpenAI response received in generateGameNarration", {
+        responseLength: response.choices[0].message.content?.length || 0
+      });
+      
+      return response;
+    } catch (openaiError) {
+      console.error("DEBUG: OpenAI API error in generateGameNarration:", openaiError);
+      throw openaiError;
+    }
 
     return response.choices[0].message.content;
   } catch (error) {
