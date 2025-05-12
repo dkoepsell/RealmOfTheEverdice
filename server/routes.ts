@@ -6059,8 +6059,8 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
       try {
         const data = JSON.parse(message);
         
-        // Handle client joining a campaign chat
-        if (data.type === 'join') {
+        // Handle client joining a campaign chat or room
+        if (data.type === 'join' || data.type === 'join_room') {
           clientCampaignId = parseInt(data.campaignId);
           
           // Add this connection to the campaign's connections
