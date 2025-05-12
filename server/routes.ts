@@ -14,6 +14,7 @@ import {
   generateWorldMap,
   generateGlobalMapImage
 } from "./openai";
+import { generateStartingEquipment } from "./character-equipment";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { 
@@ -1481,8 +1482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Import equipment and alignment generator functions
-      const { generateDefaultEquipment, generateDefaultAlignment } = require('./character-equipment');
+      // Use the character equipment generator
       
       // Get character details
       const charClass = req.body.class || 'fighter';
