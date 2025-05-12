@@ -205,14 +205,15 @@ export default function CampaignPage() {
     enabled: !!validMapCampaignId
   });
 
-  // Get comments 
+  // Get chat messages
   const {
-    data: comments = [],
-    isLoading: commentsLoading,
-    error: commentsError,
+    data: chatMessages = [],
+    isLoading: chatMessagesLoading,
+    error: chatMessagesError,
+    refetch: refetchChatMessages
   } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/comments`],
-    enabled: !!campaignId && rightPanelTab === "comments"
+    queryKey: [`/api/campaigns/${campaignId}/chat`],
+    enabled: !!campaignId && rightPanelTab === "chat"
   });
 
   // Get loot items
@@ -532,10 +533,10 @@ export default function CampaignPage() {
   // Title for the right panel tab
   const getRightPanelTitle = () => {
     switch (rightPanelTab) {
-      case "chat": return "Bot Companion";
+      case "companion": return "Bot Companion";
       case "roll": return "Dice Roller";
       case "loot": return "Treasure & Loot";
-      case "comments": return "Campaign Notes";
+      case "chat": return "Campaign Chat";
       default: return "";
     }
   };
@@ -733,19 +734,19 @@ export default function CampaignPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={rightPanelTab === "comments" ? "default" : "outline"}
+                    variant={rightPanelTab === "chat" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => handleToggleRightPanel("comments")}
-                    className={rightPanelTab === "comments" 
+                    onClick={() => handleToggleRightPanel("chat")}
+                    className={rightPanelTab === "chat" 
                       ? "bg-amber-700 hover:bg-amber-600" 
                       : "border-amber-300 hover:bg-amber-100 text-amber-900"}
                   >
                     <MessageCircle className="h-4 w-4 mr-1 md:mr-2" />
-                    <span className="hidden md:inline">Notes</span>
+                    <span className="hidden md:inline">Chat</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Campaign notes and comments</p>
+                  <p>Campaign group chat</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
