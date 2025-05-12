@@ -1282,15 +1282,6 @@ export default function CampaignPage() {
                   />
                 )}
                 
-                {rightPanelTab === "relationships" && (
-                  <CampaignRelationships
-                    campaignId={campaignId}
-                    isDm={isDm}
-                    currentUserId={user?.id || 0}
-                    characterId={userCharacter?.id}
-                  />
-                )}
-                
                 {rightPanelTab === "characters" && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold border-b pb-2">Player Characters</h3>
