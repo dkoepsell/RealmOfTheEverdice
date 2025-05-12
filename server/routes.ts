@@ -1478,13 +1478,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Import alignment generator function
-      const { generateDefaultAlignment } = require('./character-equipment');
+      // Import equipment and alignment generator functions
+      const { generateDefaultEquipment, generateDefaultAlignment } = require('./character-equipment');
+      
+      // Get character details
+      const charClass = req.body.class || 'fighter';
+      const charRace = req.body.race || 'human';
+      const charLevel = req.body.level || 1;
       
       // Generate default ethical alignment based on character class and race
-      const charClass = req.body.class || '';
-      const charRace = req.body.race || '';
       const { lawChaos, goodEvil } = generateDefaultAlignment(charClass, charRace);
+      
+      // Generate class-specific equipment and apparel
+      const { equipment, apparel } = generateDefaultEquipment(charClass, charLevel);
+      
+      // Convert equipment to the format expected by the client
+      const formattedEquipment = {
+        weapons: equipment.weapons.map(item => item.name),
+        armor: equipment.armor.length > 0 ? equipment.armor[0].name : "",
+        apparel: {
+          head: apparel.head?.name || "",
+          chest: apparel.body?.name || "",
+          legs: "",
+          feet: apparel.feet?.name || "",
+          hands: apparel.hands?.name || "",
+          back: apparel.back?.name || "",
+          neck: apparel.neck?.name || "",
+          finger: apparel.ring1?.name || "",
+          waist: ""
+        },
+        items: [...equipment.potions, ...equipment.magicItems, ...equipment.tools].map(item => item.name),
+        inventory: []
+      };
+      
+      // Create inventory items from equipment
+      let inventoryItems = [];
+      let slotCounter = 0;
+      
+      // Add weapons to inventory
+      equipment.weapons.forEach(weapon => {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: weapon.name,
+          description: weapon.description,
+          quantity: weapon.quantity,
+          isEquipped: weapon.equipped || false,
+          type: "weapon",
+          rarity: weapon.rarity || "common",
+          weight: weapon.weight,
+          value: weapon.value
+        });
+      });
+      
+      // Add armor to inventory
+      equipment.armor.forEach(armor => {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: armor.name,
+          description: armor.description,
+          quantity: armor.quantity,
+          isEquipped: armor.equipped || false,
+          type: "armor",
+          rarity: armor.rarity || "common",
+          weight: armor.weight,
+          value: armor.value
+        });
+      });
+      
+      // Add apparel to inventory
+      if (apparel.head) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.head.name,
+          description: apparel.head.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.head.rarity || "common",
+          weight: apparel.head.weight,
+          value: apparel.head.value,
+          apparelSlot: "head"
+        });
+      }
+      
+      if (apparel.body) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.body.name,
+          description: apparel.body.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.body.rarity || "common",
+          weight: apparel.body.weight,
+          value: apparel.body.value,
+          apparelSlot: "chest"
+        });
+      }
+      
+      if (apparel.hands) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.hands.name,
+          description: apparel.hands.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.hands.rarity || "common",
+          weight: apparel.hands.weight,
+          value: apparel.hands.value,
+          apparelSlot: "hands"
+        });
+      }
+      
+      if (apparel.feet) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.feet.name,
+          description: apparel.feet.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.feet.rarity || "common",
+          weight: apparel.feet.weight,
+          value: apparel.feet.value,
+          apparelSlot: "feet"
+        });
+      }
+      
+      if (apparel.neck) {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: apparel.neck.name,
+          description: apparel.neck.description,
+          quantity: 1,
+          isEquipped: true,
+          type: "apparel",
+          rarity: apparel.neck.rarity || "common",
+          weight: apparel.neck.weight,
+          value: apparel.neck.value,
+          apparelSlot: "neck"
+        });
+      }
+      
+      // Add other gear
+      equipment.gear.forEach(item => {
+        inventoryItems.push({
+          slot: slotCounter++,
+          name: item.name,
+          description: item.description,
+          quantity: item.quantity,
+          isEquipped: false,
+          type: item.type || "gear",
+          rarity: item.rarity || "common",
+          weight: item.weight,
+          value: item.value
+        });
+      });
       
       // Create alignment tracking structure
       const alignmentData = {
@@ -1508,8 +1658,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         milestones: [],
         achievements: [],
         progression: [],
-        equipment: req.body.equipment || defaultEquipment,
-        alignment: alignmentData
+        equipment: req.body.equipment || formattedEquipment,
+        inventory: req.body.inventory || inventoryItems,
+        alignment: alignmentData,
+        lawChaosValue: Math.round((lawChaos + 10) * 5), // -10 to +10 -> 0 to 100
+        goodEvilValue: Math.round((goodEvil + 10) * 5)  // -10 to +10 -> 0 to 100
       };
       
       const validatedData = insertCharacterSchema.parse(characterData);
