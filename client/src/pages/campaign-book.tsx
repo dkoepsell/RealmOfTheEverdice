@@ -522,10 +522,8 @@ export default function CampaignPage() {
   // Title for the right panel tab
   const getRightPanelTitle = () => {
     switch (rightPanelTab) {
-      case "map": return "Adventure Map";
       case "chat": return "Bot Companion";
       case "roll": return "Dice Roller";
-      case "characters": return "Party Members";
       case "loot": return "Treasure & Loot";
       case "comments": return "Campaign Notes";
       default: return "";
@@ -692,24 +690,22 @@ export default function CampaignPage() {
             
             {/* Map feature removed */}
             
-            {/* Characters panel */}
+            {/* Manage Characters button */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={rightPanelTab === "characters" ? "default" : "outline"}
+                    variant="outline"
                     size="sm"
-                    onClick={() => handleToggleRightPanel("characters")}
-                    className={rightPanelTab === "characters" 
-                      ? "bg-amber-700 hover:bg-amber-600" 
-                      : "border-amber-300 hover:bg-amber-100 text-amber-900"}
+                    onClick={() => setShowAddCharacterDialog(true)}
+                    className="border-amber-300 hover:bg-amber-100 text-amber-900"
                   >
-                    <Users className="h-4 w-4 mr-1 md:mr-2" />
-                    <span className="hidden md:inline">Characters</span>
+                    <UserCircle className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">Add Character</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>View campaign characters</p>
+                  <p>Add a character to this campaign</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -813,6 +809,29 @@ export default function CampaignPage() {
       
       {/* Main content - flexbox with left-center-right layout */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Left panel - permanent characters panel */}
+        <div className="hidden md:block flex-none w-[300px] border-r border-amber-200 bg-amber-50/60 overflow-y-auto">
+          <div className="p-4 border-b border-amber-200">
+            <h2 className="text-lg font-semibold text-amber-900 flex items-center">
+              <Users className="mr-2 h-5 w-5" />
+              Party Members
+            </h2>
+          </div>
+          
+          <div className="p-4 h-full overflow-y-auto">
+            <CharactersPanel
+              campaignId={campaignId}
+              campaignCharacters={campaignCharacters}
+              charactersLoading={charactersLoading}
+              charactersError={charactersError}
+              isDm={isDm}
+              userId={user?.id}
+              removeCharacterMutation={removeCharacterMutation}
+              compactView={true}
+            />
+          </div>
+        </div>
+      
         {/* Right panel (conditional) */}
         {rightPanelTab && (
           <div className="hidden lg:block flex-none w-[400px] border-l border-amber-200 bg-amber-50/60 overflow-y-auto">
@@ -845,18 +864,6 @@ export default function CampaignPage() {
                 <DiceRoller
                   characterName={userCharacter?.name || "Adventurer"}
                   characterModifiers={userCharacter?.stats}
-                />
-              )}
-              
-              {rightPanelTab === "characters" && (
-                <CharactersPanel
-                  campaignId={campaignId}
-                  campaignCharacters={campaignCharacters}
-                  charactersLoading={charactersLoading}
-                  charactersError={charactersError}
-                  isDm={isDm}
-                  userId={user?.id}
-                  removeCharacterMutation={removeCharacterMutation}
                 />
               )}
               
@@ -894,7 +901,7 @@ export default function CampaignPage() {
         )}
         
         {/* Main book area - central part that takes remaining space */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-parchment relative">
+        <div className="flex-1 flex flex-col overflow-hidden bg-parchment relative pl-0">
           {/* Book UI - fixed aspect ratio container with book styling */}
           <div className="flex-1 flex flex-col overflow-hidden border-amber-200 bg-parchment relative">
             {/* Campaign title banner */}
