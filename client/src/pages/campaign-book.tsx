@@ -1150,15 +1150,7 @@ export default function CampaignPage() {
             {/* Mobile action button bar - Only visible on small screens */}
             <div className="md:hidden flex items-center justify-between p-2 bg-amber-100/80 border-t border-amber-200">
               <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleToggleRightPanel("characters")}
-                  className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "characters" ? "bg-amber-200" : ""}`}
-                >
-                  <Users className="h-4 w-4" /> 
-                  <span className="ml-1 text-xs">Party</span>
-                </Button>
+                {/* Party button has been removed to prevent blank screen */}
                 
                 <Button
                   variant="outline"
