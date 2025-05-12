@@ -22,6 +22,15 @@ import { LootCollectionPanel } from "@/components/loot-collection-panel";
 import { useCombatDetection } from "@/hooks/use-combat-detection";
 import { AdventureMapPanel } from "@/components/adventure-map-panel";
 import { ModeToggle } from "@/components/mode-toggle";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 // Campaign book / main adventure interface
 export default function CampaignPage() {
@@ -1073,12 +1082,12 @@ export default function CampaignPage() {
             {/* Mobile action button bar - Only visible on small screens */}
             <div className="md:hidden flex items-center justify-between p-2 bg-amber-100/80 border-t border-amber-200">
               <div className="flex items-center gap-1">
-                {/* Replaced Party button with Characters button to prevent blank screen */}
+                {/* Party characters button opens a sheet instead */}
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleToggleRightPanel("characters")}
-                  className={`border-amber-300 bg-white/60 hover:bg-amber-100 ${rightPanelTab === "characters" ? "bg-amber-200" : ""}`}
+                  onClick={() => setShowMobileCharactersSheet(true)}
+                  className="border-amber-300 bg-white/60 hover:bg-amber-100"
                 >
                   <Users className="h-4 w-4" />
                   <span className="ml-1 text-xs">Characters</span>
@@ -1257,6 +1266,39 @@ export default function CampaignPage() {
         onOpenChange={setShowAddCharacterDialog}
         onCharacterAdded={handleCharacterAdded}
       />
+      
+      {/* Mobile characters sheet */}
+      <Sheet open={showMobileCharactersSheet} onOpenChange={setShowMobileCharactersSheet}>
+        <SheetContent side="bottom" className="h-[85vh] py-6 px-4 overflow-y-auto">
+          <SheetHeader className="text-left pb-3 mb-3 border-b">
+            <SheetTitle className="text-xl flex items-center space-x-2">
+              <Users className="h-5 w-5 text-amber-700" />
+              <span>Party Members</span>
+            </SheetTitle>
+            <SheetDescription>
+              View all characters in this campaign
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="h-full pb-16">
+            <CharactersPanel
+              campaignId={campaignId}
+              campaignCharacters={campaignCharacters}
+              charactersLoading={charactersLoading}
+              charactersError={charactersError}
+              isDm={isDm}
+              userId={user?.id}
+              removeCharacterMutation={removeCharacterMutation}
+            />
+          </div>
+          
+          <SheetFooter className="absolute bottom-0 left-0 right-0 p-4 border-t bg-amber-50/90">
+            <SheetClose asChild>
+              <Button variant="outline" className="w-full">Close</Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
       
       {/* Settings dialog removed as it wasn't functional */}
     </div>
