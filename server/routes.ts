@@ -992,6 +992,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/characters", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
+    // Define characterData at the outer scope so it's accessible in catch block
+    let characterData;
+    
     try {
       // Initialize default equipment with apparel structure
       let defaultEquipment = {
@@ -1676,23 +1679,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating character:", error);
       
       // Print more detailed error info
-      console.log("Character data that failed:", JSON.stringify(characterData, null, 2));
+      if (characterData) {
+        console.log("Character data that failed:", JSON.stringify(characterData, null, 2));
+      } else {
+        console.log("Character data was not constructed before error occurred");
+      }
       
       if (error instanceof z.ZodError) {
         console.log("Validation errors:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ 
           message: "Invalid character data", 
           errors: error.errors,
-          data: characterData
+          data: characterData || {}
         });
       }
       
       // Send detailed error info to help debugging
       res.status(500).json({ 
         message: "Failed to create character", 
-        error: error.message,
-        stack: error.stack,
-        data: characterData
+        error: error?.message || "Unknown error",
+        stack: error?.stack,
+        data: characterData || {}
       });
     }
   });
