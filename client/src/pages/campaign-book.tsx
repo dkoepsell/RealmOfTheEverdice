@@ -117,7 +117,7 @@ export default function CampaignPage() {
     isLoading: isLoadingChatMessages,
     error: chatMessagesError
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "chat"],
+    queryKey: [`/api/campaigns/${campaignId}/chat`],
     enabled: !!campaignId,
     onSuccess: (data) => {
       setChatMessages(data || []);
@@ -127,27 +127,23 @@ export default function CampaignPage() {
   // Send chat message mutation
   const sendChatMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      const response = await fetch(`/api/campaigns/${campaignId}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
+      const response = await apiRequest(
+        "POST",
+        `/api/campaigns/${campaignId}/chat`, 
+        { 
           content,
           campaignId,
           userId: user?.id,
           characterId: userCharacter?.id
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
+        }
+      );
       
       return await response.json();
     },
     onSuccess: (newMessage) => {
-      setChatMessages(prev => [...prev, newMessage]);
+      setChatMessages(prev => [newMessage, ...prev]);
+      // Invalidate the chat messages query to refetch
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/chat`] });
     },
     onError: (error) => {
       toast({

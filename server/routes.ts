@@ -4450,6 +4450,7 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
       const messages = await storage.getChatMessagesByCampaignId(campaignId, limit);
       res.json(messages);
     } catch (error) {
+      console.error("Error fetching chat messages:", error);
       res.status(500).json({ message: "Failed to get chat messages" });
     }
   });
@@ -4489,31 +4490,27 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
         }
       }
       
+      // Validate and create the message using zod schema
       const validatedData = insertChatMessageSchema.parse({
-        campaignId,
+        campaignId: campaignId,
         userId: req.user.id,
-        content
+        content: content
       });
       
       const message = await storage.createChatMessage(validatedData);
       
-      // Broadcast the new message to all connected WebSocket clients for this campaign
-      if (connections[campaignId]) {
-        const user = req.user;
-        connections[campaignId].forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-              type: 'chat',
-              message: message.content,
-              userId: user.id,
-              username: user.username,
-              messageId: message.id,
-              campaignId: campaignId,
-              timestamp: message.timestamp || new Date()
-            }));
-          }
-        });
-      }
+      // Broadcast the message to all connected clients via WebSocket
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN && client.campaignId === campaignId) {
+          client.send(JSON.stringify({
+            type: 'chat',
+            message,
+            userId: req.user.id, 
+            username: req.user.username,
+            timestamp: message.timestamp || new Date()
+          }));
+        }
+      });
       
       res.status(201).json(message);
     } catch (error) {
@@ -5802,60 +5799,8 @@ CAMPAIGN SUMMARY: ${campaignDetails.description || "An ongoing adventure in the 
     }
   });
   
-  // Chat messages routes
-  app.get("/api/campaigns/:id/chat", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    
-    try {
-      const campaign = await storage.getCampaign(parseInt(req.params.id));
-      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
-      
-      // TODO: Check if user is a player in this campaign
-      
-      const messages = await storage.getChatMessages(campaign.id);
-      res.json(messages);
-    } catch (error) {
-      console.error("Error fetching chat messages:", error);
-      res.status(500).json({ message: "Failed to get chat messages" });
-    }
-  });
-  
-  app.post("/api/campaigns/:id/chat", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    
-    try {
-      const campaign = await storage.getCampaign(parseInt(req.params.id));
-      if (!campaign) return res.status(404).json({ message: "Campaign not found" });
-      
-      // TODO: Check if user is a player in this campaign
-      
-      const validatedData = insertChatMessageSchema.parse({
-        campaignId: campaign.id,
-        userId: req.user.id,
-        content: req.body.content
-      });
-      
-      const message = await storage.createChatMessage(validatedData);
-      
-      // If WebSocket is set up, broadcast the message to all connected clients
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.campaignId === campaign.id) {
-          client.send(JSON.stringify({
-            type: 'chat',
-            message
-          }));
-        }
-      });
-      
-      res.status(201).json(message);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid chat message data", errors: error.errors });
-      }
-      console.error("Error creating chat message:", error);
-      res.status(500).json({ message: "Failed to create chat message" });
-    }
-  });
+  // Note: Primary chat message endpoints are now defined above (around line 4418)
+  // These duplicate chat message routes have been removed to prevent conflicts
 
   // Party Planning API Routes
   
