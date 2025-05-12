@@ -57,6 +57,7 @@ export default function CampaignPage() {
   const [playerInput, setPlayerInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasUnclaimedLoot, setHasUnclaimedLoot] = useState(false);
+  const [showMobileCharactersSheet, setShowMobileCharactersSheet] = useState(false);
   const [isAutoRollEnabled, setIsAutoRollEnabled] = useState(() => {
     // Try to load saved auto-roll setting from local storage, default to true if not found
     const savedSetting = localStorage.getItem('autoRollEnabled');
