@@ -30,6 +30,15 @@ export interface AdventureGenerationOptions {
   partyLevel?: number;
   partySize?: number;
   includeElements?: string[];
+  existingWorldFeatures?: string[]; // Track existing world elements to maintain consistency
+  campaignId?: number;             // Reference the specific campaign for persistent features
+  worldLocations?: {               // Store established locations with their properties
+    name: string;
+    description: string;
+    position?: string;             // Relative geographic position
+    features?: string[];           // Notable features of this location
+    status?: string;               // Current status (e.g., "intact", "damaged", "ruins")
+  }[];
 }
 
 export interface CharacterGenerationOptions {
@@ -75,8 +84,15 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
     difficulty = "medium",
     partyLevel = 1,
     partySize = 4,
-    includeElements = []
+    includeElements = [],
+    existingWorldFeatures = [],
+    worldLocations = []
   } = options;
+
+  // Create a formatted list of existing locations with details for the AI prompt
+  const existingLocationsText = worldLocations.map(loc => 
+    `- ${loc.name}: ${loc.description}${loc.position ? ` (Located ${loc.position})` : ''}${loc.features ? ` Features: ${loc.features.join(", ")}` : ''}${loc.status ? ` Current status: ${loc.status}` : ''}`
+  ).join("\n");
 
   try {
     const response = await openai.chat.completions.create({
@@ -84,7 +100,7 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
       messages: [
         {
           role: "system",
-          content: "You are a Dungeon Master's assistant, skilled in creating engaging D&D adventures. Generate detailed adventures with a title, description, setting, NPCs, and quest objectives."
+          content: "You are a Dungeon Master's assistant, skilled in creating engaging D&D adventures with geographically consistent worlds. Always maintain world continuity and ensure geographical features persist unless explicitly changed by in-game events. Never contradict established world geography or locations."
         },
         {
           role: "user",
@@ -96,15 +112,26 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
           - Party Size: ${partySize}
           - Elements to Include: ${includeElements.join(", ")}
           
+          ${existingWorldFeatures.length > 0 ? `CRITICAL - WORLD CONSISTENCY: This adventure MUST incorporate and respect these existing world elements: ${existingWorldFeatures.join(", ")}` : ''}
+          
+          ${worldLocations.length > 0 ? `ESTABLISHED LOCATIONS (Must be maintained and integrated as they currently exist):\n${existingLocationsText}` : ''}
+          
+          WORLD CONSISTENCY RULES:
+          1. Geography must be internally consistent - maintain spatial relationships between all locations
+          2. Natural features (mountains, rivers, forests) remain fixed unless altered by powerful magic
+          3. Settlements have consistent layouts and notable landmarks that persist between adventures
+          4. New locations must have logical geographical connections to existing ones
+          5. Any changes to existing locations must have clear in-game causes (battle damage, weather, etc.)
+          
           Format the response as a JSON object with these fields:
           - title: Adventure title
           - description: Brief adventure overview
-          - setting: Detailed setting description
+          - setting: Detailed setting description that maintains geographical consistency
           - hooks: Ways to introduce the adventure to players
           - mainQuest: Object with title and description
           - sideQuests: Array of objects with title and description
           - npcs: Array of important NPCs with name, description, and role
-          - locations: Array of key locations with name and description
+          - locations: Array of key locations with name, description, and geographic relationship to known areas
           - encounters: Array of potential encounters with description and challenge rating
           - treasures: Array of treasures and rewards
           - conclusion: Possible ending scenarios`
@@ -139,6 +166,14 @@ RESPONSE REQUIREMENTS:
    - Exciting combat encounters with varied enemies
    - Skills tests that build character stats
    - Meeting unique NPCs and potential allies
+
+WORLD CONSISTENCY RULES:
+1. Maintain a geographically consistent world throughout the game
+2. All locations you create must remain in the same positions relative to each other
+3. Natural features like mountains, rivers, and forests must remain fixed
+4. Once you establish a location, it persists unless explicitly altered by player actions
+5. Towns and landmarks maintain their established characteristics
+6. Never contradict previously established world geography
 
 IMPORTANT: Reward creative actions with minor benefits and handle unusual player approaches positively.`;
 
@@ -512,6 +547,15 @@ export interface CampaignGenerationOptions {
   genre?: string;
   theme?: string;
   tone?: string;
+  worldConsistencyRules?: string[];  // Special rules for maintaining world consistency
+  existingGeography?: {              // Track established geographical features
+    naturalFeatures: string[];       // Mountains, rivers, forests, etc.
+    settlements: string[];           // Towns, cities, villages
+    landmarks: string[];             // Notable locations
+    regions: string[];               // Named regions/provinces
+  };
+  worldType?: string;                // Type of world (e.g., "archipelago", "continent", "desert", etc.)
+  existingMagicSystems?: string[];   // Established magical rules or systems
 }
 
 export interface ItemGenerationOptions {
