@@ -42,8 +42,8 @@ interface CampaignActivityStats {
 export function useAdmin() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isSuperAdmin = user?.isSuperAdmin;
-  const isAdmin = user?.isAdmin;
+  const isSuperAdmin = user?.role === "superuser";
+  const isAdmin = user?.role === "admin" || user?.role === "superuser";
   
   // State for world management
   const [selectedWorldId, setSelectedWorldId] = useState<number | null>(null);
@@ -56,7 +56,7 @@ export function useAdmin() {
   } = useQuery<DashboardStats, Error>({
     queryKey: ["/api/admin/dashboard-stats"],
     queryFn: async () => {
-      if (!isAdmin && !isSuperAdmin) throw new Error("Unauthorized");
+      if (!isAdmin) throw new Error("Unauthorized");
       const res = await apiRequest("GET", "/api/admin/dashboard-stats");
       return await res.json();
     },
@@ -71,7 +71,7 @@ export function useAdmin() {
   } = useQuery<UserLoginStats, Error>({
     queryKey: ["/api/admin/user-login-stats"],
     queryFn: async () => {
-      if (!isAdmin && !isSuperAdmin) throw new Error("Unauthorized");
+      if (!isAdmin) throw new Error("Unauthorized");
       const res = await apiRequest("GET", "/api/admin/user-login-stats");
       return await res.json();
     },
@@ -86,7 +86,7 @@ export function useAdmin() {
   } = useQuery<CampaignActivityStats, Error>({
     queryKey: ["/api/admin/campaign-activity-stats"],
     queryFn: async () => {
-      if (!isAdmin && !isSuperAdmin) throw new Error("Unauthorized");
+      if (!isAdmin) throw new Error("Unauthorized");
       const res = await apiRequest("GET", "/api/admin/campaign-activity-stats");
       return await res.json();
     },
@@ -162,7 +162,7 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/everdice/world"],
     queryFn: async () => {
-      if (!isAdmin && !isSuperAdmin) return null;
+      if (!isAdmin) return null;
       try {
         const res = await apiRequest("GET", "/api/everdice/world");
         if (!res.ok) {
@@ -191,7 +191,7 @@ export function useAdmin() {
   } = useQuery({
     queryKey: ["/api/admin/campaign-regions"],
     queryFn: async () => {
-      if (!isAdmin && !isSuperAdmin) return { campaigns: [], uniqueRegions: [] };
+      if (!isAdmin) return { campaigns: [], uniqueRegions: [] };
       try {
         const res = await apiRequest("GET", "/api/admin/campaign-regions");
         if (!res.ok) {
