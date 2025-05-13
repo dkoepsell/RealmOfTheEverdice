@@ -291,7 +291,7 @@ export default function AdminDashboard() {
   const handlePromoteUser = async () => {
     if (!selectedUser) return;
     
-    if (!isSuperAdmin) {
+    if (user?.role !== "superuser") {
       toast({
         title: "Permission Denied",
         description: "Only superadmins can promote users to admin.",
@@ -318,7 +318,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (!isAdmin && !isSuperAdmin) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-[350px]">
