@@ -3909,17 +3909,22 @@ CAMPAIGN SUMMARY: An ongoing adventure in the world of Everdice.
         context += "\n\nIMPORTANT: This user does not yet have a character in the campaign. Treat them as a spectator who can ask questions about the game, but frame your response in a way that acknowledges they're not actively participating as a character. Encourage them to create a character if they want to join the adventure.";
       }
       
-      // Use OpenAI to generate a response with simplified context for testing
-      console.log("DEBUG: Calling OpenAI for narration in generate-response endpoint with simplified context");
+      // Use OpenAI to generate a real response
+      console.log("DEBUG: Calling OpenAI for narration in generate-response endpoint with real context");
       
       let narrativeResponse;
       try {
-        // For testing, use a simplified call that we know works
-        narrativeResponse = "The tavern bustles with life, its wooden beams and stone walls resonating with the hum of conversation and clinking tankards. A bard strums a lively tune in the corner while adventurers gather around tables sharing tales of their exploits. Your party finds an empty table in a quiet corner, perfect for planning your next move. What would you like to do?";
+        narrativeResponse = await generateGameNarration(
+          context,
+          playerAction,
+          isAutoAdvance
+        );
         
-        console.log("DEBUG: Using predetermined test narration for generate-response endpoint");
+        console.log("DEBUG: OpenAI response received in generate-response endpoint", {
+          responseLength: narrativeResponse ? narrativeResponse.length : 0
+        });
       } catch (openaiError) {
-        console.error("DEBUG: OpenAI narration generation error in generate-response endpoint:", openaiError);
+        console.error("DEBUG: OpenAI narration generation error:", openaiError);
         throw openaiError;
       }
       

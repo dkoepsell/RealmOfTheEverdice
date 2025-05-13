@@ -254,23 +254,26 @@ Your response should be both narrative and educational, opening up new possibili
     });
     
     try {
-      // For testing purposes, use shorter prompt and fewer tokens
-      console.log("DEBUG: Simplifying request for testing");
+      // Use the proper system and user prompts
+      console.log("DEBUG: Sending full request to OpenAI");
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
             role: "system",
-            content: "You are a helpful D&D dungeon master."
+            content: systemPrompt
           },
           {
             role: "user",
-            content: "Describe a tavern scene briefly."
+            content: userPrompt
           }
         ],
-        temperature: 0.7,
-        max_tokens: 150
+        temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
+        top_p: 0.9, // Use nucleus sampling to increase creative diversity
+        max_tokens: 500, // Reduced for better performance
+        frequency_penalty: 0.5, // Reduce repetition of same tokens
+        presence_penalty: 0.5  // Encourages model to introduce new concepts
       });
       
       console.log("DEBUG: OpenAI response received in generateGameNarration", {
