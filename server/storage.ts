@@ -3113,6 +3113,305 @@ export class DatabaseStorage implements IStorage {
       return metadata;
     }
   }
+  
+  async getAdminDashboardStats(): Promise<{
+    totalUsers: number;
+    newUsersLast30Days: number;
+    totalCampaigns: number;
+    activeCampaigns: number;
+    totalCharacters: number;
+    totalNpcs: number;
+    totalAdventures: number;
+    totalGameLogs: number;
+    averageLogsPerCampaign: number;
+    totalAiDmCampaigns: number;
+    totalHumanDmCampaigns: number;
+    messageCount: number;
+    averageMessagesPerCampaign: number;
+  }> {
+    // Get users count
+    const [{ count: totalUsers }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users);
+      
+    // Get new users in last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const [{ count: newUsersLast30Days }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(sql`${users.createdAt} >= ${thirtyDaysAgo}`);
+      
+    // Get campaigns count
+    const [{ count: totalCampaigns }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(campaigns);
+      
+    // Get active campaigns count
+    const [{ count: activeCampaigns }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(campaigns)
+      .where(eq(campaigns.status, 'active'));
+      
+    // Get AI DM campaigns count
+    const [{ count: totalAiDmCampaigns }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(campaigns)
+      .where(eq(campaigns.isAiDm, true));
+      
+    // Get Human DM campaigns count
+    const [{ count: totalHumanDmCampaigns }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(campaigns)
+      .where(eq(campaigns.isAiDm, false));
+      
+    // Get characters count
+    const [{ count: totalCharacters }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(characters)
+      .where(eq(characters.isBot, false));
+      
+    // Get NPCs count
+    const [{ count: totalNpcs }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(npcs);
+      
+    // Get adventures count
+    const [{ count: totalAdventures }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(adventures);
+      
+    // Get game logs count
+    const [{ count: totalGameLogs }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(gameLogs);
+      
+    // Get average logs per campaign
+    let averageLogsPerCampaign = 0;
+    if (totalCampaigns > 0) {
+      averageLogsPerCampaign = Math.round(totalGameLogs / totalCampaigns);
+    }
+    
+    // Get message count
+    const [{ count: messageCount }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatMessages);
+      
+    // Get average messages per campaign
+    let averageMessagesPerCampaign = 0;
+    if (totalCampaigns > 0) {
+      averageMessagesPerCampaign = Math.round(messageCount / totalCampaigns);
+    }
+    
+    return {
+      totalUsers,
+      newUsersLast30Days,
+      totalCampaigns,
+      activeCampaigns,
+      totalCharacters,
+      totalNpcs,
+      totalAdventures,
+      totalGameLogs,
+      averageLogsPerCampaign,
+      totalAiDmCampaigns,
+      totalHumanDmCampaigns,
+      messageCount,
+      averageMessagesPerCampaign
+    };
+  }
+  
+  async getUserLoginStats(): Promise<{
+    dailyLogins: { date: string; count: number }[];
+    activeUsers: { timeframe: string; count: number }[];
+    returnRate: number;
+  }> {
+    const now = new Date();
+    
+    // Get daily logins for the past 14 days
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    
+    // Format as 'YYYY-MM-DD'
+    const formatDate = (date: Date) => {
+      return date.toISOString().split('T')[0];
+    };
+    
+    // Get all login sessions
+    const sessions = await db
+      .select({
+        createdAt: userSessions.createdAt
+      })
+      .from(userSessions)
+      .where(sql`${userSessions.createdAt} >= ${twoWeeksAgo}`);
+      
+    // Process sessions into daily counts
+    const dailyCounts: Record<string, number> = {};
+    
+    // Initialize all days with 0
+    for (let i = 0; i < 14; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      dailyCounts[formatDate(date)] = 0;
+    }
+    
+    // Count sessions by day
+    sessions.forEach(session => {
+      if (session.createdAt) {
+        const dateKey = formatDate(session.createdAt);
+        if (dailyCounts[dateKey] !== undefined) {
+          dailyCounts[dateKey]++;
+        }
+      }
+    });
+    
+    // Convert to array format sorted by date
+    const dailyLogins = Object.entries(dailyCounts)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+      
+    // Get active users in different timeframes
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    // Count active users in last 24 hours
+    const [{ count: activeUsersDay }] = await db
+      .select({ count: sql<number>`count(distinct ${userSessions.userId})` })
+      .from(userSessions)
+      .where(sql`${userSessions.createdAt} >= ${oneDayAgo}`);
+      
+    // Count active users in last 7 days
+    const [{ count: activeUsersWeek }] = await db
+      .select({ count: sql<number>`count(distinct ${userSessions.userId})` })
+      .from(userSessions)
+      .where(sql`${userSessions.createdAt} >= ${sevenDaysAgo}`);
+      
+    // Count active users in last 30 days
+    const [{ count: activeUsersMonth }] = await db
+      .select({ count: sql<number>`count(distinct ${userSessions.userId})` })
+      .from(userSessions)
+      .where(sql`${userSessions.createdAt} >= ${thirtyDaysAgo}`);
+      
+    // Get total user count
+    const [{ count: totalUsers }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users);
+      
+    // Calculate return rate (percentage of total users who logged in during last 30 days)
+    const returnRate = totalUsers > 0 
+      ? Math.round((activeUsersMonth / totalUsers) * 100)
+      : 0;
+      
+    return {
+      dailyLogins,
+      activeUsers: [
+        { timeframe: "24 hours", count: activeUsersDay },
+        { timeframe: "7 days", count: activeUsersWeek },
+        { timeframe: "30 days", count: activeUsersMonth }
+      ],
+      returnRate
+    };
+  }
+  
+  async getCampaignActivityStats(): Promise<{
+    campaignCreationsByDay: { date: string; count: number }[];
+    mostActiveCampaigns: { id: number; name: string; dmId: number; logCount: number }[];
+    campaignsByStatus: { status: string; count: number }[];
+  }> {
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    
+    // Format as 'YYYY-MM-DD'
+    const formatDate = (date: Date) => {
+      return date.toISOString().split('T')[0];
+    };
+    
+    // Get campaign creations in the last 14 days
+    const recentCampaigns = await db
+      .select({
+        createdAt: campaigns.createdAt
+      })
+      .from(campaigns)
+      .where(sql`${campaigns.createdAt} >= ${twoWeeksAgo}`);
+      
+    // Process campaigns into daily counts
+    const dailyCounts: Record<string, number> = {};
+    
+    // Initialize all days with 0
+    for (let i = 0; i < 14; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      dailyCounts[formatDate(date)] = 0;
+    }
+    
+    // Count campaigns by day
+    recentCampaigns.forEach(campaign => {
+      if (campaign.createdAt) {
+        const dateKey = formatDate(campaign.createdAt);
+        if (dailyCounts[dateKey] !== undefined) {
+          dailyCounts[dateKey]++;
+        }
+      }
+    });
+    
+    // Convert to array format sorted by date
+    const campaignCreationsByDay = Object.entries(dailyCounts)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+      
+    // Get most active campaigns (by game log count)
+    const campaignLogCounts = await db
+      .select({
+        campaignId: gameLogs.campaignId,
+        count: sql<number>`count(*)`
+      })
+      .from(gameLogs)
+      .groupBy(gameLogs.campaignId)
+      .orderBy(sql`count(*) desc`)
+      .limit(5);
+      
+    // Get campaign details for the most active campaigns
+    const mostActiveCampaigns = [];
+    for (const { campaignId, count } of campaignLogCounts) {
+      const [campaign] = await db
+        .select({
+          id: campaigns.id,
+          name: campaigns.name,
+          dmId: campaigns.dmId
+        })
+        .from(campaigns)
+        .where(eq(campaigns.id, campaignId));
+        
+      if (campaign) {
+        mostActiveCampaigns.push({
+          ...campaign,
+          logCount: count
+        });
+      }
+    }
+    
+    // Get campaigns by status
+    const campaignStatusCounts = await db
+      .select({
+        status: campaigns.status,
+        count: sql<number>`count(*)`
+      })
+      .from(campaigns)
+      .groupBy(campaigns.status)
+      .orderBy(desc(sql`count(*)`));
+      
+    return {
+      campaignCreationsByDay,
+      mostActiveCampaigns,
+      campaignsByStatus: campaignStatusCounts.map(({ status, count }) => ({ status, count }))
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();

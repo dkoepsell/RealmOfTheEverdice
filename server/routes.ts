@@ -5886,6 +5886,57 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
     }
   });
   
+  app.get("/api/admin/dashboard-stats", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is a superuser
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const dashboardStats = await storage.getAdminDashboardStats();
+      res.json(dashboardStats);
+    } catch (error) {
+      console.error("Error getting admin dashboard stats:", error);
+      res.status(500).json({ message: "Failed to retrieve dashboard statistics" });
+    }
+  });
+  
+  app.get("/api/admin/user-login-stats", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is a superuser
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const loginStats = await storage.getUserLoginStats();
+      res.json(loginStats);
+    } catch (error) {
+      console.error("Error getting user login stats:", error);
+      res.status(500).json({ message: "Failed to retrieve user login statistics" });
+    }
+  });
+  
+  app.get("/api/admin/campaign-activity-stats", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    
+    // Check if user is a superuser
+    if (req.user.role !== "superuser") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const campaignStats = await storage.getCampaignActivityStats();
+      res.json(campaignStats);
+    } catch (error) {
+      console.error("Error getting campaign activity stats:", error);
+      res.status(500).json({ message: "Failed to retrieve campaign activity statistics" });
+    }
+  });
+  
   app.get("/api/admin/campaigns", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
