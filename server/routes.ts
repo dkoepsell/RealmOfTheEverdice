@@ -3818,7 +3818,8 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
       }).join("\n\n");
       
       // Retrieve narrative patterns to avoid repetition
-      const narrativePatterns = await storage.getNarrativePatterns(campaignId) || {};
+      const campaignMetadata = await storage.getCampaignMetadata(campaignId) || {};
+      const narrativePatterns = campaignMetadata.narrativePatterns || {};
       
       // Add pattern tracking to context in an organized format
       // Sort and group patterns by category and frequency
