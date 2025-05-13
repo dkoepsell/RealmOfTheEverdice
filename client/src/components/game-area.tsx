@@ -68,6 +68,51 @@ export const GameArea = ({
     "Rest and recover"
   ]);
   
+  // Mutation for triggering NPC actions
+  const triggerNpcActionsMutation = useMutation({
+    mutationFn: async () => {
+      if (!campaign?.id) throw new Error("Campaign ID not found");
+      
+      const res = await apiRequest("POST", `/api/campaigns/${campaign.id}/npcs/actions`, {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      // Invalidate game logs cache to show new NPC actions
+      if (campaign?.id) {
+        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/logs`] });
+      }
+      
+      // Add any returned logs directly
+      if (data.logs && Array.isArray(data.logs)) {
+        data.logs.forEach(log => {
+          if (onAddGameLog) {
+            onAddGameLog(log);
+          }
+        });
+      }
+      
+      toast({
+        title: "NPC actions processed",
+        description: `${data.actionsCount || 0} NPC action(s) were processed successfully.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to process NPC actions",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsProcessingNpcActions(false);
+    }
+  });
+  
+  const handleTriggerNpcActions = () => {
+    setIsProcessingNpcActions(true);
+    triggerNpcActionsMutation.mutate();
+  };
+  
   // Generate narration based on player action
   const narrationMutation = useMutation({
     mutationFn: async (playerAction: string) => {
@@ -524,6 +569,28 @@ export const GameArea = ({
                 </>
               )}
             </Button>
+            
+            {/* NPC Action Button - Only shown to Dungeon Masters */}
+            {isDm && (
+              <Button 
+                variant="outline"
+                className="ml-2 bg-amber-50 hover:bg-amber-100 border-amber-700 text-amber-900 font-medieval"
+                onClick={handleTriggerNpcActions}
+                disabled={isProcessingNpcActions || narrationMutation.isPending || autoAdvanceMutation.isPending}
+              >
+                {isProcessingNpcActions ? (
+                  <>
+                    <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-700 border-t-transparent rounded-full"></div>
+                    Processing NPC Actions...
+                  </>
+                ) : (
+                  <>
+                    <UserX className="mr-2 h-4 w-4" />
+                    Trigger NPC Actions
+                  </>
+                )}
+              </Button>
+            )}
           </div>
           
           {/* Open-ended Adventure Guidance */}
