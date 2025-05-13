@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -29,6 +29,8 @@ import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results"
 import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
 import { DiceType } from "@/hooks/use-dice";
 import { useToast } from "@/hooks/use-toast";
+import BattleTracker from "@/components/battle-tracker";
+import { useCombatDetection, CombatParticipant } from "@/hooks/use-combat-detection";
 
 export interface GameAreaProps {
   campaign: Campaign;
@@ -67,6 +69,64 @@ export const GameArea = ({
     "Search for hidden items",
     "Rest and recover"
   ]);
+  
+  // Get the latest narrative content
+  const getLatestNarrativeContent = () => {
+    // Filter narrative logs only and get the most recent one
+    const narrativeLogs = gameLogs.filter(log => log.type === 'narrative' || log.type === 'dm');
+    return narrativeLogs.length > 0 ? narrativeLogs[0].content : '';
+  };
+  
+  // Combat detection with the hook
+  const { 
+    inCombat, 
+    setInCombat,
+    combatRound,
+    setCombatRound,
+    combatTurn,
+    setCombatTurn,
+    detectedThreats 
+  } = useCombatDetection(getLatestNarrativeContent());
+  
+  // Combat participants include party characters and detected threats
+  const [combatParticipants, setCombatParticipants] = useState<CombatParticipant[]>([]);
+  
+  // Initialize combat participants when threats are detected or combat starts
+  useEffect(() => {
+    if (inCombat && detectedThreats.length > 0) {
+      // Initialize with player character
+      const pcParticipant: CombatParticipant = {
+        id: `pc-${currentCharacter.id}`,
+        name: currentCharacter.name,
+        type: 'ally',
+        initiative: Math.floor(Math.random() * 20) + 1 + Math.floor((currentCharacter.dexterity - 10) / 2),
+        hp: currentCharacter.hp || 10,
+        maxHp: currentCharacter.maxHp || 10,
+        ac: 10 + Math.floor((currentCharacter.dexterity - 10) / 2), // Basic AC calculation
+        conditions: []
+      };
+      
+      // Combine PC with detected threats
+      setCombatParticipants([pcParticipant, ...detectedThreats]);
+    }
+  }, [inCombat, detectedThreats, currentCharacter]);
+  
+  // Handle ending combat
+  const handleEndCombat = () => {
+    setInCombat(false);
+    setCombatParticipants([]);
+  };
+  
+  // Handle next turn in combat
+  const handleNextTurn = () => {
+    // Increment turn, and round if necessary
+    if (combatTurn >= combatParticipants.length - 1) {
+      setCombatTurn(0);
+      setCombatRound(combatRound + 1);
+    } else {
+      setCombatTurn(combatTurn + 1);
+    }
+  };
   
   // Mutation for triggering NPC actions
   const triggerNpcActionsMutation = useMutation({
@@ -346,6 +406,17 @@ export const GameArea = ({
 
   return (
     <div className="w-full lg:w-2/4 flex flex-col">
+      {/* Battle Tracker - will only show when inCombat is true */}
+      <BattleTracker 
+        inCombat={inCombat}
+        combatParticipants={combatParticipants}
+        combatRound={combatRound}
+        combatTurn={combatTurn}
+        onEndCombat={handleEndCombat}
+        onNextTurn={handleNextTurn}
+        partyCharacters={[currentCharacter]}
+      />
+      
       {/* Game State Bar */}
       <div className="bg-secondary text-white p-2">
         <div className="flex justify-between items-center px-4">
@@ -356,6 +427,7 @@ export const GameArea = ({
           <div>
             <span className="font-medieval">Current Turn:</span>
             <span className="ml-2 font-bold">{currentCharacter.name}</span>
+            {inCombat && <span className="ml-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded">COMBAT</span>}
           </div>
         </div>
       </div>
