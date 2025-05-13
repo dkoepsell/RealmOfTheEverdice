@@ -257,30 +257,43 @@ Your response should be both narrative and educational, opening up new possibili
       // Use the proper system and user prompts
       console.log("DEBUG: Sending full request to OpenAI");
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: userPrompt
-          }
-        ],
-        temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
-        top_p: 0.9, // Use nucleus sampling to increase creative diversity
-        max_tokens: 500, // Reduced for better performance
-        frequency_penalty: 0.5, // Reduce repetition of same tokens
-        presence_penalty: 0.5  // Encourages model to introduce new concepts
-      });
+      // Use a more aggressive timeout for this specific request
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), 45000); // 45 second timeout
       
-      console.log("DEBUG: OpenAI response received in generateGameNarration", {
-        responseLength: response.choices[0].message.content?.length || 0
-      });
-      
-      return response.choices[0].message.content;
+      try {
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt
+            },
+            {
+              role: "user",
+              content: userPrompt
+            }
+          ],
+          temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
+          top_p: 0.9, // Use nucleus sampling to increase creative diversity
+          max_tokens: 350, // Further reduced for better performance
+          frequency_penalty: 0.5, // Reduce repetition of same tokens
+          presence_penalty: 0.5,  // Encourages model to introduce new concepts
+        }, {
+          signal: abortController.signal
+        });
+        
+        clearTimeout(timeoutId); // Clear the timeout if request completes
+        
+        console.log("DEBUG: OpenAI response received in generateGameNarration", {
+          responseLength: response.choices[0].message.content?.length || 0
+        });
+        
+        return response.choices[0].message.content;
+      } catch (err) {
+        clearTimeout(timeoutId); // Make sure to clear the timeout
+        throw err; // Re-throw to be handled by the outer catch block
+      }
     } catch (openaiError) {
       console.error("DEBUG: OpenAI API error in generateGameNarration:", openaiError);
       throw openaiError;
