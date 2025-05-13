@@ -3912,8 +3912,10 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         throw openaiError;
       }
       
-      // Advanced pattern detection and tracking system
+      // Advanced pattern detection and tracking system - temporarily disabled for performance
       try {
+        // Temporarily disabling pattern tracking to improve performance
+        /*
         // Environment patterns
         const environments = [
           "dungeon", "cave", "forest", "town", "village", "city", "mountain", 
@@ -3927,24 +3929,33 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
           "social interaction", "negotiation", "conversation", "stealth", 
           "exploration", "investigation", "chase", "infiltration"
         ];
+        */
         
+        // Temporarily disabling pattern tracking completely
+        console.log("Pattern tracking disabled for performance optimization");
+        
+        /*
         // Game mechanics patterns
         const mechanics = [
           "skill check", "saving throw", "attack roll", "ability check",
           "initiative", "death save", "inspiration", "advantage", "disadvantage",
           "critical hit", "damage roll", "spell cast", "concentration check"
         ];
+        */
         
+        /*
         // Entity patterns
         const entities = [
           "monster", "undead", "orc", "goblin", "dragon", "demon", "elemental",
           "NPC", "merchant", "guard", "noble", "wizard", "priest", "rogue", "warrior",
           "druid", "ranger", "artifact", "magic item", "treasure", "trap"
         ];
+        */
         
-        // Detect patterns in the narrative response
+        // Skip pattern detection for better performance
         const detectedPatterns = [];
         
+        /*
         // Detect environment patterns
         environments.forEach(env => {
           const envRegex = new RegExp(`\\b${env}\\b`, 'i');
@@ -3952,7 +3963,9 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
             detectedPatterns.push(`environment:${env}`);
           }
         });
+        */
         
+        /*
         // Detect interaction patterns
         interactions.forEach(interaction => {
           const interactionRegex = new RegExp(`\\b${interaction.replace(/ /g, '\\s+')}\\b`, 'i');
@@ -3976,6 +3989,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
             detectedPatterns.push(`entity:${entity}`);
           }
         });
+        */
         
         // Update pattern counts
         detectedPatterns.forEach(pattern => {
