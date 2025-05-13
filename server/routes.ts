@@ -3947,10 +3947,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get the user's character if they have one in this campaign
       let userCharacter = null;
-      if (req.isAuthenticated()) {
-        const campaignCharacter = characters.find(cc => cc.character.userId === req.user.id);
-        if (campaignCharacter) {
-          userCharacter = campaignCharacter.character;
+      if (req.isAuthenticated() && req.user) {
+        try {
+          // Try both structure formats since the API may return different structures
+          // First try the direct format where character data is at the top level
+          userCharacter = characters.find(char => char.userId === req.user.id);
+          
+          // If not found, try the nested format
+          if (!userCharacter) {
+            const campaignCharacter = characters.find(cc => 
+              cc.character && cc.character.userId === req.user.id
+            );
+            
+            if (campaignCharacter && campaignCharacter.character) {
+              userCharacter = campaignCharacter.character;
+            }
+          }
+          
+          console.log("User character lookup result:", userCharacter ? "Found" : "Not found");
+        } catch (error) {
+          console.error("Error finding user character:", error);
+          // Continue without a character reference if there's an error
         }
       }
       
@@ -4289,12 +4306,31 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
             timestamp: new Date()
           });
           
+          // Try to create a player log if we don't already have one
+          let playerLogId;
+          try {
+            const safePlayerAction = playerActionSafe || "Player action";
+            const newPlayerLog = await storage.createGameLog({
+              campaignId,
+              content: safePlayerAction,
+              type: "player",
+              timestamp: new Date(),
+              characterId: userCharacter?.id
+            });
+            playerLogId = newPlayerLog.id;
+            console.log("Created emergency player log:", playerLogId);
+          } catch (playerLogError) {
+            console.error("Failed to create player log in emergency mode:", playerLogError);
+            // Continue without player log reference
+          }
+          
           // Send the emergency fallback as a regular response
           return res.json({
             success: true, 
             narration: genericFallback, 
             response: genericFallback,
             logId: emergencyLog.id,
+            playerLogId: playerLogId, // May be undefined if creation failed
             isEmergencyFallback: true
           });
         } catch (emergencyError) {
