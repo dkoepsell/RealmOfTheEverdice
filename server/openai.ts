@@ -122,7 +122,14 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
 
 export async function generateGameNarration(context: string, playerAction: string, isAutoAdvance: boolean = false) {
   try {
+    // Create a controller to allow timeout for OpenAI requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+    
     let systemPrompt = `You are an expert Dungeon Master narrating a D&D game, creating an educational and immersive open-world experience. You adapt fluidly to ANY player action while teaching real D&D mechanics.
+    
+SPECIAL HANDLING FOR CREATIVE ACTIONS: 
+When players perform unusual, creative, or playful actions (like dancing, somersaulting, etc.), treat these as valid gameplay expressions. Respond with appropriate humor and narrative integration without breaking immersion. These moments add personality and should be rewarded with interesting outcomes.
     
 As the Educational Auto-DM, your role is to:
 1. Create a dynamic world that reacts realistically to player choices
@@ -190,9 +197,35 @@ Your narration should be vivid and educational, focusing on immersion while teac
     // Check if playerAction contains a dice roll
     const containsDiceRoll = playerAction.match(/roll(ed|s)\s+\d+|result\s+\d+|DC\s+\d+|success|failure|critical/i);
     
+    // Check if playerAction is a creative/performative action (somersault, dance, etc)
+    const isPerformativeAction = playerAction.match(/(somersault|cartwheel|flip|dance|twirl|bow|curtsy|pirouette|leap|tada|ballet|dramatic|perform|flourish|gesture|pose|kneel|salute|backflip|handstand|jump|skip|prance|strut|swagger|wink|whistle|sing|shout|yell|announce|declare|proclaim|present|introduce|reveal)/i);
+    
     let userPrompt = "";
     
-    if (isAutoAdvance) {
+    if (isPerformativeAction) {
+      userPrompt = `Context: ${context}
+
+Player Performative Action: ${playerAction}
+
+The player is performing a creative, physical, or dramatic action (like dancing, somersaulting, etc.). Respond with a LIGHT-HEARTED and ENTERTAINING narration that:
+
+1. Vividly describes how the character performs this action in the game world
+2. Shows how NPCs and the environment react to this unexpected behavior
+3. Includes humorous or amusing details without mocking the player
+4. Ties this performative action to the D&D mechanics of Performance, Acrobatics, or Athletics
+5. Gently guides the narrative back to the adventure while acknowledging the player's creativity
+
+IMPORTANT: This is a moment of levity and player expression - embrace it with good humor while maintaining the world's integrity. Suggest an appropriate skill check in [Roll: d20+modifier vs DC X for Y] format that would apply to this performance, and explain how success or failure might impact the scene.
+
+Your response should:
+- Be brief but vivid (150-200 words max)
+- Balance humor with respect for the game world
+- Acknowledge the action as valid player expression
+- Provide a natural way to return to the main adventure
+- Include at least one way this action might unexpectedly benefit the character
+
+Keep the tone warm and supportive of player creativity.`;  
+    } else if (isAutoAdvance) {
       userPrompt = `Context: ${context}
 
 The player wants to advance the story. Create a compelling narrative that progresses the adventure in a CREATIVE, IMAGINATIVE way that is DIFFERENT from your previous responses. Carefully read the context to identify what type of scene was MOST RECENTLY presented, then DELIBERATELY CHOOSE A DIFFERENT TYPE of scene or encounter to avoid repetition.
