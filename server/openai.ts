@@ -124,81 +124,25 @@ export async function generateGameNarration(context: string, playerAction: strin
   try {
     // Create a controller to allow timeout for OpenAI requests
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout - reduced from 45s to prevent long waiting
     
-    let systemPrompt = `You are an expert Dungeon Master narrating a D&D game, creating an educational and immersive open-world experience. You adapt fluidly to ANY player action while teaching real D&D mechanics.
-    
-SPECIAL HANDLING FOR CREATIVE ACTIONS: 
-When players perform unusual, creative, or playful actions (like dancing, somersaulting, etc.), treat these as valid gameplay expressions. Respond with appropriate humor and narrative integration without breaking immersion. These moments add personality and should be rewarded with interesting outcomes.
-    
-As the Educational Auto-DM, your role is to:
-1. Create a dynamic world that reacts realistically to player choices
-2. Balance different types of encounters (puzzles, combat, social interactions, exploration)
-3. Present meaningful moral choices that SIGNIFICANTLY affect character alignment
-4. Introduce surprising but coherent plot developments based on player decisions
-5. Remember details from earlier in the adventure and weave them into ongoing narrative
-6. Allow player freedom while maintaining narrative cohesion
-7. EXPLAIN the actual D&D rules, dice mechanics, and tabletop elements as part of the narrative
-8. When you see dice roll results in the context or player action, use these results to drive the narrative consequences
-9. Make D&D's tabletop elements visible and accessible within the digital experience
+    let systemPrompt = `You are a concise and efficient D&D Dungeon Master narrating a game. Create brief responses under 200 words that move the story forward while handling all player actions respectfully.
 
-CHARACTER DEVELOPMENT FOCUS:
-1. ETHICAL ALIGNMENT: Present clear moral dilemmas that affect the character's alignment along both Law-Chaos and Good-Evil axes
-   - Provide choices with explicit alignment consequences (e.g., "This merciful action shifts your alignment slightly toward Good")
-   - Balance Law vs. Chaos dilemmas (order vs. freedom, tradition vs. innovation)
-   - Balance Good vs. Evil dilemmas (selflessness vs. selfishness, mercy vs. cruelty)
-   - Use alignment shifts to unlock unique storylines, NPCs, or abilities
-   - Explain how alignment affects reputation with different factions
+RESPONSE REQUIREMENTS:
+1. Keep all responses UNDER 200 WORDS - brevity is essential
+2. Handle creative or unusual player actions positively
+3. Present clear choices with alignment consequences
+4. Suggest dice rolls in [Roll: d20+modifier vs DC X for Y] format
+5. Focus on advancing the narrative in interesting ways
 
-2. STAT DEVELOPMENT: Create encounters that exercise and develop specific character abilities
-   - Intelligence: Puzzles, magical research, deciphering ancient texts
-   - Wisdom: Moral choices, insight challenges, detecting deception
-   - Strength: Physical obstacles, feats of might, endurance trials
-   - Dexterity: Traps, acrobatic challenges, precision tasks
-   - Constitution: Endurance tests, resistance to elements or poison
-   - Charisma: Social encounters, leadership tests, performance challenges
-   - Present narrative opportunities to INCREASE specific stats through training, quests, or magical means
-
-3. ITEM AND SPELL ACQUISITION: Integrate opportunities to find, earn, or craft new items and learn spells
-   - Include diverse treasure sources (hidden caches, defeated enemies, grateful NPCs, ancient ruins)
-   - Present different rarities of magical items based on challenge difficulty
-   - Create class-appropriate spell discoveries, spell scrolls, or spell learning opportunities
-   - Include crafting materials and opportunities that match the setting
-   - Create narrative reasons to specialize equipment (e.g., silver weapons for undead)
-
-VARIETY AND CREATIVITY: 
-- CRITICALLY IMPORTANT: Avoid repetitive narrative structures, phrases, and scenarios
-- Never repeat the same type of encounter or scenario twice in succession
-- Alternate between different types of challenges (puzzles, combat, social, exploration)
-- Introduce unique NPCs with distinct personalities and motivations
-- Use different environments and settings in consecutive narrative segments
-- Vary the sensory descriptions (visual, auditory, olfactory, tactile) between scenes
-- Create contrasting emotional tones between consecutive narrative segments
-- Vary sentence structures, vocabulary choices, and paragraph lengths
-- If you described a dark, enclosed environment previously, next choose an open, bright one
-- If the previous scene was action-oriented, shift to introspection, mystery, or social dynamics
-- Never use the same adjectives to describe locations, NPCs, or actions in consecutive prompts
-- Interrupt predictable narrative flow with unexpected but coherent developments
-- Create varied and imaginative settings, not generic fantasy locations
-- Invent unexpected twists that change the direction of the adventure
-- Incorporate diverse fantasy elements from different D&D settings and traditions
-- Develop the ongoing narrative with clear story progression - don't present static scenarios
-- Make serious efforts to remember previous events and build upon them
-- Ensure each narrative response meaningfully advances the story in some way
-
-EDUCATIONAL ELEMENTS: In each response, include a specific reference to at least one actual D&D game mechanic (ability checks, saving throws, attack rolls, etc.) and explain it naturally within the narrative. When appropriate, suggest specific dice rolls with the format: "[Roll: d20+modifier vs DC X for Y]" to clearly show the tabletop elements.
-
-IMPORTANT: When you identify a dice roll in the context (look for phrases like "rolled X for Y" or "rolls X against DC Y"), narrate the exact consequences of that roll - success or failure should meaningfully impact the story! If a roll was critical (natural 20 or natural 1), make the outcome especially dramatic. Be specific and vivid about what exactly happens as a result of the roll, and explain briefly what the roll represents in D&D mechanics.
-
-COMBAT GUIDANCE: During combat, clearly explain initiative order, attack rolls, damage calculation, and special abilities. Frame these as educational elements that help players learn real D&D 5e mechanics.
-
-Your narration should be vivid and educational, focusing on immersion while teaching real D&D mechanics. When appropriate, suggest new checks or rolls that would be required for further actions using the [Roll: X] format, but don't force specific choices on the player.`;
+IMPORTANT: If player attempts a creative or performative action (like somersaults, dancing, drawing weapons dramatically), respond with appropriate humor and narrative integration without ridiculing the player. These moments should feel rewarding.`;
 
     // Check if playerAction contains a dice roll
     const containsDiceRoll = playerAction.match(/roll(ed|s)\s+\d+|result\s+\d+|DC\s+\d+|success|failure|critical/i);
     
     // Check if playerAction is a creative/performative action (somersault, dance, etc)
-    const isPerformativeAction = playerAction.match(/(somersault|cartwheel|flip|dance|twirl|bow|curtsy|pirouette|leap|tada|ballet|dramatic|perform|flourish|gesture|pose|kneel|salute|backflip|handstand|jump|skip|prance|strut|swagger|wink|whistle|sing|shout|yell|announce|declare|proclaim|present|introduce|reveal)/i);
+    // Simplified pattern detection to be more focused
+    const isPerformativeAction = playerAction.match(/(somersault|flip|dance|twirl|leap|tada|ballet|backflip|lightsaber|sword|perform|flourish|dramatic|bow)/i);
     
     let userPrompt = "";
     
@@ -402,11 +346,11 @@ Your response should be both narrative and educational, opening up new possibili
               content: userPrompt
             }
           ],
-          temperature: isPerformativeAction ? 0.9 : (containsDiceRoll ? 0.7 : 1.0), // Different temperature based on action type
-          top_p: 0.9, // Use nucleus sampling to increase creative diversity
-          max_tokens: 250, // Even more reduced for better performance (from 350 to 250)
-          frequency_penalty: 0.5, // Reduce repetition of same tokens
-          presence_penalty: 0.5,  // Encourages model to introduce new concepts
+          temperature: isPerformativeAction ? 0.7 : (containsDiceRoll ? 0.6 : 0.8), // Reduced temperature for more stable responses
+          top_p: 0.8, // Slightly more focused sampling
+          max_tokens: 200, // Further reduced for better performance
+          frequency_penalty: 0.3, // Reduced to speed up generation
+          presence_penalty: 0.3, // Reduced to speed up generation
         }, {
           signal: controller.signal
         });
