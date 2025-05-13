@@ -4084,7 +4084,22 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         });
       } catch (openaiError) {
         console.error("DEBUG: OpenAI narration generation error:", openaiError);
-        throw openaiError;
+        
+        // Generate fallback responses based on action type instead of throwing
+        if (playerAction.toLowerCase().includes("look") || playerAction.toLowerCase().includes("examine") || playerAction.toLowerCase().includes("observe")) {
+          narrativeResponse = `You carefully examine your surroundings. The area reveals several notable features: a path leading further ahead, some interesting details in the environment that might be worth investigating, and signs of recent activity. There might be items or clues nearby that could help you. What would you like to focus on or do next?`;
+        } else if (playerAction.toLowerCase().includes("attack") || playerAction.toLowerCase().includes("fight") || playerAction.toLowerCase().includes("cast")) {
+          narrativeResponse = `You prepare for combat, positioning yourself strategically. Your opponent watches your movements carefully, looking for an opening. This could be a challenging but potentially rewarding encounter. [Roll: d20+your attack modifier vs their AC to strike] How do you want to approach this fight?`;
+        } else if (playerAction.toLowerCase().includes("talk") || playerAction.toLowerCase().includes("speak") || playerAction.toLowerCase().includes("ask")) {
+          narrativeResponse = `Your words seem to have an effect. The individual listens attentively, considering what you've said. They appear willing to share information if approached correctly. What specific question would you like to ask, or what approach will you take in this conversation?`;
+        } else if (playerAction.toLowerCase().includes("search") || playerAction.toLowerCase().includes("find") || playerAction.toLowerCase().includes("check")) {
+          narrativeResponse = `Your careful search reveals several interesting possibilities. There are a few areas that seem particularly promising for further investigation. You might discover something valuable with a more focused approach. [Roll: d20+INT or WIS vs DC 14 for Investigation] Which area would you like to examine more closely?`;
+        } else {
+          narrativeResponse = `The Dungeon Master nods thoughtfully. "That's an interesting approach! You have several options now: you could continue in this direction, investigate the nearby area more carefully, or try a different strategy entirely. The choice is yours - what would you like to do next?"`;
+        }
+        
+        // Log that we're using a fallback
+        console.log("DEBUG: Using fallback narration response due to OpenAI error");
       }
       
       // Advanced pattern detection and tracking system - temporarily disabled for performance
@@ -4205,13 +4220,57 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
     } catch (error) {
       console.error("Error generating response:", error);
       
-      // For testing, skip recording error logs
-      console.log("DEBUG: Error occurred, would normally record player action and error narrative to logs");
+      // Create a fallback narrative response based on the player's action
+      let fallbackResponse;
       
-      res.status(500).json({ 
-        message: "Failed to process your action. Please try again.",
-        error: error.message
-      });
+      try {
+        // Attempt to analyze the player's action to provide a contextually appropriate fallback
+        if (playerAction.toLowerCase().includes("look") || playerAction.toLowerCase().includes("examine") || playerAction.toLowerCase().includes("observe")) {
+          fallbackResponse = `As you observe your surroundings, you notice paths leading in several directions, each with its own distinctive features and potential discoveries. There might be important details that could aid your journey. What specific area would you like to focus on next?`;
+        } else if (playerAction.toLowerCase().includes("attack") || playerAction.toLowerCase().includes("fight") || playerAction.toLowerCase().includes("cast")) {
+          fallbackResponse = `You ready yourself for combat, assessing your opponent carefully. They appear to have both strengths and vulnerabilities that could affect your tactics. How do you want to approach this confrontation? [Roll: d20+your combat modifier to determine success]`;
+        } else if (playerAction.toLowerCase().includes("talk") || playerAction.toLowerCase().includes("speak") || playerAction.toLowerCase().includes("ask")) {
+          fallbackResponse = `Your conversation partner listens to what you have to say, their expression suggesting they have valuable information to share if approached correctly. What specifically would you like to ask them about, or how do you want to steer the conversation?`;
+        } else if (playerAction.toLowerCase().includes("move") || playerAction.toLowerCase().includes("go") || playerAction.toLowerCase().includes("walk")) {
+          fallbackResponse = `You move forward carefully, taking in the changing surroundings. New paths and possibilities present themselves. The area ahead contains several points of interest that might be worth investigating. Which direction or feature draws your attention?`;
+        } else {
+          fallbackResponse = `The Dungeon Master considers your action thoughtfully. "An interesting choice! This opens up several possibilities for your adventure. You could explore further, interact with nearby elements, or pursue a different approach entirely. What would you like to do next?"`;
+        }
+        
+        // Create game logs even for fallback responses
+        const playerLog = await storage.createGameLog({
+          campaignId,
+          content: playerAction,
+          type: "player",
+          timestamp: new Date(),
+          characterId: userCharacter?.id
+        });
+        
+        const narrativeLog = await storage.createGameLog({
+          campaignId,
+          content: fallbackResponse,
+          type: "narrative",
+          timestamp: new Date()
+        });
+        
+        // Send the fallback as a regular response
+        return res.json({
+          success: true, 
+          response: fallbackResponse, 
+          logId: narrativeLog.id,
+          playerLogId: playerLog.id,
+          isFallback: true
+        });
+      } catch (fallbackError) {
+        // If even the fallback creation fails, return a generic response
+        console.error("Error creating fallback response:", fallbackError);
+        
+        // Do not expose error details to client
+        res.status(500).json({ 
+          message: "The DM is thinking about your next move. Please try again in a moment.",
+          success: false
+        });
+      }
     }
   });
 

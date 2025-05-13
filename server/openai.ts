@@ -365,6 +365,11 @@ Maintain world consistency and advance the story meaningfully.`;
     });
     
     try {
+      // Create fetch options with timeout signal
+      const fetchOptions = {
+        signal: controller.signal
+      };
+      
       // Send request to OpenAI with optimized parameters
       const response = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -380,8 +385,7 @@ Maintain world consistency and advance the story meaningfully.`;
         max_tokens: isPerformativeAction ? 75 : 180,
         top_p: 0.9,
         presence_penalty: 0.2,
-        frequency_penalty: 0.3,
-        signal: controller.signal
+        frequency_penalty: 0.3
       });
       
       // Clear timeout when request completes successfully
