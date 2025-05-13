@@ -442,13 +442,12 @@ export async function generateDialogue(npcInfo: string, context: string, playerP
       npcInfoLength: sanitizedNpcInfo.length
     });
     
-    // Make the API request with a timeout
+    // Make the API request
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
       messages: messages,
       max_tokens: 300, // Limit token output for faster responses
-      temperature: 0.7, // Slightly lower temperature for more consistent responses
-      timeout: 10000 // 10-second timeout
+      temperature: 0.7 // Slightly lower temperature for more consistent responses
     });
 
     // Verify we got a valid response

@@ -3725,16 +3725,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Add the missing narrative generation endpoint
+  // Generate a narrated response to player action in a campaign
   app.post("/api/campaigns/:id/generate-response", async (req, res) => {
-    // Temporarily disable authentication for testing
-    // if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    
     try {
+      // Log request info with redacted sensitive data
       console.log("DEBUG: generate-response request received", {
         params: req.params,
-        body: req.body,
-        user: req.user ? req.user.id : 'not authenticated'
+        body: {
+          ...req.body,
+          playerAction: req.body.playerAction ? req.body.playerAction.substring(0, 20) + "..." : undefined
+        },
+        user: req.isAuthenticated() ? req.user.id : 'not authenticated'
       });
       
       const campaignId = parseInt(req.params.id);
@@ -3742,68 +3743,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid campaign ID" });
       }
       
-      // For testing, use mock data instead of database queries
-      console.log("DEBUG: Using mock campaign data for testing");
+      // Get player action from request
+      const { playerAction, isAutoAdvance = false } = req.body;
       
-      const campaign = {
-        id: campaignId,
-        title: "Test Campaign",
-        description: "A test campaign",
-        setting: "Medieval fantasy",
-        dmId: 1,
-        theme: "Fantasy",
-        storyContext: "The party has just arrived at a tavern in a small village."
-      };
+      if (!playerAction) {
+        return res.status(400).json({ message: "Player action is required" });
+      }
       
-      // Mock character data
-      const characters = [];
+      // Record the player's action first
+      const playerLog = await storage.createGameLog({
+        campaignId,
+        content: playerAction,
+        type: "player",
+        timestamp: new Date()
+      });
       
-      // For testing purposes, treat all requests as valid
-      const userCharacter = null; // Simulate a user with no character
+      // Get campaign data
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
       
-      // Always allow participation for testing
-      const isUserAllowedToParticipate = true;
+      // Get related campaign data
+      const locations = await storage.getCampaignLocations(campaignId);
+      const characters = await storage.getCampaignCharacters(campaignId);
+      const recentLogs = await storage.getRecentGameLogs(campaignId, 30);
       
-      // Skip permission check for testing
+      // Get the user's character if they have one in this campaign
+      let userCharacter = null;
+      if (req.isAuthenticated()) {
+        const campaignCharacter = characters.find(cc => cc.character.userId === req.user.id);
+        if (campaignCharacter) {
+          userCharacter = campaignCharacter.character;
+        }
+      }
       
-      // Use mock data for testing
-      const campaignDetails = campaign;
-      
-      // Mock locations data
-      const locations = [
-        { name: "The Prancing Pony Tavern", description: "A cozy tavern with a warm fireplace." },
-        { name: "Village Square", description: "The central gathering place in the village." }
-      ];
-      
-      // Mock game logs
-      const allGameLogs = [
-        { content: "The party arrived at the tavern.", timestamp: new Date() }
-      ];
-      
-      // For testing, use mock data with predefined types
-      const narrativeLogs = [
-        { type: "narrative", content: "The tavern is warm and inviting, with a crackling fire in the hearth.", timestamp: new Date(Date.now() - 10000) }
-      ];
-      const playerLogs = [
-        { type: "player", content: "I look around for the barkeeper.", timestamp: new Date(Date.now() - 5000) }
-      ];
-      const systemLogs = [
-        { type: "system", content: "Perception roll: 15", timestamp: new Date(Date.now() - 3000) }
-      ];
-      
-      // Format campaign details for context - simplified for testing
+      // Format campaign details for context
       const campaignContext = `
-CAMPAIGN: "Test Adventure"
-SETTING: Fantasy tavern
-THEME: Adventure
-CURRENT CHARACTER: Spectator (no character selected yet)
+CAMPAIGN: "${campaign.title}"
+SETTING: ${campaign.setting || 'Fantasy world'}
+THEME: ${campaign.theme || 'Adventure'}
+DIFFICULTY: ${campaign.difficulty || 'Standard'}
+${userCharacter ? `CURRENT CHARACTER: ${userCharacter.name}, a level ${userCharacter.level} ${userCharacter.race} ${userCharacter.class}` : 'CURRENT CHARACTER: Spectator (no character selected yet)'}
 
-KNOWN LOCATIONS: The Prancing Pony Tavern, Village Square
+${locations && locations.length > 0 
+  ? `KNOWN LOCATIONS: ${locations.map(loc => loc.name).join(', ')}`
+  : 'KNOWN LOCATIONS: None recorded yet'}
 
-CAMPAIGN SUMMARY: An ongoing adventure in the world of Everdice.
+CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world of Everdice.'}
 `;
       
-      // Combine and sort the filtered logs by timestamp
+      // Group and sort logs by timestamp
+      const narrativeLogs = recentLogs.filter(log => log.type === 'narrative');
+      const playerLogs = recentLogs.filter(log => log.type === 'player');
+      const systemLogs = recentLogs.filter(log => log.type === 'system');
+      
+      // Combine and sort all logs by timestamp
       const relevantLogs = [...narrativeLogs, ...playerLogs, ...systemLogs]
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       
@@ -3811,7 +3806,7 @@ CAMPAIGN SUMMARY: An ongoing adventure in the world of Everdice.
       let context = campaignContext + "\n\nRECENT EVENTS:\n";
       
       context += relevantLogs.map(log => {
-        // Format each log entry with clear labels and structure
+        // Format each log entry with clear labels
         if (log.type === "player") {
           return `PLAYER ACTION: ${log.content}`;
         } else if (log.type === "narrative") {
@@ -3822,20 +3817,8 @@ CAMPAIGN SUMMARY: An ongoing adventure in the world of Everdice.
         return "";
       }).join("\n\n");
       
-      // Get player action from request
-      const { playerAction, isAutoAdvance = false } = req.body;
-      
-      if (!playerAction) {
-        return res.status(400).json({ message: "Player action is required" });
-      }
-      
-      // Skip recording to database for testing
-      console.log("DEBUG: Would normally record player action:", playerAction);
-      
-      try {
-        // Skip pattern retrieval for testing
-        console.log("DEBUG: Skipping pattern retrieval for testing");
-        const narrativePatterns = {};
+      // Retrieve narrative patterns to avoid repetition
+      const narrativePatterns = await storage.getNarrativePatterns(campaignId) || {};
       
       // Add pattern tracking to context in an organized format
       // Sort and group patterns by category and frequency
