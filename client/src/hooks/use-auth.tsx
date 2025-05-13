@@ -102,8 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Enhance user with permission helpers
   const enhancedUser = user ? {
     ...user,
-    isAdmin: user.role === 'admin' || user.role === 'superadmin',
-    isSuperAdmin: user.role === 'superadmin' || user.username === 'KoeppyLoco'
+    isAdmin: user.role === 'admin' || user.role === 'superuser',
+    isSuperAdmin: user.role === 'superuser' || user.username === 'KoeppyLoco'
   } : null;
 
   return (
