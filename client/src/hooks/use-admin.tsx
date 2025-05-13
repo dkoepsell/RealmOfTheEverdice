@@ -31,6 +31,12 @@ interface CampaignActivityStats {
   campaignCreationsByDay: { date: string; count: number }[];
   mostActiveCampaigns: { id: number; name: string; dmId: number; logCount: number }[];
   campaignsByStatus: { status: string; count: number }[];
+  campaignStatusDistribution: {
+    active: number;
+    completed: number;
+    onHold: number;
+  };
+  averageMessagesPerCampaign: number;
 }
 
 export function useAdmin() {

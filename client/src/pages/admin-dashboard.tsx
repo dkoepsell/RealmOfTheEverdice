@@ -1246,13 +1246,21 @@ export default function AdminDashboard() {
                     <div className="bg-muted rounded p-3">
                       <p className="text-xs text-muted-foreground text-center">Human DM</p>
                       <p className="text-2xl font-bold text-center">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                        {isLoadingDashboardStats ? (
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                        ) : (
+                          dashboardStats?.totalHumanDmCampaigns || 0
+                        )}
                       </p>
                     </div>
                     <div className="bg-muted rounded p-3">
                       <p className="text-xs text-muted-foreground text-center">AI DM</p>
                       <p className="text-2xl font-bold text-center">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                        {isLoadingDashboardStats ? (
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                        ) : (
+                          dashboardStats?.totalAiDmCampaigns || 0
+                        )}
                       </p>
                     </div>
                   </div>
@@ -1264,19 +1272,31 @@ export default function AdminDashboard() {
                     <div className="bg-muted rounded p-3 flex justify-between items-center">
                       <span className="text-sm">Active</span>
                       <span className="font-medium">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {isLoadingCampaignActivityStats ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          campaignActivityStats?.campaignStatusDistribution.active || 0
+                        )}
                       </span>
                     </div>
                     <div className="bg-muted rounded p-3 flex justify-between items-center">
                       <span className="text-sm">Completed</span>
                       <span className="font-medium">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {isLoadingCampaignActivityStats ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          campaignActivityStats?.campaignStatusDistribution.completed || 0
+                        )}
                       </span>
                     </div>
                     <div className="bg-muted rounded p-3 flex justify-between items-center">
                       <span className="text-sm">On Hold</span>
                       <span className="font-medium">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {isLoadingCampaignActivityStats ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          campaignActivityStats?.campaignStatusDistribution.onHold || 0
+                        )}
                       </span>
                     </div>
                   </div>
@@ -1286,7 +1306,11 @@ export default function AdminDashboard() {
                   <h3 className="text-sm font-medium">Average Messages Per Campaign</h3>
                   <div className="bg-muted rounded mt-2 p-4 flex items-center justify-between">
                     <p className="text-2xl font-bold">
-                      <Loader2 className="h-6 w-6 animate-spin" />
+                      {isLoadingCampaignActivityStats ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : (
+                        campaignActivityStats?.averageMessagesPerCampaign.toFixed(1) || 0
+                      )}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       messages per campaign
