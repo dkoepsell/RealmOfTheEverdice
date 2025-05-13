@@ -138,11 +138,11 @@ export function useAmbientSound(
     setCurrentContext(context);
     
     if (context.primary !== currentPrimary) {
-      setCurrentPrimary(context.primary);
+      setCurrentPrimary(context.primary || null);
     }
     
     if (context.secondary !== currentSecondary) {
-      setCurrentSecondary(context.secondary);
+      setCurrentSecondary(context.secondary || null);
     }
   }, [currentPrimary, currentSecondary, enabled]);
   

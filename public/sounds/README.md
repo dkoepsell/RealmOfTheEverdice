@@ -1,75 +1,85 @@
-# Ambient Sound Files for Everdice
+# Ambient Sound System
 
-This directory contains ambient sound files for the Realm of the Everdice application.
+This directory contains audio files for the ambient sound system in Realm of the Everdice.
 
-## Sound File Organization
+## Directory Structure
 
-The audio files should be organized in the following structure:
+- `/environments/` - Environmental ambient sounds (forests, towns, dungeons, etc.)
+- `/weather/` - Weather-related sounds (rain, thunder, wind, etc.)
+- `/moods/` - Mood-related sounds (tension, peace, mystery, etc.)
+- `/events/` - Event-related sound effects (combat, magic, achievements, etc.)
 
-```
-/sounds/
-  ├── environments/          # Background ambient sounds based on location
-  │   ├── town_daytime.mp3
-  │   ├── town_night.mp3
-  │   ├── forest_ambient.mp3
-  │   ├── dungeon_drips.mp3
-  │   └── ...
-  │
-  ├── weather/               # Weather-related ambient sounds
-  │   ├── rain.mp3
-  │   ├── thunder.mp3
-  │   ├── wind.mp3
-  │   └── ...
-  │
-  ├── moods/                 # Background music for different moods
-  │   ├── peaceful.mp3
-  │   ├── mysterious.mp3
-  │   ├── combat.mp3
-  │   └── ...
-  │
-  └── events/                # One-shot sound effects for specific events
-      ├── door_open.mp3
-      ├── sword_draw.mp3
-      ├── magic_spell.mp3
-      └── ...
-```
+## File Format
 
-## File Naming Convention
+All sound files should be in MP3 format for best browser compatibility and file size.
 
-Sound files should be named using the following guidelines:
+## Sound Categories
 
-1. Use lowercase letters and underscores for spaces
-2. Make names descriptive and specific
-3. For variants of a sound, append a number (e.g., `forest_ambient_1.mp3`, `forest_ambient_2.mp3`)
+### Environments
+- `forest_ambient.mp3` - Gentle forest sounds with birds and rustling leaves
+- `town_ambient.mp3` - Town ambience with distant chatter and activity
+- `dungeon_ambient.mp3` - Echoing drips and distant creaks
+- `cave_ambient.mp3` - Subterranean rumbles and echoes
+- `tavern_ambient.mp3` - Tavern ambience with chatter and clinking mugs
+- `castle_ambient.mp3` - Grand hall ambience with distant echoes
+- `mountain_ambient.mp3` - High wind whistling through peaks
+- `beach_ambient.mp3` - Gentle waves on shore
+- `cemetery_ambient.mp3` - Silent atmosphere with occasional wind
 
-## Sound Licensing and Attribution
+### Weather
+- `rain.mp3` - Light to moderate rainfall
+- `heavy_rain.mp3` - Heavy downpour
+- `thunder.mp3` - Distant thunder rumbles
+- `light_wind.mp3` - Light breeze through trees or buildings
+- `strong_wind.mp3` - Howling wind
 
-All sound files used in this project must be either:
+### Time of Day
+- `morning_birds.mp3` - Dawn chorus of birds
+- `daytime_ambient.mp3` - General daytime ambient sounds
+- `evening_ambient.mp3` - Evening sounds with crickets
+- `night_ambient.mp3` - Night sounds with occasional owl hoots
 
-1. Created specifically for the project
-2. Licensed as royalty-free for commercial use
-3. Under Creative Commons Attribution license with proper attribution
-4. In the public domain
+### Moods
+- `peaceful.mp3` - Gentle, calming background for peaceful scenes
+- `mysterious.mp3` - Subtle, eerie tones for mysteries
+- `tension.mp3` - Rising tension for dangerous moments
+- `battle.mp3` - Intense battle music
+- `victory.mp3` - Triumphant sounds for victories
+- `sad.mp3` - Melancholy tones for sad moments
+
+### Events
+- `dice_roll.mp3` - Sound of dice rolling
+- `critical_hit.mp3` - Sound for critical hit in combat
+- `critical_miss.mp3` - Sound for critical miss in combat
+- `level_up.mp3` - Sound for character level up
+- `achievement.mp3` - Sound for unlocking achievements
+- `treasure.mp3` - Sound for finding treasure
+- `spell_cast.mp3` - Generic magic spell casting sound
+- `heal.mp3` - Healing spell sound
+- `sword_swing.mp3` - Sword attack sound
+- `bow_shot.mp3` - Bow and arrow sound
+- `door_open.mp3` - Door opening sound
+- `chest_open.mp3` - Treasure chest opening
+
+## Usage
+
+The ambient sound system automatically selects appropriate sounds based on narrative context. The system analyzes the current game narration to determine:
+
+1. The primary environment (forest, town, dungeon, etc.)
+2. Weather conditions (if any)
+3. Time of day (if mentioned)
+4. The overall mood of the scene
+
+Sounds are layered appropriately, with environmental sounds as the base layer and weather/mood sounds mixed in at lower volumes.
 
 ## Adding New Sounds
 
-When adding new sounds to the project:
+When adding new sounds:
+1. Convert to MP3 format
+2. Place in the appropriate directory
+3. Update the sound mappings in `client/src/lib/ambient-sound-context.ts` to include the new sound
+4. Keep files under 1MB when possible for faster loading
 
-1. Make sure they are in MP3 format for wider compatibility
-2. Normalize the volume to avoid jarring volume differences
-3. Keep file sizes reasonable (aim for under 2MB per file)
-4. Update the ambient sound context analyzer to use the new sounds
+## Credits
 
-## Sound Context Analyzer
-
-The application analyzes narrative text and associates it with appropriate sounds using the algorithm in `client/src/lib/ambient-sound-context.ts`.
-
-When modifying that file, make sure to update the following data structures:
-
-- `ENVIRONMENT_SOUNDS`
-- `WEATHER_SOUNDS`
-- `MOOD_SOUNDS`
-- `TIME_SOUNDS`
-- `EVENT_SOUNDS`
-
-And make sure any keywords added to the file match the sound file names (without the extension).
+Sound files should be royalty-free and properly licensed for commercial use.

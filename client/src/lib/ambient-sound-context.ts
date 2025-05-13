@@ -12,6 +12,25 @@ export interface AmbientSoundContext {
   mood: string;          // The mood of the scene (peaceful, tense, mysterious, etc.)
 }
 
+// Map event keywords to sound files
+const EVENT_SOUNDS_BASE: Record<string, string> = {
+  dice_roll: 'events/dice_roll',
+  critical_hit: 'events/critical_hit',
+  critical_miss: 'events/critical_miss',
+  level_up: 'events/level_up',
+  achievement: 'events/achievement',
+  treasure: 'events/treasure',
+  spell_cast: 'events/spell_cast',
+  heal: 'events/heal',
+  sword_swing: 'events/sword_swing',
+  bow_shot: 'events/bow_shot',
+  door_open: 'events/door_open',
+  chest_open: 'events/chest_open'
+};
+
+// Export the consolidated EVENT_SOUNDS object
+export const EVENT_SOUNDS: Record<string, string> = {...EVENT_SOUNDS_BASE};
+
 // Map environment keywords to sound files
 export const ENVIRONMENT_SOUNDS: Record<string, string> = {
   // Locations
@@ -115,16 +134,12 @@ export const MOOD_SOUNDS: Record<string, string> = {
   dread: 'moods/horror'
 };
 
-// Map event descriptions to sound effect files
-export const EVENT_SOUNDS: Record<string, string> = {
-  door_open: 'events/door_open',
+// Additional event sounds, merged with the main EVENT_SOUNDS defined above
+const ADDITIONAL_EVENT_SOUNDS = {
   door_close: 'events/door_close',
-  chest_open: 'events/chest_open',
   lock_pick: 'events/lock_pick',
   sword_draw: 'events/sword_draw',
-  bow_shot: 'events/bow_shot',
   arrow_hit: 'events/arrow_hit',
-  spell_cast: 'events/magic_spell',
   magic_spell: 'events/magic_spell',
   drinking: 'events/drinking',
   eating: 'events/eating',
@@ -135,9 +150,13 @@ export const EVENT_SOUNDS: Record<string, string> = {
   dragon_roar: 'events/dragon_roar',
   character_damage: 'events/character_damage',
   character_death: 'events/character_death',
-  level_up: 'events/level_up',
   item_pickup: 'events/item_pickup'
 };
+
+// Merge additional event sounds with the main EVENT_SOUNDS object
+Object.entries(ADDITIONAL_EVENT_SOUNDS).forEach(([key, value]) => {
+  EVENT_SOUNDS[key] = value;
+});
 
 /**
  * Detect the most prominent environment based on keyword frequency
