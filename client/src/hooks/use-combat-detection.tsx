@@ -38,32 +38,66 @@ export const useCombatDetection = (narrativeContent: string) => {
   const [detectedLoot, setDetectedLoot] = useState<CombatLoot[]>([]);
 
   useEffect(() => {
-    // Reset detected threats when content changes
-    setDetectedThreats([]);
+    // Don't reset detected threats when content changes if already in combat
+    if (!inCombat) {
+      setDetectedThreats([]);
+    }
     
     if (!narrativeContent) return;
     
-    // Check for combat indicators
+    // Check for combat indicators - expanded list with more common phrases
     const combatKeywords = [
       'initiative', 'roll for initiative', 'combat begins', 'battle starts',
-      'draw your weapons', 'prepare for combat'
+      'draw your weapons', 'prepare for combat', 'attack', 'combat has begun',
+      'hostile', 'enemy', 'enemies', 'fight', 'ambush', 'combat', 'battle',
+      'draws weapon', 'readies weapon', 'attacks you', 'strikes', 'lunges',
+      'roll initiative'
     ];
     
     const isCombatStarting = combatKeywords.some(keyword => 
       narrativeContent.toLowerCase().includes(keyword.toLowerCase())
     );
     
+    // Check for combat ending indicators
+    const combatEndingKeywords = [
+      'combat ends', 'battle is over', 'fight is over', 'enemies defeated',
+      'victory', 'combat has ended', 'the battle ends', 'defeated', 'won the battle',
+      'retreat', 'flee', 'enemies are dead', 'vanquished', 'victorious'
+    ];
+    
+    const isCombatEnding = combatEndingKeywords.some(keyword => 
+      narrativeContent.toLowerCase().includes(keyword.toLowerCase())
+    );
+    
     if (isCombatStarting && !inCombat) {
+      console.log("Combat detected! Setting inCombat to true");
       setInCombat(true);
       setCombatRound(1);
       setCombatTurn(0);
+    } else if (isCombatEnding && inCombat) {
+      console.log("Combat ending detected! Setting inCombat to false");
+      setInCombat(false);
     }
     
-    // Look for enemy descriptions
-    const enemyRegex = /(?:a|an|the)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:appears|attacks|emerges|charges)/g;
-    const matches = [...narrativeContent.matchAll(enemyRegex)];
+    // Look for enemy descriptions - enhanced pattern to catch more enemy types
+    const enemyRegexes = [
+      // Standard pattern
+      /(?:a|an|the)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:appears|attacks|emerges|charges|lunges|strikes|advances)/gi,
+      // Monster type pattern
+      /(?:a|an|the)\s+(?:group of|pack of|horde of|band of)?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:appears|attack|emerge|surround|ambush)/gi,
+      // Enemy with descriptor
+      /(?:a|an|the)\s+(?:fierce|angry|vicious|massive|towering|menacing)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi,
+      // General hostile entities
+      /(?:hostile|enemy)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi
+    ];
     
-    const newThreats = matches.map(match => {
+    let allMatches: RegExpMatchArray[] = [];
+    enemyRegexes.forEach(regex => {
+      const matches = [...narrativeContent.matchAll(regex)];
+      allMatches = [...allMatches, ...matches];
+    });
+    
+    const newThreats = allMatches.map(match => {
       const name = match[1];
       return {
         id: uuidv4(),

@@ -5923,8 +5923,8 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
   app.get("/api/admin/campaign-activity-stats", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
-    // Check if user is a superuser
-    if (req.user.role !== "superuser") {
+    // Check if user is an admin or superuser
+    if (!req.user.isAdmin && !req.user.isSuperAdmin) {
       return res.status(403).json({ message: "Forbidden" });
     }
     
@@ -5940,8 +5940,8 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
   app.get("/api/admin/campaigns", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
-    // Check if user is a superuser
-    if (req.user.role !== "superuser") {
+    // Check if user is an admin or superuser
+    if (!req.user.isAdmin && !req.user.isSuperAdmin) {
       return res.status(403).json({ message: "Forbidden" });
     }
     
