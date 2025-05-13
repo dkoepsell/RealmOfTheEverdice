@@ -3989,9 +3989,14 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         
         const trimmedPatterns = Object.fromEntries(sortedPatterns);
         
-        // Store patterns in the database if needed
+        // Store patterns in campaign metadata
         if (Object.keys(trimmedPatterns).length > 0) {
-          await storage.updateNarrativePatterns(campaignId, trimmedPatterns);
+          // Get existing metadata and update with new narrative patterns
+          const existingMetadata = await storage.getCampaignMetadata(campaignId) || {};
+          await storage.updateCampaignMetadata(campaignId, {
+            ...existingMetadata,
+            narrativePatterns: trimmedPatterns
+          });
         }
       } catch (error) {
         console.warn("Error updating narrative patterns:", error);
