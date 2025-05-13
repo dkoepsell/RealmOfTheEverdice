@@ -31,6 +31,9 @@ import { DiceType } from "@/hooks/use-dice";
 import { useToast } from "@/hooks/use-toast";
 import BattleTracker from "@/components/battle-tracker";
 import { useCombatDetection, CombatParticipant } from "@/hooks/use-combat-detection";
+import { useAmbientSound } from "@/hooks/use-ambient-sound";
+import { AmbientSoundController } from "@/components/ambient-sound-controller";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 export interface GameAreaProps {
   campaign: Campaign;
@@ -63,6 +66,7 @@ export const GameArea = ({
   const [playerAction, setPlayerAction] = useState("");
   const [dmNarration, setDmNarration] = useState("");
   const [isProcessingNpcActions, setIsProcessingNpcActions] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useLocalStorage('ambientSoundEnabled', true);
   const [decisionOptions, setDecisionOptions] = useState<string[]>([
     "Investigate the area",
     "Talk to nearby NPCs",
@@ -87,6 +91,24 @@ export const GameArea = ({
     setCombatTurn,
     detectedThreats 
   } = useCombatDetection(getLatestNarrativeContent());
+  
+  // Set up ambient sounds based on narrative
+  const {
+    isPlaying: isSoundPlaying,
+    isMuted: isSoundMuted,
+    soundVolume,
+    currentContext: soundContext,
+    toggleMute: toggleSoundMute,
+    setVolume: setSoundVolume,
+    stopAll: stopAllSounds,
+    playAmbientSounds,
+    playEventSound
+  } = useAmbientSound(getLatestNarrativeContent(), {
+    autoplay: true,
+    volume: 0.5,
+    fadeTime: 2,
+    enabled: soundEnabled
+  });
   
   // Combat participants include party characters and detected threats
   const [combatParticipants, setCombatParticipants] = useState<CombatParticipant[]>([]);
