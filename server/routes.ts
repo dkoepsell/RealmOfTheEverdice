@@ -127,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all Everdice worlds for admin
   app.get("/api/admin/worlds", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    if (!req.user.isAdmin && !req.user.isSuperAdmin) return res.status(403).json({ message: "Not authorized" });
+    if (req.user.role !== "admin" && req.user.role !== "superuser") return res.status(403).json({ message: "Not authorized" });
     
     try {
       const worlds = await storage.getAllEverdiceWorlds();
