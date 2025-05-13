@@ -160,31 +160,45 @@ Describe in 1-2 sentences how this creative action plays out, with a minor posit
     } else if (isAutoAdvance) {
       userPrompt = `Auto-advance story request.
 
-Respond in under 200 words with:
-1. A scene that contrasts with recent encounters (if combat was recent, focus on exploration or social interaction)
-2. One character development opportunity 
-3. A suggested dice roll if appropriate [Roll: d20+modifier vs DC X for Y]
+Respond in under 200 words with ONE of these narrative elements (vary between them for gameplay variety):
+1. A surprise combat encounter with an interesting enemy that offers item rewards
+2. Discovery of a valuable item, treasure, or magical object with unique properties
+3. Meeting a unique NPC who offers information, quests, or alignment-changing choices
+4. A moral dilemma that affects character alignment with clear consequences
+5. An environmental challenge requiring skill checks that could improve character stats
+6. A puzzle or trap that rewards creative thinking and offers valuable rewards
+7. A plot twist that reveals new information about the main quest or world
 
-Make this response different from previous ones. Keep it concise and engaging.`;
+Include a clear choice, challenge, or suggested dice roll [Roll: d20+modifier vs DC X for Y].`;
     } else if (containsDiceRoll) {
       // Special handling for dice roll actions with educational elements
       userPrompt = `Dice Roll: ${playerAction}
 
 Respond in under 200 words with:
-1. The specific consequence of this roll result
-2. One brief educational element about D&D mechanics
-3. How this impacts character development OR offers an item discovery opportunity
+1. The specific consequence of this roll result with dramatic flair
+2. One brief educational element about D&D mechanics for player learning
+3. ONE of these impacts (vary between them for gameplay variety):
+   - Character growth opportunity with a specific stat or skill improvement
+   - Discovery of a unique item or weapon with interesting properties
+   - Alignment shift opportunity with clear consequences
+   - NPC relationship development opportunity
+   - New quest or storyline revelation based on the roll outcome
 
-Keep your response focused and directly tied to the roll result.`;
+Keep your response focused, exciting, and directly tied to the roll result.`;
     } else {
       userPrompt = `Player Action: ${playerAction}
 
 Respond in under 200 words with:
-1. A direct response to the player's action
-2. One character development opportunity (alignment choice, skill challenge, or item discovery)
+1. A direct, vibrant response to the player's action with meaningful consequences
+2. ONE of these elements (vary between them for gameplay variety):
+   - Combat opportunity with rewards for victory
+   - A moral choice affecting alignment with clear consequences
+   - Discovery of a valuable or magical item with unique properties
+   - A skill challenge that could improve character abilities
+   - An NPC interaction offering quests or information
 3. A suggested dice roll if appropriate [Roll: d20+modifier vs DC X for Y]
 
-Make this response different in tone and content from previous responses. Keep it concise and engaging.`;
+Use varied narrative styles and keep scenarios fresh and unpredictable.`;
     }
     
     console.log("DEBUG: Calling OpenAI in generateGameNarration", {
