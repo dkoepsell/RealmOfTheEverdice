@@ -4213,7 +4213,8 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
       // Return success with real log IDs
       res.json({
         success: true, 
-        response: narrativeResponse, 
+        narration: narrativeResponse, 
+        response: narrativeResponse, // Keep for backward compatibility
         logId: narrativeLog.id,
         playerLogId: playerLog.id
       });
@@ -4256,7 +4257,8 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         // Send the fallback as a regular response
         return res.json({
           success: true, 
-          response: fallbackResponse, 
+          narration: fallbackResponse,
+          response: fallbackResponse, // Keep for backward compatibility
           logId: narrativeLog.id,
           playerLogId: playerLog.id,
           isFallback: true
