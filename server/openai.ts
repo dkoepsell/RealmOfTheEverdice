@@ -200,304 +200,97 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
 }
 
 export async function generateGameNarration(context: string, playerAction: string, isAutoAdvance: boolean = false) {
-  // Log entry to trace function call
-  console.log("DEBUG: generateGameNarration called", {
+  console.log("Generating game narration:", {
     contextLength: context?.length || 0,
     actionLength: playerAction?.length || 0,
     isAutoAdvance
   });
   
   try {
-    // Create a controller to allow timeout for OpenAI requests
+    // Safeguard against null/undefined inputs
+    const safeContext = context || "";
+    const safePlayerAction = playerAction || "The player explores the area.";
+    
+    // Create a controller for timeout handling
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // Reduced timeout for faster fallback
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
     
-    // Extract game context information - limit context size to prevent token overuse
-    const gameContext = context.substring(0, 1500); 
+    // Create a simple, focused system prompt
+    const systemPrompt = 
+      "You are a skilled D&D Dungeon Master. Create engaging narrative responses to player actions. " +
+      "Keep responses under 150 words. Include sensory details and clear consequences. " + 
+      "Suggest dice rolls in [Roll: d20+X vs DC Y for Z] format. " +
+      "Always include a clear opportunity for the player's next action.";
     
-    // Improved system prompt focused on narrative drive and responsiveness
-    let systemPrompt = `You are a master D&D Dungeon Master creating vibrant, responsive narratives. Your goal is to advance the story with meaningful consequences while maintaining a consistent world.
-
-CORE REQUIREMENTS:
-1. Keep responses UNDER 150 WORDS MAXIMUM
-2. Mix narrative styles (epic, mysterious, humorous) to maintain player interest
-3. Make player actions matter with clear consequences
-4. Suggest dice rolls in [Roll: d20+modifier vs DC X for Y] format
-5. Always include ONE clear opportunity for player decision or action
-
-STORY ADVANCEMENT TECHNIQUES:
-1. After combat or challenges, advance to the next meaningful story beat
-2. Show immediate consequences of player decisions
-3. Include environmental changes reflecting player actions
-4. Introduce unexpected but logical twists that build on previous choices
-
-WORLD CONSISTENCY:
-1. Maintain geographical consistency with previously established locations
-2. Keep NPCs and factions behaving according to established motives
-3. Respect the physical laws and magical systems already in play
-
-GAMEPLAY BALANCE:
-1. Rotate between combat, social, puzzle, and exploration elements
-2. Provide both short-term goals and hints toward larger quests
-3. Allow multiple approaches to problems (stealth, combat, persuasion)`;
-
-    // Enhanced pattern detection for different types of player actions
-    // More comprehensive dice roll detection
-    const diceRollPatterns = [
-      /\b(roll(ed|ing|s)?(\s+a)?\s+(d\d+|dice|for))/i,
-      /\b(d\d+|result|DC|check|save)\b/i,
-      /\b(nat(ural)?\s*\d+|crit(ical)?)\b/i,
-      /\b(success|fail(ure|ed)?)\b/i
-    ];
-    const containsDiceRoll = diceRollPatterns.some(pattern => pattern.test(playerAction));
+    // Simplify the user prompt 
+    const userPrompt = `Game Context: ${safeContext.substring(0, 500)}
     
-    // Improved performative action detection with more precise patterns
-    const performativeVerbs = [
-      'somersault', 'flip', 'dance', 'twirl', 'leap', 'tada', 'ballet', 'backflip', 
-      'perform', 'flourish', 'bow', 'laugh', 'smile', 'grin', 'wink', 'draw', 
-      'brandish', 'wave', 'spin', 'juggle', 'cartwheel', 'sneak', 'pose', 'gesture', 
-      'salute', 'wiggle', 'strut', 'swagger', 'moonwalk', 'taunt', 'flirt', 
-      'prank', 'serenade', 'whistle', 'sing', 'imitate', 'mimic'
-    ];
-    
-    const movementVerbs = [
-      'walk', 'go', 'move', 'head', 'proceed', 'continue', 'enter', 'exit', 
-      'leave', 'open', 'close', 'push', 'pull', 'run', 'jog', 'sprint', 'dash'
-    ];
-    
-    // More precise pattern matching using word boundaries
-    const performativePattern = new RegExp(`\\b(${performativeVerbs.join('|')})\\b`, 'i');
-    const movementPattern = new RegExp(`\\b(${movementVerbs.join('|')})\\b`, 'i');
-    const isPerformativeAction = performativePattern.test(playerAction) && !movementPattern.test(playerAction);
-    
-    // Combat action detection
-    const combatVerbs = [
-      'attack', 'hit', 'stab', 'slash', 'strike', 'cast', 'shoot', 'throw', 
-      'fireball', 'spell', 'swing', 'dodge', 'parry', 'block', 'defend',
-      'charge', 'ambush', 'stealth attack', 'backstab', 'sneak attack'
-    ];
-    const combatPattern = new RegExp(`\\b(${combatVerbs.join('|')})\\b`, 'i');
-    const isCombatAction = combatPattern.test(playerAction);
-    
-    // Social interaction detection
-    const socialVerbs = [
-      'talk', 'speak', 'ask', 'tell', 'negotiate', 'persuade', 'intimidate', 
-      'deceive', 'charm', 'bluff', 'convince', 'bribe', 'discuss', 'chat',
-      'argue', 'compliment', 'threaten', 'haggle', 'bargain'
-    ];
-    const socialPattern = new RegExp(`\\b(${socialVerbs.join('|')})\\b`, 'i');
-    const isSocialAction = socialPattern.test(playerAction);
-    
-    // Build the appropriate user prompt based on the action type
-    let userPrompt = "";
-    
-    if (isPerformativeAction) {
-      userPrompt = `GAME CONTEXT (brief): ${gameContext.substring(0, 300)}
-      
-PERFORMATIVE ACTION: ${playerAction}
+Player Action: ${safePlayerAction}
 
-Respond in 50 words or less with:
-1. A vivid description of how this creative/performative action plays out
-2. A small but meaningful benefit this adds to the current situation
-3. How NPCs or the environment react to this flourish`;
-    } else if (containsDiceRoll) {
-      userPrompt = `GAME CONTEXT: ${gameContext.substring(0, 500)}
-      
-DICE ROLL ACTION: ${playerAction}
-
-Respond in 100-150 words with:
-1. The immediate outcome of this dice roll with dramatic flair
-2. How this result changes the situation or advances the story
-3. A new opportunity or challenge that emerges from this outcome
-4. A clear next decision point for the player`;
-    } else if (isCombatAction) {
-      userPrompt = `GAME CONTEXT: ${gameContext.substring(0, 500)}
-      
-COMBAT ACTION: ${playerAction}
-
-Respond in 100-150 words with:
-1. An exciting description of how the combat action unfolds
-2. Tactical changes in the battlefield (position, cover, advantage)
-3. Enemy reactions and counteractions
-4. A new combat opportunity or challenge
-5. A suggested follow-up roll if appropriate [Roll: d20+X vs DC Y for Z]`;
-    } else if (isSocialAction) {
-      userPrompt = `GAME CONTEXT: ${gameContext.substring(0, 500)}
-      
-SOCIAL ACTION: ${playerAction}
-
-Respond in 100-150 words with:
-1. The NPC's reaction with subtle cues about their mindset
-2. New information revealed through this interaction
-3. How this changes the social dynamic or relationship
-4. A clear next conversational opportunity
-5. A suggested social roll if appropriate [Roll: d20+CHA vs DC X for persuasion]`;
-    } else if (isAutoAdvance) {
-      userPrompt = `GAME CONTEXT: ${gameContext}
-      
-AUTO-ADVANCE REQUEST:
-
-Respond in 100-150 words with ONE of these story elements (vary for gameplay diversity):
-1. A surprising encounter that reveals something about the world
-2. A discovery that changes understanding of the current quest
-3. An environmental challenge requiring creative problem-solving
-4. An NPC who offers a quest, information, or moral choice
-5. A dramatic situation change (weather, faction activity, magical effect)
-
-Include vivid sensory details and a CLEAR opportunity for player action.`;
-    } else {
-      // Default prompt for standard player actions
-      userPrompt = `GAME CONTEXT: ${gameContext.substring(0, 500)}
-      
-PLAYER ACTION: ${playerAction}
-
-Respond in 100-150 words with:
-1. The immediate outcome of this action with sensory details
-2. How the world and NPCs react to this choice
-3. A new situation or challenge that emerges
-4. A clear decision point or action opportunity
-5. A suggested dice roll if appropriate [Roll: d20+X vs DC Y for Z]
-
-Maintain world consistency and advance the story meaningfully.`;
-    }
-    
-    // Log relevant information for debugging
-    console.log("DEBUG: Preparing narration request", {
-      actionType: isPerformativeAction ? "performative" : 
-                 (containsDiceRoll ? "dice" : 
-                 (isCombatAction ? "combat" : 
-                 (isSocialAction ? "social" : 
-                 (isAutoAdvance ? "auto-advance" : "standard")))),
-      contextLength: gameContext.length
-    });
+Generate a response that:
+1. Describes the immediate outcome
+2. Shows how the world reacts
+3. Presents a clear choice or challenge
+4. Suggests appropriate dice rolls if needed`;
     
     try {
-      // Create fetch options with timeout signal
-      const fetchOptions = {
-        signal: controller.signal
-      };
-      
-      // Send request to OpenAI with optimized parameters
+      // Make the API call with the abort controller signal
       const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        // Adjust parameters based on action type for optimal response quality and speed
-        temperature: isPerformativeAction ? 0.7 : 
-                    (containsDiceRoll ? 0.5 : 
-                    (isCombatAction ? 0.8 : 
-                    (isSocialAction ? 0.7 : 0.8))),
-        max_tokens: isPerformativeAction ? 75 : 180,
-        top_p: 0.9,
-        presence_penalty: 0.2,
-        frequency_penalty: 0.3
+        temperature: 0.7,
+        max_tokens: 200,
+        frequency_penalty: 0.3,
+        presence_penalty: 0.2
+      }, {
+        signal: controller.signal
       });
       
-      // Clear timeout when request completes successfully
+      // Clear the timeout if successful
       clearTimeout(timeoutId);
       
-      console.log("DEBUG: Narration response received", {
-        responseLength: response.choices[0].message.content?.length || 0,
-        actionType: isPerformativeAction ? "performative" : 
-                   (containsDiceRoll ? "dice" : 
-                   (isCombatAction ? "combat" : 
-                   (isSocialAction ? "social" : 
-                   (isAutoAdvance ? "auto-advance" : "standard"))))
-      });
-      
+      // Log success and return the content
+      console.log("Successfully generated narration response");
       return response.choices[0].message.content;
-    } catch (err: any) {
+    } catch (apiError) {
+      // Clear the timeout
       clearTimeout(timeoutId);
       
-      // Detailed error logging for better diagnostics
-      console.warn("OpenAI request error details:", {
-        errorName: err?.name,
-        errorMessage: err?.message,
-        errorType: err?.type,
-        errorCode: err?.code,
-        actionType: isPerformativeAction ? "performative" : 
-                   (containsDiceRoll ? "dice" : 
-                   (isCombatAction ? "combat" : 
-                   (isSocialAction ? "social" : 
-                   (isAutoAdvance ? "auto-advance" : "standard")))),
-      });
+      // Log the error
+      console.error("OpenAI API error:", apiError.message);
       
-      // Handle various error types with appropriate fallbacks
-      if (err?.name === 'AbortError' || err?.message?.includes('abort') || err?.message?.includes('timeout')) {
-        console.warn("Request timed out in generateGameNarration. Using enhanced fallback response.");
-        
-        // Context-aware fallback responses based on action type
-        if (isPerformativeAction) {
-          return `With a flourish, you ${playerAction}. The nearby onlookers seem impressed by your display, and you notice a subtle advantage in the situation. What would you like to do with this momentary edge?`;
-        } else if (containsDiceRoll) {
-          return `The dice tumble across the table. The Dungeon Master considers the result with interest. "This outcome opens a new path forward. What specifically do you want to do next based on this roll?"`;
-        } else if (isCombatAction) {
-          return `Your combat maneuver creates an opening. The enemy recoils momentarily, revealing a weakness in their defense. You have a brief tactical advantage - how do you want to follow up while they're vulnerable? [Roll: d20+your attack modifier for advantage]`;
-        } else if (isSocialAction) {
-          return `Your words have a noticeable effect on the conversation. The NPC's expression shifts, suggesting your approach is working. They seem more receptive now. What specific information do you want to learn or what outcome are you seeking?`;
-        } else if (isAutoAdvance) {
-          return `As you continue your journey, the environment subtly changes. Ahead, you notice a fork in the path - one well-traveled route and one overgrown trail with what appears to be fresh tracks. A faint sound catches your attention from the distance. Which direction will you investigate?`;
-        } else {
-          return `Your action yields unexpected results. The situation has changed, creating both an opportunity and a potential complication. The Dungeon Master raises an eyebrow. "An interesting approach! What specifically do you do next?"`;
-        }
-      } else if (err?.type === 'invalid_request_error' || err?.message?.includes('invalid')) {
-        // Handle invalid request errors (like malformed prompts or content policy violations)
-        console.warn("Invalid request error in OpenAI call. Using safe fallback response.");
-        return `The Dungeon Master considers your action thoughtfully. "That's an interesting approach! Let me think about how this plays out..." What would you like to focus on or emphasize about your current situation?`;
-      } else if (err?.type === 'authentication_error' || err?.message?.includes('auth') || err?.message?.includes('key')) {
-        // Handle authentication errors
-        console.error("OpenAI authentication error. Please check API key.");
-        return `The Dungeon Master pauses for a moment. "Let's consider the possibilities here. You could explore your surroundings further, interact with nearby elements, or take a completely different approach. What interests you most?"`;
-      } else if (err?.code === 'rate_limit_exceeded' || err?.message?.includes('rate limit') || err?.message?.includes('capacity')) {
-        // Handle rate limit errors
-        console.warn("OpenAI rate limit exceeded. Using backup narration.");
-        return `The game pauses briefly as the Dungeon Master considers your action. "What an interesting choice! This creates several possible paths forward. Which aspect of the current situation would you like to focus on?"`;
-      } else {
-        // For any other error, provide a generic but still usable fallback
-        console.error("Unexpected OpenAI error:", err);
-        return `The Dungeon Master nods thoughtfully. "Your choice has several potential outcomes. Let's explore them - what specifically are you hoping to accomplish with this action?"`;
-      }
+      // Generate a fallback based on player action
+      return generateFallbackResponse(safePlayerAction);
     }
   } catch (error) {
-    console.error("Critical error in narration generation:", error);
-    
-    // Analyze player action to provide context-specific fallback even in total failure
-    const playerActionLower = playerAction.toLowerCase();
-    
-    // Movement-related fallback
-    if (playerActionLower.includes("go") || playerActionLower.includes("walk") || 
-        playerActionLower.includes("move") || playerActionLower.includes("travel") || 
-        playerActionLower.includes("climb") || playerActionLower.includes("north") || 
-        playerActionLower.includes("south") || playerActionLower.includes("east") || 
-        playerActionLower.includes("west")) {
-      return `You move cautiously in your chosen direction. The path reveals new surroundings with several notable features: unusual markings on nearby surfaces, signs of recent activity, and what appears to be another path branching off. Which aspect would you like to investigate further?`;
-    } 
-    // Combat-related fallback
-    else if (playerActionLower.includes("attack") || playerActionLower.includes("fight") || 
-             playerActionLower.includes("strike") || playerActionLower.includes("hit") || 
-             playerActionLower.includes("slash") || playerActionLower.includes("stab") || 
-             playerActionLower.includes("cast") || playerActionLower.includes("spell")) {
-      return `You position yourself for combat, analyzing your opponent's stance and vulnerabilities. There appear to be several tactical options available - a direct approach, a more defensive posture, or perhaps targeting a specific weakness you've noticed. [Roll: d20+your attack modifier vs their AC] How do you want to proceed with this encounter?`;
-    } 
-    // Social-related fallback
-    else if (playerActionLower.includes("talk") || playerActionLower.includes("speak") || 
-             playerActionLower.includes("ask") || playerActionLower.includes("tell") || 
-             playerActionLower.includes("persuade") || playerActionLower.includes("convince") || 
-             playerActionLower.includes("intimidate") || playerActionLower.includes("deceive")) {
-      return `Your words seem to have an impact. The individual's expression changes subtly, suggesting they're weighing how much to reveal. They appear to have valuable information if approached correctly. What specific topic would you like to pursue, or what approach do you want to take with this conversation?`;
-    }
-    // Investigation-related fallback
-    else if (playerActionLower.includes("look") || playerActionLower.includes("examine") || 
-             playerActionLower.includes("investigate") || playerActionLower.includes("search") || 
-             playerActionLower.includes("inspect") || playerActionLower.includes("check")) {
-      return `Your careful examination reveals several interesting details: unusual markings that might indicate history or purpose, signs of recent activity, and what appears to be something potentially valuable or significant partially hidden from immediate view. Which aspect would you like to focus on more closely?`;
-    }
-    // Generic fallback for any other action type
-    else {
-      return `The Dungeon Master considers the situation thoughtfully. "At this turning point in your adventure, you have several interesting options: you could investigate further, engage with nearby characters, try a different approach entirely, or take a moment to assess your surroundings more carefully. What would you like to do next?"`;
-    }
+    console.error("Critical error in game narration:", error);
+    return "The Dungeon Master considers your action. \"What would you like to do next?\"";
+  }
+}
+
+// Helper function to generate fallback responses
+function generateFallbackResponse(playerAction: string) {
+  // Convert to lowercase for easier keyword detection
+  const action = playerAction.toLowerCase();
+  
+  // Check for specific types of actions to provide relevant fallbacks
+  if (action.includes("look") || action.includes("examine") || action.includes("observe")) {
+    return "You carefully examine your surroundings. The area reveals several notable features: unusual markings that might indicate history or purpose, signs of recent activity, and what appears to be something of interest partially hidden from immediate view. Which aspect would you like to focus on?";
+  } 
+  else if (action.includes("attack") || action.includes("fight") || action.includes("cast")) {
+    return "You prepare for combat, assessing your opponent carefully. They appear to have both strengths and vulnerabilities that could affect your tactics. How do you want to approach this confrontation? [Roll: d20+your combat modifier to determine success]";
+  } 
+  else if (action.includes("talk") || action.includes("speak") || action.includes("ask")) {
+    return "Your conversation partner listens attentively to what you have to say, their expression suggesting they have valuable information if approached correctly. What specifically would you like to ask them about, or how do you want to steer the conversation?";
+  } 
+  else if (action.includes("move") || action.includes("go") || action.includes("walk")) {
+    return "You move forward carefully, taking in the changing surroundings. New paths and possibilities present themselves. The area ahead contains several points of interest that might be worth investigating. Which direction or feature draws your attention?";
+  } 
+  else {
+    return "The Dungeon Master considers your action thoughtfully. \"An interesting choice! This opens up several possibilities for your adventure. You could explore further, interact with nearby elements, or pursue a different approach entirely. What would you like to do next?\"";
   }
 }
 
