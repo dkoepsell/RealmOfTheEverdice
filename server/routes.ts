@@ -3767,8 +3767,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get related campaign data
       const locations = await storage.getCampaignLocations(campaignId);
       const characters = await storage.getCampaignCharacters(campaignId);
-      // Reduce the number of logs to keep context size manageable
-      const recentLogs = await storage.getGameLogsByCampaignId(campaignId, 15);
+      // Further reduce the number of logs to keep context size manageable (from 15 to 10)
+      const recentLogs = await storage.getGameLogsByCampaignId(campaignId, 10);
       
       // Get the user's character if they have one in this campaign
       let userCharacter = null;
@@ -3991,6 +3991,10 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         });
         */
         
+        // Temporarily disabled pattern tracking for better performance
+        // Skip all pattern processing until stability is confirmed
+        
+        /*
         // Update pattern counts
         detectedPatterns.forEach(pattern => {
           narrativePatterns[pattern] = (narrativePatterns[pattern] || 0) + 1;
@@ -4002,9 +4006,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
           .slice(0, 50); // Keep only top 50 patterns
         
         const trimmedPatterns = Object.fromEntries(sortedPatterns);
-        
-        // Skip storing patterns for now
-        // We'll implement pattern storage when campaign_metadata is available
+        */
       } catch (error) {
         console.warn("Error updating narrative patterns:", error);
         // Continue even if pattern tracking fails

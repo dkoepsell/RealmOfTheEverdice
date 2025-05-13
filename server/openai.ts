@@ -276,7 +276,7 @@ Your response should be both narrative and educational, opening up new possibili
           ],
           temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
           top_p: 0.9, // Use nucleus sampling to increase creative diversity
-          max_tokens: 350, // Further reduced for better performance
+          max_tokens: 250, // Even more reduced for better performance (from 350 to 250)
           frequency_penalty: 0.5, // Reduce repetition of same tokens
           presence_penalty: 0.5,  // Encourages model to introduce new concepts
         }, {
