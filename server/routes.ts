@@ -6516,6 +6516,65 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
       res.status(500).json({ message: "Failed to update character alignment" });
     }
   });
+  
+  // AI status check route - allows monitoring the health of the AI service
+  app.get("/api/ai/status", async (req, res) => {
+    try {
+      // Simple check if we can get a basic response from OpenAI
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10 second timeout
+      
+      try {
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o", // the newest OpenAI model
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful assistant."
+            },
+            {
+              role: "user",
+              content: "Respond with a simple 'OK' if you're working."
+            }
+          ],
+          max_tokens: 10,
+          temperature: 0,
+          signal: abortController.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response && response.choices && response.choices[0]?.message?.content) {
+          return res.status(200).json({ 
+            status: "ok", 
+            aiStatus: "operational",
+            message: "AI services are operational."
+          });
+        } else {
+          return res.status(200).json({ 
+            status: "ok", 
+            aiStatus: "degraded",
+            message: "AI services are responding but returning unexpected content."
+          });
+        }
+      } catch (aiError) {
+        clearTimeout(timeoutId);
+        console.error("AI status check failed:", aiError);
+        return res.status(200).json({ 
+          status: "ok", 
+          aiStatus: "unavailable",
+          message: "AI services are currently unavailable. Please try again later.",
+          error: aiError.message
+        });
+      }
+    } catch (error) {
+      console.error("Error checking AI status:", error);
+      return res.status(500).json({ 
+        status: "error", 
+        message: "Failed to check AI status."
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   
