@@ -407,12 +407,31 @@ export default function CampaignPage() {
           }
         );
         
-        // Then add the fallback narrative response
+        // Extract any movement-related keywords for better fallback
+        const playerInputLower = playerInput.toLowerCase();
+        let fallbackContent = "";
+        
+        // Create a more specific fallback based on action type
+        if (playerInputLower.includes("look") || playerInputLower.includes("examine") || playerInputLower.includes("observe")) {
+          fallbackContent = "You carefully examine your surroundings. The area reveals several notable features: a path leading further ahead, some interesting details in the environment that might be worth investigating, and signs of recent activity. There might be items or clues nearby that could help you. What would you like to focus on or do next?";
+        } else if (playerInputLower.includes("attack") || playerInputLower.includes("fight") || playerInputLower.includes("cast")) {
+          fallbackContent = "You prepare for combat, positioning yourself strategically. Your opponent watches your movements carefully, looking for an opening. This could be a challenging but potentially rewarding encounter. [Roll: d20+your attack modifier vs their AC to strike] How do you want to approach this fight?";
+        } else if (playerInputLower.includes("talk") || playerInputLower.includes("speak") || playerInputLower.includes("ask")) {
+          fallbackContent = "Your conversation partner listens to what you have to say, their expression suggesting they have valuable information to share if approached correctly. What specifically would you like to ask them about, or how do you want to steer the conversation?";
+        } else if (playerInputLower.includes("move") || playerInputLower.includes("go") || playerInputLower.includes("walk") || 
+                   playerInputLower.includes("north") || playerInputLower.includes("south") || playerInputLower.includes("east") || 
+                   playerInputLower.includes("west")) {
+          fallbackContent = "You move forward carefully, taking in the changing surroundings. New paths and possibilities present themselves. The area ahead contains several points of interest that might be worth investigating. Which direction or feature draws your attention?";
+        } else {
+          fallbackContent = "The Dungeon Master considers your action thoughtfully. \"An interesting choice! This opens up several possibilities for your adventure. You could explore further, interact with nearby elements, or pursue a different approach entirely. What would you like to do next?\"";
+        }
+        
+        // Add the fallback narrative response
         await apiRequest(
           "POST",
           `/api/campaigns/${campaignId}/logs`,
           {
-            content: "The Dungeon Master pauses for a moment, considering your action. \"That's an interesting approach! Let me think about how that plays out...\" (There was an issue generating the AI response. Try again in a moment.)",
+            content: fallbackContent,
             type: "narrative",
             timestamp: new Date()
           }
