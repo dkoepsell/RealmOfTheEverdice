@@ -16,6 +16,7 @@ import {
 } from "./openai";
 import OpenAI from "openai";
 import { generateDefaultEquipment, generateDefaultAlignment } from "./character-equipment";
+import { processNPCTurns } from "./npc-behavior";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { 
