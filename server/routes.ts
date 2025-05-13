@@ -3817,9 +3817,8 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         return "";
       }).join("\n\n");
       
-      // Retrieve narrative patterns to avoid repetition
-      const campaignMetadata = await storage.getCampaignMetadata(campaignId) || {};
-      const narrativePatterns = campaignMetadata.narrativePatterns || {};
+      // Skip narrative patterns feature for now
+      const narrativePatterns = {};
       
       // Add pattern tracking to context in an organized format
       // Sort and group patterns by category and frequency
@@ -3989,15 +3988,8 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         
         const trimmedPatterns = Object.fromEntries(sortedPatterns);
         
-        // Store patterns in campaign metadata
-        if (Object.keys(trimmedPatterns).length > 0) {
-          // Get existing metadata and update with new narrative patterns
-          const existingMetadata = await storage.getCampaignMetadata(campaignId) || {};
-          await storage.updateCampaignMetadata(campaignId, {
-            ...existingMetadata,
-            narrativePatterns: trimmedPatterns
-          });
-        }
+        // Skip storing patterns for now
+        // We'll implement pattern storage when campaign_metadata is available
       } catch (error) {
         console.warn("Error updating narrative patterns:", error);
         // Continue even if pattern tracking fails

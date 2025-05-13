@@ -8,8 +8,8 @@ if (!process.env.OPENAI_API_KEY) {
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY || "missing_key",
-  timeout: 15000, // 15 second timeout for all requests
-  maxRetries: 2   // Allow up to 2 retries for transient errors
+  timeout: 60000, // 60 second timeout for all requests
+  maxRetries: 3   // Allow up to 3 retries for transient errors
 });
 
 // Helper function to safely parse JSON from OpenAI response
