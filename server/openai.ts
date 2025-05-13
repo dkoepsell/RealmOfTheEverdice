@@ -140,7 +140,59 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
       response_format: { type: "json_object" }
     });
 
-    return safeJsonParse(response.choices[0].message.content);
+    const adventureData = safeJsonParse(response.choices[0].message.content);
+    
+    // Extract and update world consistency information
+    const newWorldFeatures: string[] = [];
+    const updatedWorldLocations = [...(worldLocations || [])];
+    
+    // Extract new locations from the adventure
+    if (adventureData.locations && Array.isArray(adventureData.locations)) {
+      adventureData.locations.forEach((location: any) => {
+        // Check if this is a new location not already in our list
+        const existingLocation = updatedWorldLocations.find(loc => 
+          loc.name.toLowerCase() === location.name.toLowerCase()
+        );
+        
+        if (!existingLocation) {
+          // Add as a new world location
+          updatedWorldLocations.push({
+            name: location.name,
+            description: location.description,
+            position: location.position || location.geographicRelation || '',
+            features: location.features || [],
+            status: location.status || 'intact'
+          });
+          
+          // Add to new world features
+          newWorldFeatures.push(`${location.name} (${location.position || location.geographicRelation || 'New Location'})`);
+        } else {
+          // Update existing location if it has changed
+          if (location.status && location.status !== existingLocation.status) {
+            existingLocation.status = location.status;
+          }
+          
+          // Add any new features
+          if (location.features && Array.isArray(location.features)) {
+            location.features.forEach((feature: string) => {
+              if (!existingLocation.features?.includes(feature)) {
+                existingLocation.features = [...(existingLocation.features || []), feature];
+              }
+            });
+          }
+        }
+      });
+    }
+    
+    // Return the adventure data with updated world consistency information
+    return {
+      ...adventureData,
+      worldConsistencyData: {
+        newWorldFeatures,
+        updatedWorldLocations,
+        worldFeaturesUpdated: [...(existingWorldFeatures || []), ...newWorldFeatures]
+      }
+    };
   } catch (error) {
     console.error("Error generating adventure:", error);
     throw new Error("Failed to generate adventure");
@@ -974,7 +1026,7 @@ export async function generateCampaign(options: CampaignGenerationOptions = {}) 
       messages: [
         {
           role: "system",
-          content: `You are an innovative Dungeons & Dragons Dungeon Master renowned for creating imaginative, unconventional campaign worlds that break from standard fantasy tropes. You excel at worldbuilding that surprises and inspires both new and veteran players.
+          content: `You are an innovative Dungeons & Dragons Dungeon Master renowned for creating imaginative, unconventional campaign worlds that break from standard fantasy tropes while maintaining strict geographical consistency. You excel at worldbuilding that surprises and inspires both new and veteran players.
           
 Your campaigns must:
 1. Provide truly original concepts not commonly seen in typical D&D settings
@@ -984,7 +1036,15 @@ Your campaigns must:
 5. Offer multiple paths, mysteries, and interconnected plot threads
 6. Challenge standard fantasy assumptions with fresh takes on classic elements
 
-IMPORTANT: Avoid generic medieval European fantasy tropes and standard Tolkien-inspired worlds. Create something that will genuinely surprise and delight experienced players.`
+WORLD CONSISTENCY REQUIREMENTS:
+1. Create a geographically CONSISTENT world - all locations must maintain fixed spatial relationships
+2. Natural features like mountains, rivers, and forests must be treated as permanent fixtures 
+3. Settlements must have defined positions relative to geographical features and other settlements
+4. Once established, locations and features PERSIST throughout the campaign unless explicitly changed
+5. Each region should have distinctive ecological, cultural, and architectural characteristics
+6. Transportation, trade routes, and distances must make logical sense within the game world
+
+IMPORTANT: Avoid generic medieval European fantasy tropes and standard Tolkien-inspired worlds. Create something that will genuinely surprise and delight experienced players while maintaining a believable, consistent world geography.`
         },
         {
           role: "user",
@@ -994,10 +1054,35 @@ IMPORTANT: Avoid generic medieval European fantasy tropes and standard Tolkien-i
           - Tone: ${tone}
           - World Archetype: Consider a world that involves a "${worldArchetype}"
           - Unique Magical Element: Consider incorporating "${magicalElement}"
+          ${options.worldType ? `- World Type: This must be a "${options.worldType}" type world` : ''}
+          
+          ${options.worldConsistencyRules?.length ? `CRITICAL - WORLD CONSISTENCY REQUIREMENTS:
+          ${options.worldConsistencyRules.map((rule, i) => `${i+1}. ${rule}`).join('\n')}` : ''}
+          
+          ${options.existingGeography?.naturalFeatures?.length ? `ESTABLISHED NATURAL FEATURES (Must remain fixed in the world):
+          ${options.existingGeography.naturalFeatures.map(f => `- ${f}`).join('\n')}` : ''}
+          
+          ${options.existingGeography?.settlements?.length ? `ESTABLISHED SETTLEMENTS (Must be incorporated with consistent locations):
+          ${options.existingGeography.settlements.map(s => `- ${s}`).join('\n')}` : ''}
+          
+          ${options.existingGeography?.landmarks?.length ? `ESTABLISHED LANDMARKS (Must persist in their current locations):
+          ${options.existingGeography.landmarks.map(l => `- ${l}`).join('\n')}` : ''}
+          
+          ${options.existingGeography?.regions?.length ? `ESTABLISHED REGIONS (Must be included with their existing characteristics):
+          ${options.existingGeography.regions.map(r => `- ${r}`).join('\n')}` : ''}
+          
+          ${options.existingMagicSystems?.length ? `ESTABLISHED MAGIC SYSTEMS (Must be maintained consistently):
+          ${options.existingMagicSystems.map(m => `- ${m}`).join('\n')}` : ''}
           
           Format your response as a JSON object with these fields:
           - name: A truly distinctive and evocative campaign name
           - description: A detailed description (300-400 words) of this unique world, emphasizing its most original elements. Include geography, societies, conflicts, magical systems, and potential adventure hooks.
+          - geography: A detailed catalog of the world's geographic features with precise relative locations
+          - naturalFeatures: An array of all mountains, rivers, forests, lakes, etc., with descriptions
+          - settlements: An array of all significant settlements with descriptions and geographic positions
+          - landmarks: An array of all notable landmarks with descriptions and exact locations
+          - regions: An array of all major regions/provinces with descriptions of their boundaries and characteristics
+          - magicalSystems: Detailed descriptions of how magic functions in this world
           - setting: Indicate "Homebrew" and add some brief notes on what makes this setting distinctive from standard D&D worlds
           - worldQuirks: Array of 4-6 unusual features of this world that make it memorable and different
           - factions: Array of 4-5 groups with unconventional motivations and methods
@@ -1012,7 +1097,33 @@ IMPORTANT: Avoid generic medieval European fantasy tropes and standard Tolkien-i
       temperature: 0.9,
     });
 
-    return safeJsonParse(response.choices[0].message.content);
+    const campaignData = safeJsonParse(response.choices[0].message.content);
+    
+    // Extract and store geographical data for world consistency
+    const geographyData = {
+      naturalFeatures: campaignData.naturalFeatures || [],
+      settlements: campaignData.settlements || [],
+      landmarks: campaignData.landmarks || [],
+      regions: campaignData.regions || []
+    };
+    
+    // Store magic systems for consistency
+    const magicalSystems = campaignData.magicalSystems || [];
+    
+    // Extract world type if available
+    const worldType = campaignData.geography?.worldType || worldArchetype;
+    
+    // Prepare for next generation by enhancing options with world consistency data
+    const enhancedCampaignData = {
+      ...campaignData,
+      worldConsistencyData: {
+        existingGeography: geographyData,
+        worldType: worldType,
+        existingMagicSystems: magicalSystems
+      }
+    };
+    
+    return enhancedCampaignData;
   } catch (error) {
     console.error("Error generating campaign:", error);
     throw new Error("Failed to generate campaign");
