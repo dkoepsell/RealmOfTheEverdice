@@ -57,6 +57,11 @@ export default function CampaignPage() {
   const [isAutoDmMode, setIsAutoDmMode] = useState(true); // Auto-DM is enabled by default
   const [rightPanelTab, setRightPanelTab] = useState<"info" | "chat" | "party" | "voting" | "planning">("info");
   
+  // Computed property to check if current user is the DM
+  const isDungeonMaster = useMemo(() => {
+    return campaign && user && campaign.dmId === user.id;
+  }, [campaign, user]);
+  
   // Fetch campaign data
   const { 
     data: campaign,
