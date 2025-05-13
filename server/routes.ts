@@ -14,6 +14,7 @@ import {
   generateWorldMap,
   generateGlobalMapImage
 } from "./openai";
+import OpenAI from "openai";
 import { generateDefaultEquipment, generateDefaultAlignment } from "./character-equipment";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -6520,12 +6521,18 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
   // AI status check route - allows monitoring the health of the AI service
   app.get("/api/ai/status", async (req, res) => {
     try {
-      // Simple check if we can get a basic response from OpenAI
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10 second timeout
+      // Create an OpenAI client
+      const openaiClient = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      });
       
       try {
-        const response = await openai.chat.completions.create({
+        // Set a timeout to handle API response time
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("OpenAI API request timed out")), 10000);
+        });
+        
+        const responsePromise = openaiClient.chat.completions.create({
           model: "gpt-4o", // the newest OpenAI model
           messages: [
             {
@@ -6538,9 +6545,11 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
             }
           ],
           max_tokens: 10,
-          temperature: 0,
-          signal: abortController.signal
+          temperature: 0
         });
+        
+        // Use Promise.race to implement timeout
+        const response = await Promise.race([responsePromise, timeoutPromise]);
         
         clearTimeout(timeoutId);
         
@@ -6557,7 +6566,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
             message: "AI services are responding but returning unexpected content."
           });
         }
-      } catch (aiError) {
+      } catch (aiError: any) {
         clearTimeout(timeoutId);
         console.error("AI status check failed:", aiError);
         return res.status(200).json({ 
