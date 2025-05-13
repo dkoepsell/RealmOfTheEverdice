@@ -3988,50 +3988,30 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         
         const trimmedPatterns = Object.fromEntries(sortedPatterns);
         
-        // For testing, log but don't update database
-        console.log("DEBUG: Would normally store narrative patterns in database");
+        // Store patterns in the database if needed
+        if (Object.keys(trimmedPatterns).length > 0) {
+          await storage.updateNarrativePatterns(campaignId, trimmedPatterns);
+        }
       } catch (error) {
         console.warn("Error updating narrative patterns:", error);
         // Continue even if pattern tracking fails
       }
         
-        // For testing, skip creating game log entry
-        console.log("DEBUG: Would normally create game log entry for narrative response");
-        
-        // Return a test response with mock IDs
-        res.json({ 
-          success: true, 
-          response: narrativeResponse, 
-          logId: 999,
-          playerLogId: 998
-        });
-      } catch (aiError) {
-        console.error("AI generation error:", aiError);
-        
-        // Create a fallback response that acknowledges the player's action
-        let playerActionSummary = playerAction;
-        if (playerAction.length > 50) {
-          playerActionSummary = playerAction.substring(0, 47) + '...';
-        }
-        
-        const fallbackNarrative = `The Dungeon Master acknowledges your action: "${playerActionSummary}"\n\nThe DM pauses for a moment, considering your choices. "That's an interesting approach! Let me think about how that plays out..." (There was an issue generating the AI response, but your action was recorded successfully. Try again in a moment.)`;
-        
-        // Add the fallback narrative to the game logs
-        const fallbackLog = await storage.createGameLog({
-          campaignId,
-          content: fallbackNarrative,
-          type: "narrative",
-          timestamp: new Date()
-        });
-        
-        res.json({ 
-          success: true, 
-          response: fallbackNarrative, 
-          logId: fallbackLog.id,
-          playerLogId: playerLog.id,
-          error: "AI generation failed, using fallback response" 
-        });
-      }
+      // Create a game log entry for the narrative response
+      const narrativeLog = await storage.createGameLog({
+        campaignId,
+        content: narrativeResponse,
+        type: "narrative",
+        timestamp: new Date()
+      });
+      
+      // Return success with real log IDs
+      res.json({
+        success: true, 
+        response: narrativeResponse, 
+        logId: narrativeLog.id,
+        playerLogId: playerLog.id
+      });
     } catch (error) {
       console.error("Error generating response:", error);
       
