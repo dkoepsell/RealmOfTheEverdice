@@ -68,12 +68,11 @@ const BOT_COMPANIONS = [
 ];
 
 export function BotCompanion({ campaignId, characterName, compendiumMode = false, className = "" }: BotCompanionProps) {
-  const [selectedBot, setSelectedBot] = useState(BOT_COMPANIONS[0]);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
   const { toast } = useToast();
   
-  // Initial message history with system welcome and bot greeting
+  // Initial message history with system welcome
   const [messages, setMessages] = useState<BotMessage[]>([
     {
       id: "system-welcome",
@@ -81,21 +80,48 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
       content: "Welcome to the D&D Bot Companion! I'm here to help with rules, lore, and campaign information.",
       timestamp: new Date(),
       type: "info"
-    },
-    {
-      id: "welcome",
-      sender: "bot",
-      content: `Hello! I'm ${BOT_COMPANIONS[0].name}, your D&D ${BOT_COMPANIONS[0].role}. You can ask me about D&D rules, lore, or for advice during your adventure.`,
-      timestamp: new Date(),
-      type: "message"
     }
   ]);
 
-  // Fetch bot character data (if exists)
-  const { data: botCharacters } = useQuery<Character[]>({
+  // Fetch bot character data (if exists) and use them instead of sample bots
+  const { data: botCharacters, isLoading } = useQuery<Character[]>({
     queryKey: ["/api/campaigns", campaignId, "bot-characters"],
     enabled: !!campaignId,
   });
+  
+  // Use actual bot characters or sample bots as fallback
+  const availableBots = botCharacters && botCharacters.length > 0
+    ? botCharacters.map(char => ({
+        id: char.id,
+        name: char.name,
+        role: char.class || "Companion",
+        description: char.background || `A helpful ${char.race} ${char.class} companion for your adventure.`,
+        avatar: char.race === "Elf" ? "🧝" : char.race === "Dwarf" ? "🧔" : char.race === "Goliath" ? "🪨" : "🧙‍♂️",
+        specialties: ["Combat Support", "Adventure Assistance", "D&D Knowledge"]
+      }))
+    : BOT_COMPANIONS;
+  
+  // Set selected bot to first available
+  const [selectedBot, setSelectedBot] = useState<any>(null);
+  
+  // Update selected bot when data loads
+  React.useEffect(() => {
+    if (availableBots && availableBots.length > 0 && !selectedBot) {
+      setSelectedBot(availableBots[0]);
+      
+      // Add bot greeting
+      setMessages(prev => [
+        ...prev,
+        {
+          id: "welcome",
+          sender: "bot",
+          content: `Hello! I'm ${availableBots[0].name}, your companion. How can I assist you today?`,
+          timestamp: new Date(),
+          type: "message"
+        }
+      ]);
+    }
+  }, [availableBots, selectedBot]);
 
   // Create bot companion mutation
   const createBotMutation = useMutation({
@@ -209,7 +235,7 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
   });
 
   const handleSendMessage = () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !selectedBot) return;
     
     // Add user message to chat
     const userMessage: BotMessage = {
@@ -222,23 +248,38 @@ export function BotCompanion({ campaignId, characterName, compendiumMode = false
     
     setMessages(prev => [...prev, userMessage]);
     
+    // Show loading message while sending
+    const messageToSend = message;
+    setMessage("");
+    
     // Send to bot and get response
     askBotMutation.mutate({ 
-      message: message, 
+      message: messageToSend, 
       botId: selectedBot.id,
       context: "current_campaign" 
     });
   };
 
-  const handleSelectBot = (bot: typeof BOT_COMPANIONS[0]) => {
+  const handleSelectBot = (bot: any) => {
+    if (bot.id === selectedBot?.id) return;
+    
     setSelectedBot(bot);
-    setMessages([{
-      id: "welcome",
-      sender: "bot",
-      content: `Hello! I'm ${bot.name}, your D&D ${bot.role}. How can I assist you today?`,
-      timestamp: new Date(),
-      type: "message"
-    }]);
+    setMessages([
+      {
+        id: "system-welcome",
+        sender: "system",
+        content: "Welcome to the D&D Bot Companion! I'm here to help with rules, lore, and campaign information.",
+        timestamp: new Date(),
+        type: "info"
+      },
+      {
+        id: "welcome",
+        sender: "bot",
+        content: `Hello! I'm ${bot.name}, your companion. How can I assist you today?`,
+        timestamp: new Date(),
+        type: "message"
+      }
+    ]);
   };
 
   return (
