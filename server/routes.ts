@@ -3054,6 +3054,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the campaign with better error handling
       let campaign;
       try {
+        // If this is an AI DM campaign, generate a new campaign setting first
+        if (validatedData.isAiDm) {
+          try {
+            // Generate the initial campaign setting with geographical consistency
+            const campaignData = await generateCampaign({
+              genre: validatedData.setting || undefined,
+              theme: validatedData.theme || undefined
+            });
+            
+            // Store the campaign data with world consistency information
+            validatedData.worldData = JSON.stringify({
+              ...campaignData,
+              worldConsistencyData: campaignData.worldConsistencyData
+            });
+          } catch (genError) {
+            console.error("Error generating campaign world data:", genError);
+            // Continue with empty world data if generation fails
+            validatedData.worldData = JSON.stringify({
+              worldConsistencyData: {
+                existingGeography: {
+                  naturalFeatures: [],
+                  settlements: [],
+                  landmarks: [],
+                  regions: []
+                },
+                worldType: validatedData.setting || "fantasy",
+                existingMagicSystems: []
+              }
+            });
+          }
+        }
+        
         campaign = await storage.createCampaign(validatedData);
         console.log("Campaign created successfully:", JSON.stringify(campaign));
         
@@ -3552,15 +3584,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
+      // Check if this is a continuation of an existing campaign
+      const campaignId = req.body.campaignId;
+      let existingWorldData = null;
+      
+      if (campaignId) {
+        try {
+          // Fetch existing campaign data to maintain geographical consistency
+          const existingCampaign = await storage.getCampaign(campaignId);
+          
+          if (existingCampaign?.worldData) {
+            // Extract geographical consistency data
+            existingWorldData = typeof existingCampaign.worldData === 'string' 
+              ? JSON.parse(existingCampaign.worldData) 
+              : existingCampaign.worldData;
+          }
+        } catch (err) {
+          console.error("Error retrieving existing campaign data:", err);
+        }
+      }
+      
+      // Build options with world consistency data if available
       const options = {
         genre: req.body.genre,
         theme: req.body.theme,
         tone: req.body.tone,
+        // Add world consistency rules if continuing an existing campaign
+        ...(existingWorldData?.worldConsistencyData && {
+          worldConsistencyRules: existingWorldData.worldConsistencyRules || [],
+          existingGeography: existingWorldData.worldConsistencyData.existingGeography || {
+            naturalFeatures: [],
+            settlements: [],
+            landmarks: [],
+            regions: []
+          },
+          worldType: existingWorldData.worldConsistencyData.worldType || req.body.worldType,
+          existingMagicSystems: existingWorldData.worldConsistencyData.existingMagicSystems || []
+        })
       };
       
       const generatedCampaign = await generateCampaign(options);
+      
+      // If we have an existing campaign, merge in the new consistency data
+      if (campaignId && existingWorldData) {
+        // Update the existing campaign with new world consistency data
+        try {
+          await storage.updateCampaign(campaignId, {
+            worldData: JSON.stringify({
+              ...existingWorldData,
+              worldConsistencyData: generatedCampaign.worldConsistencyData
+            })
+          });
+        } catch (err) {
+          console.error("Error saving updated world consistency data:", err);
+        }
+      }
+      
       res.json(generatedCampaign);
     } catch (error) {
+      console.error("Failed to generate campaign:", error);
       res.status(500).json({ message: "Failed to generate campaign" });
     }
   });
@@ -3569,18 +3651,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     try {
+      // Check if this adventure is for an existing campaign
+      const campaignId = req.body.campaignId;
+      let existingWorldFeatures = [];
+      let existingWorldLocations = [];
+      
+      if (campaignId) {
+        try {
+          // Fetch existing campaign data to maintain geographical consistency
+          const existingCampaign = await storage.getCampaign(campaignId);
+          
+          if (existingCampaign?.worldData) {
+            // Extract geographical consistency data
+            const worldData = typeof existingCampaign.worldData === 'string' 
+              ? JSON.parse(existingCampaign.worldData) 
+              : existingCampaign.worldData;
+            
+            // Get existing world features from previous adventures
+            if (worldData.worldConsistencyData?.worldFeaturesUpdated) {
+              existingWorldFeatures = worldData.worldConsistencyData.worldFeaturesUpdated;
+            } else if (worldData.worldConsistencyData?.existingGeography) {
+              // Extract features from geography data
+              const geo = worldData.worldConsistencyData.existingGeography;
+              
+              if (geo.naturalFeatures && Array.isArray(geo.naturalFeatures)) {
+                existingWorldFeatures = existingWorldFeatures.concat(
+                  geo.naturalFeatures.map(f => typeof f === 'string' ? f : f.name || f.description)
+                );
+              }
+              
+              if (geo.settlements && Array.isArray(geo.settlements)) {
+                existingWorldFeatures = existingWorldFeatures.concat(
+                  geo.settlements.map(s => typeof s === 'string' ? s : s.name || s.description)
+                );
+              }
+              
+              if (geo.landmarks && Array.isArray(geo.landmarks)) {
+                existingWorldFeatures = existingWorldFeatures.concat(
+                  geo.landmarks.map(l => typeof l === 'string' ? l : l.name || l.description)
+                );
+              }
+              
+              if (geo.regions && Array.isArray(geo.regions)) {
+                existingWorldFeatures = existingWorldFeatures.concat(
+                  geo.regions.map(r => typeof r === 'string' ? r : r.name || r.description)
+                );
+              }
+            }
+            
+            // Get existing world locations from previous adventures
+            if (worldData.worldConsistencyData?.updatedWorldLocations) {
+              existingWorldLocations = worldData.worldConsistencyData.updatedWorldLocations;
+            }
+          }
+        } catch (err) {
+          console.error("Error retrieving existing campaign data for adventure:", err);
+        }
+      }
+      
+      // Build options with world consistency data
       const options = {
         theme: req.body.theme,
         setting: req.body.setting,
         difficulty: req.body.difficulty,
         partyLevel: req.body.partyLevel || 1,
         partySize: req.body.partySize || 4,
-        includeElements: req.body.includeElements || []
+        includeElements: req.body.includeElements || [],
+        existingWorldFeatures: existingWorldFeatures,
+        campaignId: campaignId,
+        worldLocations: existingWorldLocations
       };
       
       const generatedAdventure = await generateAdventure(options);
+      
+      // If we have a campaign, update its world consistency data
+      if (campaignId) {
+        try {
+          // Fetch the campaign again to ensure we have the latest data
+          const campaign = await storage.getCampaign(campaignId);
+          
+          if (campaign) {
+            const worldData = typeof campaign.worldData === 'string' 
+              ? JSON.parse(campaign.worldData || '{}') 
+              : (campaign.worldData || {});
+            
+            // Merge in the new world consistency data
+            await storage.updateCampaign(campaignId, {
+              worldData: JSON.stringify({
+                ...worldData,
+                worldConsistencyData: {
+                  ...worldData.worldConsistencyData,
+                  worldFeaturesUpdated: generatedAdventure.worldConsistencyData?.worldFeaturesUpdated || [],
+                  updatedWorldLocations: generatedAdventure.worldConsistencyData?.updatedWorldLocations || []
+                }
+              })
+            });
+          }
+        } catch (err) {
+          console.error("Error updating campaign with new adventure world data:", err);
+        }
+      }
+      
       res.json(generatedAdventure);
     } catch (error) {
+      console.error("Failed to generate adventure:", error);
       res.status(500).json({ message: "Failed to generate adventure" });
     }
   });
