@@ -203,167 +203,230 @@ export async function generateGameNarration(context: string, playerAction: strin
   try {
     // Create a controller to allow timeout for OpenAI requests
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout - reduced further to prevent long waiting
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // Reduced timeout for faster fallback
     
-    let systemPrompt = `You are a creative D&D Dungeon Master narrating a game. Create responses under 200 words that move the story forward with engaging narrative and varied storytelling.
+    // Extract game context information - limit context size to prevent token overuse
+    const gameContext = context.substring(0, 1500); 
+    
+    // Improved system prompt focused on narrative drive and responsiveness
+    let systemPrompt = `You are a master D&D Dungeon Master creating vibrant, responsive narratives. Your goal is to advance the story with meaningful consequences while maintaining a consistent world.
 
-RESPONSE REQUIREMENTS:
-1. Keep responses UNDER 200 WORDS
-2. Vary your narrative style to keep gameplay fun and unpredictable
-3. Present meaningful choices with alignment consequences
+CORE REQUIREMENTS:
+1. Keep responses UNDER 150 WORDS MAXIMUM
+2. Mix narrative styles (epic, mysterious, humorous) to maintain player interest
+3. Make player actions matter with clear consequences
 4. Suggest dice rolls in [Roll: d20+modifier vs DC X for Y] format
-5. Regularly introduce opportunities for:
-   - Character development through moral choices
-   - Acquiring interesting items, weapons or magic objects
-   - Exciting combat encounters with varied enemies
-   - Skills tests that build character stats
-   - Meeting unique NPCs and potential allies
+5. Always include ONE clear opportunity for player decision or action
 
-WORLD CONSISTENCY RULES:
-1. Maintain a geographically consistent world throughout the game
-2. All locations you create must remain in the same positions relative to each other
-3. Natural features like mountains, rivers, and forests must remain fixed
-4. Once you establish a location, it persists unless explicitly altered by player actions
-5. Towns and landmarks maintain their established characteristics
-6. Never contradict previously established world geography
+STORY ADVANCEMENT TECHNIQUES:
+1. After combat or challenges, advance to the next meaningful story beat
+2. Show immediate consequences of player decisions
+3. Include environmental changes reflecting player actions
+4. Introduce unexpected but logical twists that build on previous choices
 
-IMPORTANT: Reward creative actions with minor benefits and handle unusual player approaches positively.`;
+WORLD CONSISTENCY:
+1. Maintain geographical consistency with previously established locations
+2. Keep NPCs and factions behaving according to established motives
+3. Respect the physical laws and magical systems already in play
 
-    // Check if playerAction contains a dice roll
-    const containsDiceRoll = playerAction.match(/roll(ed|s)\s+\d+|result\s+\d+|DC\s+\d+|success|failure|critical/i);
+GAMEPLAY BALANCE:
+1. Rotate between combat, social, puzzle, and exploration elements
+2. Provide both short-term goals and hints toward larger quests
+3. Allow multiple approaches to problems (stealth, combat, persuasion)`;
+
+    // Enhanced pattern detection for different types of player actions
+    // More comprehensive dice roll detection
+    const diceRollPatterns = [
+      /\b(roll(ed|ing|s)?(\s+a)?\s+(d\d+|dice|for))/i,
+      /\b(d\d+|result|DC|check|save)\b/i,
+      /\b(nat(ural)?\s*\d+|crit(ical)?)\b/i,
+      /\b(success|fail(ure|ed)?)\b/i
+    ];
+    const containsDiceRoll = diceRollPatterns.some(pattern => pattern.test(playerAction));
     
-    // Check if playerAction is a creative/performative action with a more precise pattern
-    // Focus on expressly performative actions while avoiding simple directional movement
-    const isPerformativeAction = 
-      playerAction.match(/\b(somersault|flip|dance|twirl|leap dramatically|tada|ballet|backflip|lightsaber|perform|flourish|dramatic|bow dramatically|laugh at|laugh maniacally|smile wickedly|grin evilly|wink at|draw my|pull out my|brandish|wave|spin around|juggle|cartwheel|sneak past|pose|gesture|salute)\b/i) &&
-      !playerAction.match(/\b(walk|go|move|head|proceed|continue|enter|exit|leave|open|close|push|pull)\b/i);
+    // Improved performative action detection with more precise patterns
+    const performativeVerbs = [
+      'somersault', 'flip', 'dance', 'twirl', 'leap', 'tada', 'ballet', 'backflip', 
+      'perform', 'flourish', 'bow', 'laugh', 'smile', 'grin', 'wink', 'draw', 
+      'brandish', 'wave', 'spin', 'juggle', 'cartwheel', 'sneak', 'pose', 'gesture', 
+      'salute', 'wiggle', 'strut', 'swagger', 'moonwalk', 'taunt', 'flirt', 
+      'prank', 'serenade', 'whistle', 'sing', 'imitate', 'mimic'
+    ];
     
+    const movementVerbs = [
+      'walk', 'go', 'move', 'head', 'proceed', 'continue', 'enter', 'exit', 
+      'leave', 'open', 'close', 'push', 'pull', 'run', 'jog', 'sprint', 'dash'
+    ];
+    
+    // More precise pattern matching using word boundaries
+    const performativePattern = new RegExp(`\\b(${performativeVerbs.join('|')})\\b`, 'i');
+    const movementPattern = new RegExp(`\\b(${movementVerbs.join('|')})\\b`, 'i');
+    const isPerformativeAction = performativePattern.test(playerAction) && !movementPattern.test(playerAction);
+    
+    // Combat action detection
+    const combatVerbs = [
+      'attack', 'hit', 'stab', 'slash', 'strike', 'cast', 'shoot', 'throw', 
+      'fireball', 'spell', 'swing', 'dodge', 'parry', 'block', 'defend',
+      'charge', 'ambush', 'stealth attack', 'backstab', 'sneak attack'
+    ];
+    const combatPattern = new RegExp(`\\b(${combatVerbs.join('|')})\\b`, 'i');
+    const isCombatAction = combatPattern.test(playerAction);
+    
+    // Social interaction detection
+    const socialVerbs = [
+      'talk', 'speak', 'ask', 'tell', 'negotiate', 'persuade', 'intimidate', 
+      'deceive', 'charm', 'bluff', 'convince', 'bribe', 'discuss', 'chat',
+      'argue', 'compliment', 'threaten', 'haggle', 'bargain'
+    ];
+    const socialPattern = new RegExp(`\\b(${socialVerbs.join('|')})\\b`, 'i');
+    const isSocialAction = socialPattern.test(playerAction);
+    
+    // Build the appropriate user prompt based on the action type
     let userPrompt = "";
     
     if (isPerformativeAction) {
-      userPrompt = `Action: ${playerAction}
+      userPrompt = `GAME CONTEXT (brief): ${gameContext.substring(0, 300)}
+      
+PERFORMATIVE ACTION: ${playerAction}
 
-Describe in 1-2 sentences how this creative action plays out, with a minor positive effect. Keep to 50 words maximum.`;  
-    } else if (isAutoAdvance) {
-      userPrompt = `Auto-advance story request.
-
-Respond in under 200 words with ONE of these narrative elements (vary between them for gameplay variety):
-1. A surprise combat encounter with an interesting enemy that offers item rewards
-2. Discovery of a valuable item, treasure, or magical object with unique properties
-3. Meeting a unique NPC who offers information, quests, or alignment-changing choices
-4. A moral dilemma that affects character alignment with clear consequences
-5. An environmental challenge requiring skill checks that could improve character stats
-6. A puzzle or trap that rewards creative thinking and offers valuable rewards
-7. A plot twist that reveals new information about the main quest or world
-
-Include a clear choice, challenge, or suggested dice roll [Roll: d20+modifier vs DC X for Y].`;
+Respond in 50 words or less with:
+1. A vivid description of how this creative/performative action plays out
+2. A small but meaningful benefit this adds to the current situation
+3. How NPCs or the environment react to this flourish`;
     } else if (containsDiceRoll) {
-      // Special handling for dice roll actions with educational elements
-      userPrompt = `Dice Roll: ${playerAction}
+      userPrompt = `GAME CONTEXT: ${gameContext.substring(0, 500)}
+      
+DICE ROLL ACTION: ${playerAction}
 
-Respond in under 200 words with:
-1. The specific consequence of this roll result with dramatic flair
-2. One brief educational element about D&D mechanics for player learning
-3. ONE of these impacts (vary between them for gameplay variety):
-   - Character growth opportunity with a specific stat or skill improvement
-   - Discovery of a unique item or weapon with interesting properties
-   - Alignment shift opportunity with clear consequences
-   - NPC relationship development opportunity
-   - New quest or storyline revelation based on the roll outcome
+Respond in 100-150 words with:
+1. The immediate outcome of this dice roll with dramatic flair
+2. How this result changes the situation or advances the story
+3. A new opportunity or challenge that emerges from this outcome
+4. A clear next decision point for the player`;
+    } else if (isCombatAction) {
+      userPrompt = `GAME CONTEXT: ${gameContext.substring(0, 500)}
+      
+COMBAT ACTION: ${playerAction}
 
-Keep your response focused, exciting, and directly tied to the roll result.`;
+Respond in 100-150 words with:
+1. An exciting description of how the combat action unfolds
+2. Tactical changes in the battlefield (position, cover, advantage)
+3. Enemy reactions and counteractions
+4. A new combat opportunity or challenge
+5. A suggested follow-up roll if appropriate [Roll: d20+X vs DC Y for Z]`;
+    } else if (isSocialAction) {
+      userPrompt = `GAME CONTEXT: ${gameContext.substring(0, 500)}
+      
+SOCIAL ACTION: ${playerAction}
+
+Respond in 100-150 words with:
+1. The NPC's reaction with subtle cues about their mindset
+2. New information revealed through this interaction
+3. How this changes the social dynamic or relationship
+4. A clear next conversational opportunity
+5. A suggested social roll if appropriate [Roll: d20+CHA vs DC X for persuasion]`;
+    } else if (isAutoAdvance) {
+      userPrompt = `GAME CONTEXT: ${gameContext}
+      
+AUTO-ADVANCE REQUEST:
+
+Respond in 100-150 words with ONE of these story elements (vary for gameplay diversity):
+1. A surprising encounter that reveals something about the world
+2. A discovery that changes understanding of the current quest
+3. An environmental challenge requiring creative problem-solving
+4. An NPC who offers a quest, information, or moral choice
+5. A dramatic situation change (weather, faction activity, magical effect)
+
+Include vivid sensory details and a CLEAR opportunity for player action.`;
     } else {
-      userPrompt = `Player Action: ${playerAction}
+      // Default prompt for standard player actions
+      userPrompt = `GAME CONTEXT: ${gameContext.substring(0, 500)}
+      
+PLAYER ACTION: ${playerAction}
 
-Respond in under 200 words with:
-1. A direct, vibrant response to the player's action with meaningful consequences
-2. ONE of these elements (vary between them for gameplay variety):
-   - Combat opportunity with rewards for victory
-   - A moral choice affecting alignment with clear consequences
-   - Discovery of a valuable or magical item with unique properties
-   - A skill challenge that could improve character abilities
-   - An NPC interaction offering quests or information
-3. A suggested dice roll if appropriate [Roll: d20+modifier vs DC X for Y]
+Respond in 100-150 words with:
+1. The immediate outcome of this action with sensory details
+2. How the world and NPCs react to this choice
+3. A new situation or challenge that emerges
+4. A clear decision point or action opportunity
+5. A suggested dice roll if appropriate [Roll: d20+X vs DC Y for Z]
 
-Use varied narrative styles and keep scenarios fresh and unpredictable.`;
+Maintain world consistency and advance the story meaningfully.`;
     }
     
-    console.log("DEBUG: Calling OpenAI in generateGameNarration", {
-      model: "gpt-4o",
-      systemPromptLength: systemPrompt.length,
-      userPromptLength: userPrompt.length,
-      containsDiceRoll,
-      isPerformativeAction: isPerformativeAction ? "yes" : "no"
+    // Log relevant information for debugging
+    console.log("DEBUG: Preparing narration request", {
+      actionType: isPerformativeAction ? "performative" : 
+                 (containsDiceRoll ? "dice" : 
+                 (isCombatAction ? "combat" : 
+                 (isSocialAction ? "social" : 
+                 (isAutoAdvance ? "auto-advance" : "standard")))),
+      contextLength: gameContext.length
     });
     
     try {
-      // Use the proper system and user prompts
-      console.log("DEBUG: Sending full request to OpenAI");
+      // Send request to OpenAI with optimized parameters
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        // Adjust parameters based on action type for optimal response quality and speed
+        temperature: isPerformativeAction ? 0.7 : 
+                    (containsDiceRoll ? 0.5 : 
+                    (isCombatAction ? 0.8 : 
+                    (isSocialAction ? 0.7 : 0.8))),
+        max_tokens: isPerformativeAction ? 75 : 180,
+        top_p: 0.9,
+        presence_penalty: 0.2,
+        frequency_penalty: 0.3,
+        signal: controller.signal
+      });
       
-      // We created the controller earlier to ensure it's available for cleanup
+      // Clear timeout when request completes successfully
+      clearTimeout(timeoutId);
       
-      try {
-        const response = await openai.chat.completions.create({
-          model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-          messages: [
-            {
-              role: "system",
-              content: systemPrompt
-            },
-            {
-              role: "user",
-              content: userPrompt
-            }
-          ],
-          temperature: isPerformativeAction ? 0.7 : (containsDiceRoll ? 0.6 : 0.8), // Reduced temperature for more stable responses
-          top_p: 0.8, // Slightly more focused sampling
-          max_tokens: 150, // Further reduced for better performance
-          frequency_penalty: 0.3, // Reduced to speed up generation
-          presence_penalty: 0.3, // Reduced to speed up generation
-        }, {
-          signal: controller.signal
-        });
+      console.log("DEBUG: Narration response received", {
+        responseLength: response.choices[0].message.content?.length || 0,
+        actionType: isPerformativeAction ? "performative" : 
+                   (containsDiceRoll ? "dice" : 
+                   (isCombatAction ? "combat" : 
+                   (isSocialAction ? "social" : 
+                   (isAutoAdvance ? "auto-advance" : "standard"))))
+      });
+      
+      return response.choices[0].message.content;
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      
+      // Enhanced fallback responses for timeout cases
+      if (err?.name === 'AbortError' || err?.message?.includes('abort') || err?.message?.includes('timeout')) {
+        console.warn("Request timed out in generateGameNarration. Using enhanced fallback response.");
         
-        // Clear the timeout if request completes
-        clearTimeout(timeoutId);
-        
-        console.log("DEBUG: OpenAI response received in generateGameNarration", {
-          responseLength: response.choices[0].message.content?.length || 0
-        });
-        
-        return response.choices[0].message.content;
-      } catch (err: any) {
-        clearTimeout(timeoutId); // Make sure to clear the timeout
-        
-        // Check if this is an abort error (timeout)
-        if (err?.name === 'AbortError' || err?.message?.includes('abort') || err?.message?.includes('timeout')) {
-          console.warn("Request timed out in generateGameNarration. Using fallback response.");
-          
-          // Create appropriate fallback responses based on the action type
-          if (isPerformativeAction) {
-            return `With a flourish, you ${playerAction}. The action adds a bit of flair to the moment, and you sense a slight boost in confidence.`;
-          } else if (containsDiceRoll) {
-            return `The Dungeon Master nods. "Go ahead and make that roll, and we'll see what happens next!"`;
-          } else if (isAutoAdvance) {
-            return `The adventure continues. The path ahead presents both challenges and opportunities. What would you like to do next?`;
-          } else {
-            return `The Dungeon Master considers your action. "Interesting approach! Let's see how that plays out as the story continues."`;
-          }
+        // Context-aware fallback responses based on action type
+        if (isPerformativeAction) {
+          return `With a flourish, you ${playerAction}. The nearby onlookers seem impressed by your display, and you notice a subtle advantage in the situation. What would you like to do with this momentary edge?`;
+        } else if (containsDiceRoll) {
+          return `The dice tumble across the table. The Dungeon Master considers the result with interest. "This outcome opens a new path forward. What specifically do you want to do next based on this roll?"`;
+        } else if (isCombatAction) {
+          return `Your combat maneuver creates an opening. The enemy recoils momentarily, revealing a weakness in their defense. You have a brief tactical advantage - how do you want to follow up while they're vulnerable? [Roll: d20+your attack modifier for advantage]`;
+        } else if (isSocialAction) {
+          return `Your words have a noticeable effect on the conversation. The NPC's expression shifts, suggesting your approach is working. They seem more receptive now. What specific information do you want to learn or what outcome are you seeking?`;
+        } else if (isAutoAdvance) {
+          return `As you continue your journey, the environment subtly changes. Ahead, you notice a fork in the path - one well-traveled route and one overgrown trail with what appears to be fresh tracks. A faint sound catches your attention from the distance. Which direction will you investigate?`;
+        } else {
+          return `Your action yields unexpected results. The situation has changed, creating both an opportunity and a potential complication. The Dungeon Master raises an eyebrow. "An interesting approach! What specifically do you do next?"`;
         }
-        
-        // If it's another type of error, re-throw
-        throw err;
       }
-    } catch (openaiError) {
-      console.error("DEBUG: OpenAI API error in generateGameNarration:", openaiError);
       
-      // Provide a generic fallback even for non-timeout errors
-      return `The Dungeon Master pauses momentarily. "Let's continue with the adventure. What would you like to do next?"`;
+      throw err;
     }
   } catch (error) {
-    console.error("Error generating narration:", error);
-    // Instead of throwing, return a generic response so game can continue
-    return `The Dungeon Master nods thoughtfully. "What would you like to do next in this adventure?"`;
+    console.error("Error in narration generation:", error);
+    
+    // Even more robust fallback responses that drive player decision-making
+    return `The Dungeon Master considers the situation thoughtfully. "At this turning point in your adventure, you have several interesting options: you could investigate further, engage with nearby characters, try a different approach entirely, or take a moment to assess your surroundings more carefully. What would you like to do next?"`;
   }
 }
 
