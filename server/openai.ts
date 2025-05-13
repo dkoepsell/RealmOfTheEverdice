@@ -126,16 +126,21 @@ export async function generateGameNarration(context: string, playerAction: strin
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout - reduced further to prevent long waiting
     
-    let systemPrompt = `You are a concise and efficient D&D Dungeon Master narrating a game. Create brief responses under 200 words that move the story forward while handling all player actions respectfully.
+    let systemPrompt = `You are a creative D&D Dungeon Master narrating a game. Create responses under 200 words that move the story forward with engaging narrative and varied storytelling.
 
 RESPONSE REQUIREMENTS:
-1. Keep all responses UNDER 200 WORDS - brevity is essential
-2. Handle creative or unusual player actions positively
-3. Present clear choices with alignment consequences
+1. Keep responses UNDER 200 WORDS
+2. Vary your narrative style to keep gameplay fun and unpredictable
+3. Present meaningful choices with alignment consequences
 4. Suggest dice rolls in [Roll: d20+modifier vs DC X for Y] format
-5. Focus on advancing the narrative in interesting ways
+5. Regularly introduce opportunities for:
+   - Character development through moral choices
+   - Acquiring interesting items, weapons or magic objects
+   - Exciting combat encounters with varied enemies
+   - Skills tests that build character stats
+   - Meeting unique NPCs and potential allies
 
-IMPORTANT: If player attempts a creative or performative action (like somersaults, dancing, drawing weapons dramatically), respond with appropriate humor and narrative integration without ridiculing the player. These moments should feel rewarding.`;
+IMPORTANT: Reward creative actions with minor benefits and handle unusual player approaches positively.`;
 
     // Check if playerAction contains a dice roll
     const containsDiceRoll = playerAction.match(/roll(ed|s)\s+\d+|result\s+\d+|DC\s+\d+|success|failure|critical/i);
