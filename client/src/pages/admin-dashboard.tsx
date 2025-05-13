@@ -569,7 +569,7 @@ export default function AdminDashboard() {
                               >
                                 <Mail className="h-4 w-4" />
                               </Button>
-                              {user.role !== "admin" && isSuperAdmin && (
+                              {isSuperAdmin && (
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
@@ -660,7 +660,7 @@ export default function AdminDashboard() {
                                 >
                                   <Mail className="h-4 w-4" />
                                 </Button>
-                                {user.role !== "admin" && isSuperAdmin && (
+                                {isSuperAdmin && (
                                   <Button 
                                     size="sm" 
                                     variant="ghost"
