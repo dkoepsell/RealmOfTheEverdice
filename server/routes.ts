@@ -6527,33 +6527,34 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
       });
       
       try {
-        // Set a timeout to handle API response time
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("OpenAI API request timed out")), 10000);
+        // Simple check with a timeout
+        const timeoutMs = 10000;
+        const timeoutPromise = new Promise<null>((_, reject) => {
+          setTimeout(() => reject(new Error("OpenAI API request timed out")), timeoutMs);
         });
         
-        const responsePromise = openaiClient.chat.completions.create({
-          model: "gpt-4o", // the newest OpenAI model
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful assistant."
-            },
-            {
-              role: "user",
-              content: "Respond with a simple 'OK' if you're working."
-            }
-          ],
-          max_tokens: 10,
-          temperature: 0
-        });
+        // The actual API call
+        const response = await Promise.race([
+          openaiClient.chat.completions.create({
+            model: "gpt-4o", // the newest OpenAI model
+            messages: [
+              {
+                role: "system",
+                content: "You are a helpful assistant."
+              },
+              {
+                role: "user",
+                content: "Respond with a simple 'OK' if you're working."
+              }
+            ],
+            max_tokens: 10,
+            temperature: 0
+          }),
+          timeoutPromise
+        ]);
         
-        // Use Promise.race to implement timeout
-        const response = await Promise.race([responsePromise, timeoutPromise]);
-        
-        clearTimeout(timeoutId);
-        
-        if (response && response.choices && response.choices[0]?.message?.content) {
+        // If we have a proper response with content
+        if (response && 'choices' in response && response.choices && response.choices[0]?.message?.content) {
           return res.status(200).json({ 
             status: "ok", 
             aiStatus: "operational",
@@ -6567,7 +6568,6 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
           });
         }
       } catch (aiError: any) {
-        clearTimeout(timeoutId);
         console.error("AI status check failed:", aiError);
         return res.status(200).json({ 
           status: "ok", 
