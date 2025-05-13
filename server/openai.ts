@@ -140,9 +140,11 @@ IMPORTANT: If player attempts a creative or performative action (like somersault
     // Check if playerAction contains a dice roll
     const containsDiceRoll = playerAction.match(/roll(ed|s)\s+\d+|result\s+\d+|DC\s+\d+|success|failure|critical/i);
     
-    // Check if playerAction is a creative/performative action (somersault, dance, etc)
-    // Simplified pattern detection to be more focused
-    const isPerformativeAction = playerAction.match(/(somersault|flip|dance|twirl|leap|tada|ballet|backflip|lightsaber|sword|perform|flourish|dramatic|bow)/i);
+    // Check if playerAction is a creative/performative action with a more precise pattern
+    // Focus on expressly performative actions while avoiding simple directional movement
+    const isPerformativeAction = 
+      playerAction.match(/\b(somersault|flip|dance|twirl|leap dramatically|tada|ballet|backflip|lightsaber|perform|flourish|dramatic|bow dramatically|laugh at|laugh maniacally|smile wickedly|grin evilly|wink at|draw my|pull out my|brandish|wave|spin around|juggle|cartwheel|sneak past|pose|gesture|salute)\b/i) &&
+      !playerAction.match(/\b(walk|go|move|head|proceed|continue|enter|exit|leave|open|close|push|pull)\b/i);
     
     let userPrompt = "";
     
@@ -224,11 +226,11 @@ Make this response different in tone and content from previous responses. Keep i
         });
         
         return response.choices[0].message.content;
-      } catch (err) {
+      } catch (err: any) {
         clearTimeout(timeoutId); // Make sure to clear the timeout
         
         // Check if this is an abort error (timeout)
-        if (err.name === 'AbortError' || err.message?.includes('abort') || err.message?.includes('timeout')) {
+        if (err?.name === 'AbortError' || err?.message?.includes('abort') || err?.message?.includes('timeout')) {
           console.warn("Request timed out in generateGameNarration. Using fallback response.");
           
           // Create appropriate fallback responses based on the action type
