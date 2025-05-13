@@ -96,6 +96,18 @@ export default function AdminDashboard() {
   const {
     isAdmin,
     isSuperAdmin,
+    
+    // Analytics data
+    dashboardStats,
+    isLoadingDashboardStats,
+    dashboardStatsError,
+    userLoginStats,
+    isLoadingUserLoginStats,
+    userLoginStatsError,
+    campaignActivityStats,
+    isLoadingCampaignActivityStats,
+    campaignActivityStatsError,
+    
     users,
     isLoadingUsers,
     stats,
@@ -1109,26 +1121,26 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <DashboardStat 
                     title="Total Users" 
-                    value="..." 
-                    isLoading={true}
+                    value={dashboardStats?.totalUsers || 0} 
+                    isLoading={isLoadingDashboardStats}
                     icon={<Users className="h-4 w-4" />} 
                   />
                   <DashboardStat 
                     title="Active Campaigns" 
-                    value="..." 
-                    isLoading={true}
+                    value={dashboardStats?.activeCampaigns || 0} 
+                    isLoading={isLoadingDashboardStats}
                     icon={<Scroll className="h-4 w-4" />} 
                   />
                   <DashboardStat 
                     title="Characters Created" 
-                    value="..." 
-                    isLoading={true}
+                    value={dashboardStats?.totalCharacters || 0} 
+                    isLoading={isLoadingDashboardStats}
                     icon={<User className="h-4 w-4" />} 
                   />
                   <DashboardStat 
                     title="Adventures Completed" 
-                    value="..." 
-                    isLoading={true}
+                    value={dashboardStats?.totalAdventures || 0} 
+                    isLoading={isLoadingDashboardStats}
                     icon={<Award className="h-4 w-4" />} 
                   />
                 </div>
@@ -1150,24 +1162,35 @@ export default function AdminDashboard() {
                 <div>
                   <h3 className="text-sm font-medium">Active Users</h3>
                   <div className="grid grid-cols-3 gap-4 mt-2">
-                    <div className="bg-muted rounded p-3 text-center">
-                      <p className="text-xs text-muted-foreground">24 Hours</p>
-                      <p className="text-2xl font-bold">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                      </p>
-                    </div>
-                    <div className="bg-muted rounded p-3 text-center">
-                      <p className="text-xs text-muted-foreground">7 Days</p>
-                      <p className="text-2xl font-bold">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                      </p>
-                    </div>
-                    <div className="bg-muted rounded p-3 text-center">
-                      <p className="text-xs text-muted-foreground">30 Days</p>
-                      <p className="text-2xl font-bold">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                      </p>
-                    </div>
+                    {isLoadingUserLoginStats ? (
+                      <>
+                        <div className="bg-muted rounded p-3 text-center">
+                          <p className="text-xs text-muted-foreground">24 Hours</p>
+                          <p className="text-2xl font-bold">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                          </p>
+                        </div>
+                        <div className="bg-muted rounded p-3 text-center">
+                          <p className="text-xs text-muted-foreground">7 Days</p>
+                          <p className="text-2xl font-bold">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                          </p>
+                        </div>
+                        <div className="bg-muted rounded p-3 text-center">
+                          <p className="text-xs text-muted-foreground">30 Days</p>
+                          <p className="text-2xl font-bold">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      userLoginStats?.activeUsers.map((activity, index) => (
+                        <div key={activity.timeframe} className="bg-muted rounded p-3 text-center">
+                          <p className="text-xs text-muted-foreground">{activity.timeframe}</p>
+                          <p className="text-2xl font-bold">{activity.count}</p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
                 
@@ -1175,7 +1198,11 @@ export default function AdminDashboard() {
                   <h3 className="text-sm font-medium">User Return Rate</h3>
                   <div className="bg-muted rounded mt-2 p-4 flex items-center justify-between">
                     <p className="text-2xl font-bold">
-                      <Loader2 className="h-6 w-6 animate-spin" />
+                      {isLoadingUserLoginStats ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : (
+                        `${(userLoginStats?.returnRate || 0) * 100}%`
+                      )}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       of users returned in the last 30 days
@@ -1187,7 +1214,11 @@ export default function AdminDashboard() {
                   <h3 className="text-sm font-medium">New Users (Last 30 Days)</h3>
                   <div className="bg-muted rounded mt-2 p-4 flex items-center justify-between">
                     <p className="text-2xl font-bold">
-                      <Loader2 className="h-6 w-6 animate-spin" />
+                      {isLoadingDashboardStats ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : (
+                        dashboardStats?.newUsersLast30Days || 0
+                      )}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       new registrations
