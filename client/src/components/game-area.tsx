@@ -476,8 +476,32 @@ export const GameArea = ({
             />
           </div>
           
-          {/* Take Turn Button */}
-          <div className="flex justify-end my-4">
+          {/* Game Control Buttons */}
+          <div className="flex justify-end gap-2 my-4">
+            {/* Only show NPC Action button for Dungeon Masters */}
+            {isDm && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-amber-800 hover:bg-amber-100 text-amber-800 font-medieval"
+                onClick={handleNpcActions}
+                disabled={npcActionsMutation.isPending}
+              >
+                {npcActionsMutation.isPending ? (
+                  <>
+                    <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-800 border-t-transparent rounded-full"></div>
+                    NPCs Acting...
+                  </>
+                ) : (
+                  <>
+                    <Users className="mr-2 h-4 w-4" />
+                    Trigger NPC Actions
+                  </>
+                )}
+              </Button>
+            )}
+            
+            {/* Take Turn Button */}
             <Button
               variant="default"
               size="lg"
