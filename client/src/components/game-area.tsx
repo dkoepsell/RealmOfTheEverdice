@@ -41,6 +41,7 @@ interface GameAreaProps {
   isAutoDmMode?: boolean; // Indicates whether the AI DM is active or a human DM
   onDiceRoll?: (type: DiceType, result: number, modifier?: number, purpose?: string, threshold?: number) => void;
   diceRollResults?: DiceRollResult[];
+  isDm?: boolean; // Indicates if the current user is the DM
 }
 
 export const GameArea = ({ 
@@ -51,7 +52,8 @@ export const GameArea = ({
   onAddGameLog,
   isAutoDmMode = true, // Default to Auto-DM if not specified
   onDiceRoll,
-  diceRollResults = []
+  diceRollResults = [],
+  isDm = false // Default to not being the DM
 }: GameAreaProps) => {
   const [playerAction, setPlayerAction] = useState("");
   const [dmNarration, setDmNarration] = useState("");
@@ -152,6 +154,52 @@ export const GameArea = ({
     }
   });
   
+  // Process NPC actions for the campaign
+  const npcActionsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/campaigns/${campaign.id}/npc-turns`, {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      if (data.actions && data.actions.length > 0) {
+        // Create system message indicating NPCs are taking actions
+        const systemLog: Partial<GameLog> = {
+          campaignId: campaign.id,
+          content: "NPCs are taking their turns...",
+          type: "system"
+        };
+        createLogMutation.mutate(systemLog);
+        
+        // Create individual logs for each NPC action
+        data.actions.forEach((action: string) => {
+          const actionLog: Partial<GameLog> = {
+            campaignId: campaign.id,
+            content: action,
+            type: "npc"
+          };
+          createLogMutation.mutate(actionLog);
+        });
+      } else {
+        // No NPC actions occurred
+        const noActionLog: Partial<GameLog> = {
+          campaignId: campaign.id,
+          content: "No NPCs took any meaningful actions at this time.",
+          type: "system"
+        };
+        createLogMutation.mutate(noActionLog);
+      }
+    },
+    onError: (error) => {
+      console.error("Failed to process NPC actions:", error);
+      const errorLog: Partial<GameLog> = {
+        campaignId: campaign.id,
+        content: "The NPCs couldn't act at this time. Try again later.",
+        type: "system"
+      };
+      createLogMutation.mutate(errorLog);
+    }
+  });
+  
   // This function is kept for backwards compatibility but we don't restrict player choices anymore
   const generateDecisionOptions = async () => {
     // We're moving away from pre-set options to embrace full player freedom
@@ -184,6 +232,12 @@ export const GameArea = ({
       // Create log in database
       createLogMutation.mutate(systemLog);
     }
+  };
+  
+  // Handle triggering NPC actions
+  const handleNpcActions = () => {
+    // Trigger NPC actions via the mutation
+    npcActionsMutation.mutate();
   };
   
   const handleSubmitAction = (e: React.FormEvent) => {
