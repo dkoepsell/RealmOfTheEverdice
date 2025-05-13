@@ -1,418 +1,465 @@
 /**
- * Audio Service for Ambient Sound Playback
+ * AudioService
  * 
- * This service manages the loading, playback, and crossfading of ambient sounds
- * using the Web Audio API for optimal performance and flexibility.
+ * A service for managing audio playback in the application.
+ * This includes loading and playing ambient sounds and sound effects.
  */
 
-interface AudioTrack {
-  id: string;
-  source: AudioBufferSourceNode | null;
-  gainNode: GainNode | null;
-  buffer: AudioBuffer | null;
+export interface AudioTrack {
+  element: HTMLAudioElement;
   playing: boolean;
-  loop: boolean;
+  loaded: boolean;
   volume: number;
-  url: string;
-  startTime?: number;
+  category: 'ambient' | 'effect';
+  fadeInterval?: number;
 }
 
-interface FadeOptions {
-  duration?: number; // in seconds
-  targetVolume?: number; // 0 to 1
-}
-
-class AmbientAudioService {
-  private static instance: AmbientAudioService;
-  private audioContext: AudioContext | null = null;
-  private masterGain: GainNode | null = null;
+export class AudioService {
+  private static instance: AudioService;
   private tracks: Map<string, AudioTrack> = new Map();
-  private soundPath = '/sounds/';
-  private initialized = false;
-  private muted = false;
-  private volume = 0.5; // 0 to 1
+  private basePath: string;
+  private masterVolume: number = 1.0;
+  private muted: boolean = false;
+  private fadeTime: number = 2; // Default fade time in seconds
   
+  /**
+   * Private constructor for singleton pattern
+   */
   private constructor() {
-    this.initAudioContext();
-  }
-  
-  public static getInstance(): AmbientAudioService {
-    if (!AmbientAudioService.instance) {
-      AmbientAudioService.instance = new AmbientAudioService();
-    }
-    return AmbientAudioService.instance;
+    this.basePath = '/sounds/';
   }
   
   /**
-   * Initialize the Web Audio API context
+   * Get the singleton instance
    */
-  private initAudioContext(): void {
-    try {
-      // AudioContext must be created as a result of user gesture
-      // We'll delay actual creation until playSound() is called
-      this.initialized = true;
-    } catch (error) {
-      console.error('Failed to initialize audio context:', error);
-      this.initialized = false;
+  public static getInstance(): AudioService {
+    if (!AudioService.instance) {
+      AudioService.instance = new AudioService();
     }
+    return AudioService.instance;
   }
   
   /**
-   * Ensure audio context is created and resumed
+   * Load an audio track
+   * @param id Unique identifier for the track
+   * @param path Path to the audio file (relative to base path)
+   * @param options Additional options for the track
+   * @returns Promise that resolves when the track is loaded
    */
-  private async ensureAudioContext(): Promise<boolean> {
-    if (!this.audioContext) {
-      try {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        
-        // Create master gain node
-        this.masterGain = this.audioContext.createGain();
-        this.masterGain.gain.value = this.muted ? 0 : this.volume;
-        this.masterGain.connect(this.audioContext.destination);
-      } catch (error) {
-        console.error('Failed to create audio context:', error);
-        return false;
-      }
-    }
-    
-    // Make sure audio context is running
-    if (this.audioContext.state === 'suspended') {
-      try {
-        await this.audioContext.resume();
-      } catch (error) {
-        console.error('Failed to resume audio context:', error);
-        return false;
-      }
-    }
-    
-    return true;
-  }
-  
-  /**
-   * Load an audio file and returns a promise that resolves with the decoded audio data
-   */
-  private async loadAudioFile(url: string): Promise<AudioBuffer | null> {
-    if (!this.audioContext) {
-      if (!await this.ensureAudioContext()) {
-        return null;
-      }
-    }
-    
-    try {
-      const response = await fetch(this.soundPath + url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const arrayBuffer = await response.arrayBuffer();
-      return await this.audioContext!.decodeAudioData(arrayBuffer);
-    } catch (error) {
-      console.error(`Failed to load audio: ${url}`, error);
-      return null;
-    }
-  }
-  
-  /**
-   * Create a new track or return existing one
-   */
-  private async getOrCreateTrack(id: string, url: string, loop = true): Promise<AudioTrack | null> {
-    // Check if track exists
-    let track = this.tracks.get(id);
-    
-    if (!track) {
-      // Create a new track
-      track = {
-        id,
-        source: null,
-        gainNode: null,
-        buffer: null,
-        playing: false,
-        loop,
-        volume: 1.0,
-        url
-      };
-      
-      this.tracks.set(id, track);
-    }
-    
-    // Load audio buffer if it's not loaded yet
-    if (!track.buffer) {
-      if (url !== track.url) {
-        track.url = url;
-      }
-      
-      track.buffer = await this.loadAudioFile(url);
-      if (!track.buffer) {
-        return null;
-      }
-    }
-    
-    return track;
-  }
-  
-  /**
-   * Play a sound with the given ID and options
-   */
-  public async playSound(
-    id: string,
-    url: string,
-    options: {
-      loop?: boolean;
-      volume?: number;
-      fadeIn?: number; // seconds
+  public loadTrack(
+    id: string, 
+    path: string, 
+    options: { 
+      volume?: number; 
+      loop?: boolean; 
+      category?: 'ambient' | 'effect'; 
+      autoplay?: boolean;
     } = {}
-  ): Promise<boolean> {
-    const { loop = true, volume = 1.0, fadeIn = 0 } = options;
-    
-    if (!await this.ensureAudioContext()) {
-      return false;
-    }
-    
-    // Create or get the track
-    const track = await this.getOrCreateTrack(id, url, loop);
-    if (!track) {
-      return false;
-    }
-    
-    // Stop the track if it's already playing
-    if (track.playing) {
-      this.stopSound(id, { duration: fadeIn > 0 ? fadeIn / 2 : 0 });
-    }
-    
-    // Create new source and gain node
-    track.source = this.audioContext!.createBufferSource();
-    track.source.buffer = track.buffer;
-    track.source.loop = loop;
-    
-    track.gainNode = this.audioContext!.createGain();
-    track.volume = volume;
-    
-    // Set initial volume to 0 for fade-in or full volume otherwise
-    if (fadeIn > 0) {
-      track.gainNode.gain.value = 0;
-    } else {
-      track.gainNode.gain.value = volume;
-    }
-    
-    // Connect nodes
-    track.source.connect(track.gainNode);
-    track.gainNode.connect(this.masterGain!);
-    
-    // Start playing
-    track.source.start(0);
-    track.playing = true;
-    track.startTime = this.audioContext!.currentTime;
-    
-    // Apply fade-in
-    if (fadeIn > 0) {
-      track.gainNode.gain.setValueAtTime(0, this.audioContext!.currentTime);
-      track.gainNode.gain.linearRampToValueAtTime(
-        volume,
-        this.audioContext!.currentTime + fadeIn
-      );
-    }
-    
-    // Handle track ending
-    track.source.onended = () => {
-      if (!loop) {
-        this.cleanupTrack(track);
-      }
-    };
-    
-    return true;
-  }
-  
-  /**
-   * Stop playing a sound with the given ID
-   */
-  public stopSound(id: string, options: FadeOptions = {}): boolean {
-    const { duration = 0 } = options;
-    
-    const track = this.tracks.get(id);
-    if (!track || !track.playing || !track.source || !track.gainNode) {
-      return false;
-    }
-    
-    try {
-      if (duration > 0 && this.audioContext) {
-        // Fade out
-        const currentTime = this.audioContext.currentTime;
-        track.gainNode.gain.setValueAtTime(track.gainNode.gain.value, currentTime);
-        track.gainNode.gain.linearRampToValueAtTime(0, currentTime + duration);
-        
-        // Stop after fade-out completes
-        setTimeout(() => {
-          this.cleanupTrack(track);
-        }, duration * 1000);
-      } else {
-        // Stop immediately
-        this.cleanupTrack(track);
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Check if track is already loaded
+      if (this.tracks.has(id)) {
+        resolve();
+        return;
       }
       
-      return true;
-    } catch (error) {
-      console.error(`Failed to stop sound: ${id}`, error);
-      return false;
-    }
-  }
-  
-  /**
-   * Cleanup track resources
-   */
-  private cleanupTrack(track: AudioTrack): void {
-    if (track.source) {
-      try {
-        track.source.stop();
-      } catch (e) {
-        // Ignore errors when the sound has already stopped
-      }
-      track.source.disconnect();
-      track.source = null;
-    }
-    
-    if (track.gainNode) {
-      track.gainNode.disconnect();
-      track.gainNode = null;
-    }
-    
-    track.playing = false;
-    track.startTime = undefined;
-  }
-  
-  /**
-   * Crossfade between two sounds
-   */
-  public async crossFade(
-    fromId: string,
-    toUrl: string,
-    toId: string,
-    fadeDuration: number = 2.0
-  ): Promise<boolean> {
-    const fromTrack = this.tracks.get(fromId);
-    
-    // First start the new sound with 0 volume
-    const success = await this.playSound(toId, toUrl, { 
-      volume: 0, 
-      loop: true 
+      // Create audio element
+      const audio = new Audio();
+      audio.src = `${this.basePath}${path}.mp3`;
+      audio.volume = (options.volume ?? 1.0) * this.masterVolume;
+      audio.loop = options.loop ?? false;
+      
+      // Add to tracks map
+      this.tracks.set(id, {
+        element: audio,
+        playing: false,
+        loaded: false,
+        volume: options.volume ?? 1.0,
+        category: options.category ?? 'ambient'
+      });
+      
+      // Set up event listeners
+      audio.addEventListener('canplaythrough', () => {
+        const track = this.tracks.get(id);
+        if (track) {
+          track.loaded = true;
+          
+          // Auto-play if requested
+          if (options.autoplay) {
+            this.play(id);
+          }
+          
+          resolve();
+        }
+      });
+      
+      audio.addEventListener('error', (err) => {
+        console.error(`Error loading audio track ${id}:`, err);
+        reject(err);
+      });
+      
+      // Start loading
+      audio.load();
     });
-    
-    if (!success) return false;
-    
-    // If the 'from' sound is playing, fade it out
-    if (fromTrack && fromTrack.playing && fromTrack.gainNode && this.audioContext) {
-      const currentTime = this.audioContext.currentTime;
-      fromTrack.gainNode.gain.setValueAtTime(
-        fromTrack.gainNode.gain.value, 
-        currentTime
-      );
-      fromTrack.gainNode.gain.linearRampToValueAtTime(
-        0, 
-        currentTime + fadeDuration
-      );
-    }
-    
-    // Fade in the 'to' sound
-    const toTrack = this.tracks.get(toId);
-    if (toTrack && toTrack.gainNode && this.audioContext) {
-      const currentTime = this.audioContext.currentTime;
-      toTrack.gainNode.gain.setValueAtTime(0, currentTime);
-      toTrack.gainNode.gain.linearRampToValueAtTime(
-        toTrack.volume, 
-        currentTime + fadeDuration
-      );
-    }
-    
-    // After fade completes, clean up the 'from' track
-    if (fromTrack) {
-      setTimeout(() => {
-        this.cleanupTrack(fromTrack);
-      }, fadeDuration * 1000);
-    }
-    
-    return true;
   }
   
   /**
-   * Set the master volume for all sounds
+   * Unload a track and release resources
+   * @param id The track ID to unload
    */
-  public setVolume(volume: number): void {
-    this.volume = Math.max(0, Math.min(1, volume));
-    
-    if (this.masterGain && !this.muted) {
-      this.masterGain.gain.value = this.volume;
+  public unloadTrack(id: string): void {
+    const track = this.tracks.get(id);
+    if (track) {
+      // Stop if playing
+      if (track.playing) {
+        this.stop(id);
+      }
+      
+      // Remove element
+      track.element.src = '';
+      track.element.load();
+      
+      // Remove from tracks map
+      this.tracks.delete(id);
     }
   }
   
   /**
-   * Mute or unmute all sounds
+   * Play a track
+   * @param id The track ID to play
+   * @param fadeIn Whether to fade in the track
    */
-  public setMuted(muted: boolean): void {
-    this.muted = muted;
+  public play(id: string, fadeIn: boolean = false): void {
+    const track = this.tracks.get(id);
+    if (!track) {
+      console.warn(`Track ${id} not found.`);
+      return;
+    }
     
-    if (this.masterGain) {
-      this.masterGain.gain.value = muted ? 0 : this.volume;
+    if (!track.loaded) {
+      console.warn(`Track ${id} is not fully loaded yet.`);
+      // Set up to play once loaded
+      track.element.addEventListener('canplaythrough', () => {
+        track.loaded = true;
+        this.play(id, fadeIn);
+      }, { once: true });
+      return;
+    }
+    
+    // Set volume according to master volume and mute state
+    track.element.volume = this.muted ? 0 : track.volume * this.masterVolume;
+    
+    if (fadeIn) {
+      this.fadeIn(id);
+    } else {
+      track.element.play()
+        .catch(err => console.error(`Error playing track ${id}:`, err));
+      track.playing = true;
     }
   }
   
   /**
-   * Toggle mute state
+   * Stop a track
+   * @param id The track ID to stop
+   * @param fadeOut Whether to fade out the track
    */
-  public toggleMute(): boolean {
-    this.setMuted(!this.muted);
-    return this.muted;
+  public stop(id: string, fadeOut: boolean = false): void {
+    const track = this.tracks.get(id);
+    if (!track) {
+      console.warn(`Track ${id} not found.`);
+      return;
+    }
+    
+    if (fadeOut) {
+      this.fadeOut(id);
+    } else {
+      track.element.pause();
+      track.element.currentTime = 0;
+      track.playing = false;
+    }
   }
   
   /**
-   * Get the current mute state
+   * Pause a track
+   * @param id The track ID to pause
+   */
+  public pause(id: string): void {
+    const track = this.tracks.get(id);
+    if (!track) {
+      console.warn(`Track ${id} not found.`);
+      return;
+    }
+    
+    track.element.pause();
+    track.playing = false;
+  }
+  
+  /**
+   * Resume a paused track
+   * @param id The track ID to resume
+   */
+  public resume(id: string): void {
+    const track = this.tracks.get(id);
+    if (!track) {
+      console.warn(`Track ${id} not found.`);
+      return;
+    }
+    
+    track.element.play()
+      .catch(err => console.error(`Error resuming track ${id}:`, err));
+    track.playing = true;
+  }
+  
+  /**
+   * Check if a track is currently playing
+   * @param id The track ID to check
+   * @returns True if the track is playing, false otherwise
+   */
+  public isPlaying(id: string): boolean {
+    const track = this.tracks.get(id);
+    return track ? track.playing : false;
+  }
+  
+  /**
+   * Check if any track is currently playing
+   * @returns True if any track is playing, false otherwise
+   */
+  public isAnyPlaying(): boolean {
+    for (const [_, track] of this.tracks) {
+      if (track.playing) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  /**
+   * Check if any ambient track is currently playing
+   * @returns True if any ambient track is playing, false otherwise
+   */
+  public isAnyAmbientPlaying(): boolean {
+    for (const [_, track] of this.tracks) {
+      if (track.playing && track.category === 'ambient') {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  /**
+   * Set the master volume for all tracks
+   * @param volume Master volume level (0.0 to 1.0)
+   */
+  public setMasterVolume(volume: number): void {
+    // Clamp between 0 and 1
+    this.masterVolume = Math.max(0, Math.min(1, volume));
+    
+    // Update all track volumes
+    for (const [_, track] of this.tracks) {
+      if (!this.muted) {
+        track.element.volume = track.volume * this.masterVolume;
+      }
+    }
+  }
+  
+  /**
+   * Get the current master volume
+   * @returns The current master volume
+   */
+  public getMasterVolume(): number {
+    return this.masterVolume;
+  }
+  
+  /**
+   * Set the volume for a specific track
+   * @param id The track ID
+   * @param volume Volume level (0.0 to 1.0)
+   */
+  public setTrackVolume(id: string, volume: number): void {
+    const track = this.tracks.get(id);
+    if (!track) {
+      console.warn(`Track ${id} not found.`);
+      return;
+    }
+    
+    // Clamp between 0 and 1
+    track.volume = Math.max(0, Math.min(1, volume));
+    
+    // Update track volume if not muted
+    if (!this.muted) {
+      track.element.volume = track.volume * this.masterVolume;
+    }
+  }
+  
+  /**
+   * Mute all audio
+   * @param mute Whether to mute (true) or unmute (false)
+   */
+  public setMute(mute: boolean): void {
+    this.muted = mute;
+    
+    // Update all track volumes
+    for (const [_, track] of this.tracks) {
+      track.element.volume = mute ? 0 : track.volume * this.masterVolume;
+    }
+  }
+  
+  /**
+   * Check if audio is currently muted
+   * @returns True if muted, false otherwise
    */
   public isMuted(): boolean {
     return this.muted;
   }
   
   /**
-   * Get the current volume
+   * Set the default fade time for fade effects
+   * @param seconds Fade time in seconds
    */
-  public getVolume(): number {
-    return this.volume;
+  public setFadeTime(seconds: number): void {
+    this.fadeTime = Math.max(0.1, seconds);
   }
   
   /**
-   * Stop all playing sounds
+   * Fade in a track
+   * @param id The track ID to fade in
    */
-  public stopAll(fadeOut: number = 0): void {
-    for (const [id, track] of this.tracks.entries()) {
+  private fadeIn(id: string): void {
+    const track = this.tracks.get(id);
+    if (!track) {
+      return;
+    }
+    
+    // Clear any existing fade
+    if (track.fadeInterval) {
+      clearInterval(track.fadeInterval);
+      track.fadeInterval = undefined;
+    }
+    
+    // Start with volume at 0
+    track.element.volume = 0;
+    track.element.play()
+      .catch(err => console.error(`Error starting fade-in for track ${id}:`, err));
+    track.playing = true;
+    
+    // Calculate steps
+    const steps = 20; // Number of steps in the fade
+    const stepTime = (this.fadeTime * 1000) / steps;
+    const volumeStep = (track.volume * this.masterVolume) / steps;
+    let currentStep = 0;
+    
+    // Set up interval for fade
+    track.fadeInterval = window.setInterval(() => {
+      currentStep++;
+      
+      if (currentStep >= steps) {
+        // Fade complete
+        track.element.volume = this.muted ? 0 : track.volume * this.masterVolume;
+        clearInterval(track.fadeInterval);
+        track.fadeInterval = undefined;
+      } else {
+        // Increment volume
+        track.element.volume = currentStep * volumeStep;
+      }
+    }, stepTime);
+  }
+  
+  /**
+   * Fade out a track
+   * @param id The track ID to fade out
+   */
+  private fadeOut(id: string): void {
+    const track = this.tracks.get(id);
+    if (!track) {
+      return;
+    }
+    
+    // Clear any existing fade
+    if (track.fadeInterval) {
+      clearInterval(track.fadeInterval);
+      track.fadeInterval = undefined;
+    }
+    
+    // Get current volume
+    const startVolume = track.element.volume;
+    
+    // Calculate steps
+    const steps = 20; // Number of steps in the fade
+    const stepTime = (this.fadeTime * 1000) / steps;
+    const volumeStep = startVolume / steps;
+    let currentStep = 0;
+    
+    // Set up interval for fade
+    track.fadeInterval = window.setInterval(() => {
+      currentStep++;
+      
+      if (currentStep >= steps) {
+        // Fade complete, stop the track
+        track.element.pause();
+        track.element.currentTime = 0;
+        track.playing = false;
+        clearInterval(track.fadeInterval);
+        track.fadeInterval = undefined;
+        
+        // Reset volume for next play
+        track.element.volume = this.muted ? 0 : track.volume * this.masterVolume;
+      } else {
+        // Decrement volume
+        track.element.volume = startVolume - (currentStep * volumeStep);
+      }
+    }, stepTime);
+  }
+  
+  /**
+   * Stop all currently playing tracks
+   * @param fadeOut Whether to fade out the tracks
+   */
+  public stopAll(fadeOut: boolean = false): void {
+    for (const [id, track] of this.tracks) {
       if (track.playing) {
-        this.stopSound(id, { duration: fadeOut });
+        this.stop(id, fadeOut);
       }
     }
   }
   
   /**
-   * Set the path where sound files are located
+   * Stop all ambient tracks, keeping effect tracks
+   * @param fadeOut Whether to fade out the tracks
    */
-  public setSoundPath(path: string): void {
-    this.soundPath = path.endsWith('/') ? path : path + '/';
+  public stopAllAmbient(fadeOut: boolean = false): void {
+    for (const [id, track] of this.tracks) {
+      if (track.playing && track.category === 'ambient') {
+        this.stop(id, fadeOut);
+      }
+    }
   }
   
   /**
-   * Cleanup and release resources
+   * Preload a set of tracks
+   * @param tracks Array of track configurations to preload
+   * @returns Promise that resolves when all tracks are loaded
    */
-  public dispose(): void {
-    this.stopAll();
-    
-    this.tracks.clear();
-    
-    if (this.masterGain) {
-      this.masterGain.disconnect();
-      this.masterGain = null;
+  public preloadTracks(tracks: Array<{
+    id: string;
+    path: string;
+    options?: {
+      volume?: number;
+      loop?: boolean;
+      category?: 'ambient' | 'effect';
     }
-    
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
+  }>): Promise<void[]> {
+    return Promise.all(
+      tracks.map(track => this.loadTrack(track.id, track.path, track.options))
+    );
+  }
+  
+  /**
+   * Crossfade between two tracks
+   * @param fadeOutId ID of the track to fade out
+   * @param fadeInId ID of the track to fade in
+   */
+  public crossfade(fadeOutId: string, fadeInId: string): void {
+    this.stop(fadeOutId, true);
+    this.play(fadeInId, true);
   }
 }
-
-// Export singleton instance
-export const ambientAudioService = AmbientAudioService.getInstance();

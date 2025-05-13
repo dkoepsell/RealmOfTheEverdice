@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { ambientAudioService } from '@/lib/audio-service';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { AudioService } from '@/lib/audio-service';
 import { 
-  analyzeNarrativeForSoundContext,
+  analyzeNarrativeForSoundContext, 
   AmbientSoundContext,
-  EVENT_SOUNDS,
   ENVIRONMENT_SOUNDS,
   MOOD_SOUNDS,
-  WEATHER_SOUNDS
+  WEATHER_SOUNDS, 
+  EVENT_SOUNDS 
 } from '@/lib/ambient-sound-context';
 
 interface AmbientSoundOptions {
@@ -20,9 +20,10 @@ interface AmbientSoundOptions {
  * Hook to manage ambient sounds based on narrative context
  */
 export function useAmbientSound(
-  narrativeText: string = '',
+  narrative: string,
   options: AmbientSoundOptions = {}
 ) {
+  // Default options
   const { 
     autoplay = true, 
     volume = 0.5, 
@@ -30,31 +31,112 @@ export function useAmbientSound(
     enabled = true
   } = options;
   
+  // Audio service instance
+  const audioService = useRef(AudioService.getInstance());
+  
+  // State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [soundVolume, setSoundVolume] = useState(volume);
-  const [currentContext, setCurrentContext] = useState<AmbientSoundContext | null>(null);
+  const [soundVolume, setVolume] = useState(volume);
   const [currentPrimary, setCurrentPrimary] = useState<string | null>(null);
   const [currentSecondary, setCurrentSecondary] = useState<string | null>(null);
+  const [currentContext, setCurrentContext] = useState<AmbientSoundContext | null>(null);
   
-  // Refs to keep track of sound IDs
-  const primarySoundRef = useRef<string | null>(null);
-  const secondarySoundRef = useRef<string | null>(null);
-  const oneShots = useRef<Set<string>>(new Set());
+  // Track previous narrative for changes
+  const prevNarrativeRef = useRef(narrative);
   
-  // Keep track of previous narrative to avoid reprocessing same text
-  const prevNarrativeRef = useRef<string>('');
+  // Initialize audio service
+  useEffect(() => {
+    const service = audioService.current;
+    
+    // Set initial volume
+    service.setMasterVolume(soundVolume);
+    
+    // Set fade time
+    service.setFadeTime(fadeTime);
+    
+    // Preload common sounds
+    const preloadPromises = [];
+    
+    // Attempt to preload environment sounds
+    for (const [key, path] of Object.entries(ENVIRONMENT_SOUNDS)) {
+      preloadPromises.push(
+        service.loadTrack(`env_${key}`, path, { 
+          loop: true,
+          volume: soundVolume,
+          category: 'ambient'
+        }).catch(err => console.warn(`Failed to preload environment sound ${key}:`, err))
+      );
+    }
+    
+    // Attempt to preload common event sounds
+    for (const [key, path] of Object.entries(EVENT_SOUNDS)) {
+      preloadPromises.push(
+        service.loadTrack(`event_${key}`, path, { 
+          loop: false,
+          volume: soundVolume,
+          category: 'effect'
+        }).catch(err => console.warn(`Failed to preload event sound ${key}:`, err))
+      );
+    }
+    
+    // Return cleanup function
+    return () => {
+      service.stopAll(true);
+    };
+  }, [fadeTime]);
   
-  /**
-   * Analyze narrative and update sound context
-   */
-  const analyzeAndUpdateContext = useCallback((narrative: string) => {
-    if (!narrative || narrative === prevNarrativeRef.current) return;
+  // Analyze narrative for sound context when it changes
+  useEffect(() => {
+    if (!narrative || narrative === prevNarrativeRef.current || !enabled) {
+      return;
+    }
     
     const context = analyzeNarrativeForSoundContext(narrative);
     setCurrentContext(context);
     
     // Update the current primary/secondary sound IDs if they've changed
+    if (context.primary !== currentPrimary) {
+      setCurrentPrimary(context.primary || null);
+    }
+    
+    if (context.secondary !== currentSecondary) {
+      setCurrentSecondary(context.secondary || null);
+    }
+    
+    prevNarrativeRef.current = narrative;
+  }, [currentPrimary, currentSecondary]);
+  
+  // Automatically play ambient sounds when context changes
+  useEffect(() => {
+    if (!enabled || !currentContext) return;
+    
+    const service = audioService.current;
+    
+    if (autoplay && !service.isAnyAmbientPlaying() && !isMuted) {
+      playAmbientSounds();
+    }
+  }, [currentContext, autoplay, isMuted, enabled]);
+  
+  // Update volume when it changes
+  useEffect(() => {
+    audioService.current.setMasterVolume(soundVolume);
+  }, [soundVolume]);
+  
+  // Update mute state when it changes
+  useEffect(() => {
+    audioService.current.setMute(isMuted);
+  }, [isMuted]);
+  
+  /**
+   * Analyze narrative and update sound context
+   */
+  const analyzeSounds = useCallback((text: string) => {
+    if (!text || !enabled) return;
+    
+    const context = analyzeNarrativeForSoundContext(text);
+    setCurrentContext(context);
+    
     if (context.primary !== currentPrimary) {
       setCurrentPrimary(context.primary);
     }
@@ -62,9 +144,7 @@ export function useAmbientSound(
     if (context.secondary !== currentSecondary) {
       setCurrentSecondary(context.secondary);
     }
-    
-    prevNarrativeRef.current = narrative;
-  }, [currentPrimary, currentSecondary]);
+  }, [currentPrimary, currentSecondary, enabled]);
   
   /**
    * Play ambient sounds based on current context
@@ -72,144 +152,78 @@ export function useAmbientSound(
   const playAmbientSounds = useCallback(() => {
     if (!currentContext || !enabled) return;
     
-    // Sound file URLs (using the sound ID as the file name)
-    const primarySoundUrl = `${currentPrimary}.mp3`;
-    const secondarySoundUrl = currentSecondary ? `${currentSecondary}.mp3` : null;
+    const service = audioService.current;
     
-    // Play primary sound
-    if (currentPrimary) {
-      const primaryId = `primary-${currentPrimary}`;
-      
-      if (primarySoundRef.current && primarySoundRef.current !== primaryId) {
-        // If we're changing the primary sound, crossfade
-        ambientAudioService.crossFade(
-          primarySoundRef.current,
-          primarySoundUrl,
-          primaryId,
-          fadeTime
-        );
-      } else if (!primarySoundRef.current) {
-        // If there's no primary sound yet, start playing
-        ambientAudioService.playSound(primaryId, primarySoundUrl, {
-          loop: true,
-          volume: soundVolume,
-          fadeIn: fadeTime
-        });
-      }
-      
-      primarySoundRef.current = primaryId;
-    }
+    // Stop any currently playing ambient sounds
+    service.stopAllAmbient(true);
     
-    // Play secondary sound
-    if (secondarySoundUrl) {
-      const secondaryId = `secondary-${currentSecondary}`;
+    // Prepare track IDs
+    const primaryId = `env_${currentContext.environment}`;
+    let secondaryId = null;
+    
+    if (currentContext.secondary) {
+      // Extract the base name from the path (e.g., 'weather/rain' -> 'rain')
+      const secondaryPath = currentContext.secondary;
+      const secondaryType = secondaryPath.split('/')[0]; // 'weather', 'moods', etc.
+      const secondaryBase = secondaryPath.split('/')[1]; // 'rain', 'peaceful', etc.
       
-      if (secondarySoundRef.current && secondarySoundRef.current !== secondaryId) {
-        // Stop the current secondary sound
-        ambientAudioService.stopSound(secondarySoundRef.current, {
-          duration: fadeTime
-        });
-        secondarySoundRef.current = null;
-      }
-      
-      if (!secondarySoundRef.current) {
-        // Play the new secondary sound
-        ambientAudioService.playSound(secondaryId, secondarySoundUrl, {
-          loop: true,
-          volume: soundVolume * 0.7, // Secondary sounds are quieter
-          fadeIn: fadeTime
-        });
-        
-        secondarySoundRef.current = secondaryId;
+      if (secondaryType && secondaryBase) {
+        secondaryId = `${secondaryType}_${secondaryBase}`;
       }
     }
     
-    // Play one-shot event sounds
-    if (currentContext.events && currentContext.events.length > 0) {
-      currentContext.events.forEach(event => {
-        if (EVENT_SOUNDS[event] && !oneShots.current.has(event)) {
-          // Play the event sound
-          const soundUrl = `${EVENT_SOUNDS[event]}.mp3`;
-          const eventId = `event-${event}-${Date.now()}`;
-          
-          ambientAudioService.playSound(eventId, soundUrl, {
-            loop: false,
-            volume: soundVolume * 0.9
-          });
-          
-          // Add to the set of played one-shots (to avoid repetition)
-          oneShots.current.add(event);
-          
-          // Remove from set after a short delay to allow replaying later
-          setTimeout(() => {
-            oneShots.current.delete(event);
-          }, 8000); // Don't repeat the same sound for 8 seconds
-        }
+    // Try to load and play primary sound
+    service.loadTrack(primaryId, currentContext.primary, {
+      loop: true,
+      volume: soundVolume * 0.7, // Primary sound at 70% of master volume
+      category: 'ambient'
+    }).then(() => {
+      service.play(primaryId, true);
+      setIsPlaying(true);
+    }).catch(err => {
+      console.error(`Failed to load primary sound ${primaryId}:`, err);
+    });
+    
+    // Try to load and play secondary sound if available
+    if (secondaryId && currentContext.secondary) {
+      service.loadTrack(secondaryId, currentContext.secondary, {
+        loop: true,
+        volume: soundVolume * 0.4, // Secondary sound at 40% of master volume
+        category: 'ambient'
+      }).then(() => {
+        service.play(secondaryId!, true);
+      }).catch(err => {
+        console.error(`Failed to load secondary sound ${secondaryId}:`, err);
       });
     }
-    
-    setIsPlaying(true);
-  }, [currentContext, currentPrimary, currentSecondary, enabled, fadeTime, soundVolume]);
-  
-  // Analyze narrative text when it changes
-  useEffect(() => {
-    if (narrativeText && enabled) {
-      analyzeAndUpdateContext(narrativeText);
-    }
-  }, [narrativeText, analyzeAndUpdateContext, enabled]);
-  
-  // Play sounds when context changes and autoplay is enabled
-  useEffect(() => {
-    if (autoplay && currentContext && enabled) {
-      playAmbientSounds();
-    }
-  }, [currentContext, autoplay, playAmbientSounds, enabled]);
-  
-  // Update volume when it changes
-  useEffect(() => {
-    ambientAudioService.setVolume(soundVolume);
-    setSoundVolume(soundVolume);
-  }, [soundVolume]);
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (primarySoundRef.current) {
-        ambientAudioService.stopSound(primarySoundRef.current, { duration: 1 });
-      }
-      
-      if (secondarySoundRef.current) {
-        ambientAudioService.stopSound(secondarySoundRef.current, { duration: 1 });
-      }
-    };
-  }, []);
+  }, [currentContext, soundVolume, enabled]);
   
   /**
    * Toggle mute state
    */
   const toggleMute = useCallback(() => {
-    const newMuted = !isMuted;
-    ambientAudioService.setMuted(newMuted);
-    setIsMuted(newMuted);
-    return newMuted;
-  }, [isMuted]);
+    setIsMuted(prev => {
+      const newState = !prev;
+      audioService.current.setMute(newState);
+      return newState;
+    });
+  }, []);
   
   /**
    * Set volume level
    */
-  const setVolume = useCallback((vol: number) => {
-    const normalizedVol = Math.max(0, Math.min(1, vol));
-    ambientAudioService.setVolume(normalizedVol);
-    setSoundVolume(normalizedVol);
+  const setVolumeLevel = useCallback((level: number) => {
+    // Clamp between 0 and 1
+    const clamped = Math.max(0, Math.min(1, level));
+    setVolume(clamped);
+    audioService.current.setMasterVolume(clamped);
   }, []);
   
   /**
    * Stop all ambient sounds
    */
-  const stopAll = useCallback((fadeOutTime: number = 1) => {
-    ambientAudioService.stopAll(fadeOutTime);
-    primarySoundRef.current = null;
-    secondarySoundRef.current = null;
+  const stopAll = useCallback(() => {
+    audioService.current.stopAll(true);
     setIsPlaying(false);
   }, []);
   
@@ -219,27 +233,32 @@ export function useAmbientSound(
   const playEventSound = useCallback((eventName: string) => {
     if (!enabled) return;
     
+    const service = audioService.current;
+    const trackId = `event_${eventName}`;
+    
     if (EVENT_SOUNDS[eventName]) {
-      const soundUrl = `${EVENT_SOUNDS[eventName]}.mp3`;
-      const eventId = `event-${eventName}-${Date.now()}`;
-      
-      ambientAudioService.playSound(eventId, soundUrl, {
+      service.loadTrack(trackId, EVENT_SOUNDS[eventName], {
         loop: false,
-        volume: soundVolume * 0.9
+        volume: soundVolume * 0.8, // Event sounds at 80% of master volume
+        category: 'effect'
+      }).then(() => {
+        service.play(trackId);
+      }).catch(err => {
+        console.error(`Failed to load event sound ${eventName}:`, err);
       });
     }
-  }, [enabled, soundVolume]);
+  }, [soundVolume, enabled]);
   
-  // Return state and methods
   return {
     isPlaying,
     isMuted,
     soundVolume,
     currentContext,
-    toggleMute,
-    setVolume,
-    stopAll,
+    analyzeSounds,
     playAmbientSounds,
+    toggleMute,
+    setVolume: setVolumeLevel,
+    stopAll,
     playEventSound
   };
 }

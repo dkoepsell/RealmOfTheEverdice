@@ -426,6 +426,42 @@ export const GameArea = ({
     }
   };
 
+  // Toggle between play/pause for ambient sounds
+  const handleToggleAmbientSound = () => {
+    if (isSoundPlaying) {
+      stopAllSounds();
+    } else {
+      playAmbientSounds();
+    }
+  };
+  
+  // Handle auto-detect toggle for ambient sounds
+  const handleAutoDetectToggle = (enabled: boolean) => {
+    setSoundEnabled(enabled);
+  };
+  
+  // Handle sound event triggers on player actions
+  useEffect(() => {
+    if (soundEnabled && playerAction) {
+      // Check for specific actions that should trigger sound effects
+      if (/door|open|close|shut/i.test(playerAction)) {
+        playEventSound("door_open");
+      } else if (/sword|draw|weapon|unsheathe/i.test(playerAction)) {
+        playEventSound("sword_draw");
+      } else if (/drink|potion|sip|gulp/i.test(playerAction)) {
+        playEventSound("drinking");
+      } else if (/eat|food|consume/i.test(playerAction)) {
+        playEventSound("eating");
+      } else if (/spell|cast|magic/i.test(playerAction)) {
+        playEventSound("magic_spell");
+      } else if (/chest|box|container|open/i.test(playerAction)) {
+        playEventSound("chest_open");
+      } else if (/gold|coin|money/i.test(playerAction)) {
+        playEventSound("gold_coins");
+      }
+    }
+  }, [playerAction, soundEnabled, playEventSound]);
+
   return (
     <div className="w-full lg:w-2/4 flex flex-col">
       {/* Battle Tracker - will only show when inCombat is true */}
@@ -437,6 +473,23 @@ export const GameArea = ({
         onEndCombat={handleEndCombat}
         onNextTurn={handleNextTurn}
         partyCharacters={[currentCharacter]}
+      />
+      
+      {/* Ambient Sound Controller */}
+      <AmbientSoundController
+        isPlaying={isSoundPlaying}
+        isMuted={isSoundMuted}
+        volume={soundVolume}
+        currentSoundContext={soundContext ? {
+          primary: soundContext.primary,
+          secondary: soundContext.secondary,
+          environment: soundContext.environment,
+          mood: soundContext.mood
+        } : undefined}
+        onVolumeChange={setSoundVolume}
+        onToggleMute={toggleSoundMute}
+        onTogglePlay={handleToggleAmbientSound}
+        onAutoDetectToggle={handleAutoDetectToggle}
       />
       
       {/* Game State Bar */}
