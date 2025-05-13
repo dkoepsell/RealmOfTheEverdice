@@ -59,7 +59,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Shield, Users, Settings, Mail, Plus, Trash, BarChart, BarChart3, Scroll, Award, Compass, Map } from "lucide-react";
+import { Loader2, Send, User, Shield, Users, Settings, Mail, Plus, Trash, BarChart, BarChart3, Scroll, Award, Compass, Map, Activity } from "lucide-react";
+
+// Dashboard stat component for the analytics tab
+const DashboardStat = ({ 
+  title, 
+  value, 
+  isLoading, 
+  icon 
+}: { 
+  title: string; 
+  value: string | number; 
+  isLoading: boolean;
+  icon: React.ReactNode;
+}) => {
+  return (
+    <div className="bg-muted rounded p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="text-primary">
+          {icon}
+        </div>
+        <h3 className="text-sm font-medium">{title}</h3>
+      </div>
+      <p className="text-2xl font-bold">
+        {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : value}
+      </p>
+    </div>
+  );
+};
 import { useAuth } from "@/hooks/use-auth";
 import { useAdmin } from "@/hooks/use-admin";
 

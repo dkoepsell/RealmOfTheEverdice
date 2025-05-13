@@ -4,6 +4,35 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "./use-toast";
 import { useState } from "react";
 
+// Define types for the analytics data
+interface DashboardStats {
+  totalUsers: number;
+  newUsersLast30Days: number;
+  totalCampaigns: number;
+  activeCampaigns: number;
+  totalCharacters: number;
+  totalNpcs: number;
+  totalAdventures: number;
+  totalGameLogs: number;
+  averageLogsPerCampaign: number;
+  totalAiDmCampaigns: number;
+  totalHumanDmCampaigns: number;
+  messageCount: number;
+  averageMessagesPerCampaign: number;
+}
+
+interface UserLoginStats {
+  dailyLogins: { date: string; count: number }[];
+  activeUsers: { timeframe: string; count: number }[];
+  returnRate: number;
+}
+
+interface CampaignActivityStats {
+  campaignCreationsByDay: { date: string; count: number }[];
+  mostActiveCampaigns: { id: number; name: string; dmId: number; logCount: number }[];
+  campaignsByStatus: { status: string; count: number }[];
+}
+
 export function useAdmin() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -12,6 +41,51 @@ export function useAdmin() {
   
   // State for world management
   const [selectedWorldId, setSelectedWorldId] = useState<number | null>(null);
+  
+  // Get dashboard stats
+  const {
+    data: dashboardStats,
+    isLoading: isLoadingDashboardStats,
+    error: dashboardStatsError
+  } = useQuery<DashboardStats, Error>({
+    queryKey: ["/api/admin/dashboard-stats"],
+    queryFn: async () => {
+      if (!isAdmin && !isSuperAdmin) throw new Error("Unauthorized");
+      const res = await apiRequest("GET", "/api/admin/dashboard-stats");
+      return await res.json();
+    },
+    enabled: !!(isAdmin || isSuperAdmin)
+  });
+  
+  // Get user login stats
+  const {
+    data: userLoginStats,
+    isLoading: isLoadingUserLoginStats,
+    error: userLoginStatsError
+  } = useQuery<UserLoginStats, Error>({
+    queryKey: ["/api/admin/user-login-stats"],
+    queryFn: async () => {
+      if (!isAdmin && !isSuperAdmin) throw new Error("Unauthorized");
+      const res = await apiRequest("GET", "/api/admin/user-login-stats");
+      return await res.json();
+    },
+    enabled: !!(isAdmin || isSuperAdmin)
+  });
+  
+  // Get campaign activity stats
+  const {
+    data: campaignActivityStats,
+    isLoading: isLoadingCampaignActivityStats,
+    error: campaignActivityStatsError
+  } = useQuery<CampaignActivityStats, Error>({
+    queryKey: ["/api/admin/campaign-activity-stats"],
+    queryFn: async () => {
+      if (!isAdmin && !isSuperAdmin) throw new Error("Unauthorized");
+      const res = await apiRequest("GET", "/api/admin/campaign-activity-stats");
+      return await res.json();
+    },
+    enabled: !!(isAdmin || isSuperAdmin)
+  });
 
   // Get all users
   const {
