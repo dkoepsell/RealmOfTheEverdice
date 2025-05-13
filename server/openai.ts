@@ -127,13 +127,37 @@ export async function generateGameNarration(context: string, playerAction: strin
 As the Educational Auto-DM, your role is to:
 1. Create a dynamic world that reacts realistically to player choices
 2. Balance different types of encounters (puzzles, combat, social interactions, exploration)
-3. Present meaningful moral choices that could affect character alignment
+3. Present meaningful moral choices that SIGNIFICANTLY affect character alignment
 4. Introduce surprising but coherent plot developments based on player decisions
 5. Remember details from earlier in the adventure and weave them into ongoing narrative
 6. Allow player freedom while maintaining narrative cohesion
 7. EXPLAIN the actual D&D rules, dice mechanics, and tabletop elements as part of the narrative
 8. When you see dice roll results in the context or player action, use these results to drive the narrative consequences
 9. Make D&D's tabletop elements visible and accessible within the digital experience
+
+CHARACTER DEVELOPMENT FOCUS:
+1. ETHICAL ALIGNMENT: Present clear moral dilemmas that affect the character's alignment along both Law-Chaos and Good-Evil axes
+   - Provide choices with explicit alignment consequences (e.g., "This merciful action shifts your alignment slightly toward Good")
+   - Balance Law vs. Chaos dilemmas (order vs. freedom, tradition vs. innovation)
+   - Balance Good vs. Evil dilemmas (selflessness vs. selfishness, mercy vs. cruelty)
+   - Use alignment shifts to unlock unique storylines, NPCs, or abilities
+   - Explain how alignment affects reputation with different factions
+
+2. STAT DEVELOPMENT: Create encounters that exercise and develop specific character abilities
+   - Intelligence: Puzzles, magical research, deciphering ancient texts
+   - Wisdom: Moral choices, insight challenges, detecting deception
+   - Strength: Physical obstacles, feats of might, endurance trials
+   - Dexterity: Traps, acrobatic challenges, precision tasks
+   - Constitution: Endurance tests, resistance to elements or poison
+   - Charisma: Social encounters, leadership tests, performance challenges
+   - Present narrative opportunities to INCREASE specific stats through training, quests, or magical means
+
+3. ITEM AND SPELL ACQUISITION: Integrate opportunities to find, earn, or craft new items and learn spells
+   - Include diverse treasure sources (hidden caches, defeated enemies, grateful NPCs, ancient ruins)
+   - Present different rarities of magical items based on challenge difficulty
+   - Create class-appropriate spell discoveries, spell scrolls, or spell learning opportunities
+   - Include crafting materials and opportunities that match the setting
+   - Create narrative reasons to specialize equipment (e.g., silver weapons for undead)
 
 VARIETY AND CREATIVITY: 
 - CRITICALLY IMPORTANT: Avoid repetitive narrative structures, phrases, and scenarios
@@ -178,6 +202,7 @@ VARIETY IS CRITICAL - analyze the context to determine:
 2. What environments or settings have been used recently (indoor, outdoor, urban, wilderness, underground)
 3. What NPCs or factions have been featured recently
 4. What tone has dominated recent interactions (serious, humorous, mysterious, action-oriented)
+5. What character abilities or aspects have been most recently developed or tested
 
 THEN CHOOSE CONTRASTING ELEMENTS to create a distinctive and fresh experience. If the story has been in a:
 - Dungeon → Move to wilderness, settlement, or planar location
@@ -187,16 +212,37 @@ THEN CHOOSE CONTRASTING ELEMENTS to create a distinctive and fresh experience. I
 - Known location → Discover something unexpected or previously hidden
 - Familiar tone → Shift to a contrasting emotional atmosphere
 
-Consider including one of the following advanced D&D elements (choose something you haven't used recently):
-- A moral dilemma that might affect character alignment, explaining alignment mechanics
-- A puzzle or mystery that requires an Intelligence or Wisdom check with an explanation of the ability score system
-- A potential combat encounter with appropriate challenge rating, explaining initiative and turn order
-- A social interaction that reveals important information, suggesting Charisma-based skill checks
-- An environmental challenge requiring specific saving throws, explaining the mechanic
-- A surprising twist that builds on previous story elements, tying to D&D's worldbuilding approaches
-- An encounter with a strange magical effect requiring arcana knowledge
-- An opportunity to use a specific class feature or specialized skill
-- A chance to interact with an unusual creature from the Monster Manual
+CHARACTER DEVELOPMENT REQUIREMENTS - Include at least one of these elements:
+1. ETHICAL ALIGNMENT CHALLENGE: Present a meaningful moral dilemma with explicit alignment consequences
+   - Create a situation where the Law vs. Chaos or Good vs. Evil tension is palpable
+   - Describe how the character's actions in this situation could shift their alignment
+   - Show how alignment shifts could open or close certain story paths
+   - Connect alignment choices to relationships with NPCs or factions
+
+2. STAT DEVELOPMENT OPPORTUNITY: Create a situation that tests AND could improve specific character abilities
+   - For Intelligence: Ancient texts to decipher, magical puzzles, strategic planning needed
+   - For Wisdom: Moral dilemmas, insight challenges, detecting deception or danger
+   - For Strength: Physical barriers, tests of might, endurance challenges
+   - For Dexterity: Traps to disarm, acrobatic maneuvers required, precision tasks
+   - For Constitution: Harsh environments, endurance tests, resistance challenges
+   - For Charisma: Leadership moments, performance opportunities, social influence needed
+   - Explicitly mention how success could permanently improve the relevant ability score
+
+3. TREASURE AND ITEM ACQUISITION: Include opportunities to find, craft, or earn valuable items
+   - Hidden treasures that require specific skills to locate
+   - Combat encounters with monsters carrying appropriate magical items
+   - Quest rewards from NPCs or factions
+   - Ancient relics with interesting magical properties
+   - Crafting materials and opportunities appropriate to setting
+   - Quest reward that explicitly enhances character abilities
+
+4. CLASS FEATURE OR SPELL DEVELOPMENT: Introduce opportunities to discover or improve abilities
+   - Class-appropriate training opportunities with skilled NPCs
+   - Ancient spell scrolls or spellbooks containing new magic
+   - Environmental features that enhance certain class abilities
+   - Spiritual or magical phenomena that unlock latent potential
+   - Forgotten techniques that provide new combat options
+   - Unique application of existing abilities in novel situations
 
 EDUCATIONAL ELEMENTS: Include at least one suggestion for a specific dice roll in the format [Roll: d20+modifier vs DC X for Y], explaining what the DC represents in D&D terms and how modifiers are calculated. Make sure to teach actual D&D 5e rules in a natural way through the narrative.
 
@@ -211,13 +257,37 @@ This is a dice roll result. Narrate the SPECIFIC CONSEQUENCES of this roll resul
 
 EDUCATIONAL ELEMENT: Clearly explain what type of roll this is (attack roll, ability check, saving throw, etc.), what the numbers mean in D&D terms, and how the result affects gameplay according to actual D&D 5e rules. Include a brief explanation of how modifiers, advantage/disadvantage, or proficiency might affect similar rolls in the future.
 
-If it was a:
-- Critical success (natural 20): Describe an exceptionally positive outcome with additional benefits, explaining critical hit mechanics
-- Success: Describe how the character accomplishes their goal, explaining the mechanical benefits
-- Failure: Describe complications, partial success with a cost, or interesting failure, explaining what happens mechanically
-- Critical failure (natural 1): Describe a dramatic setback, complication, or twist, explaining critical failure mechanics
+ROLL CONSEQUENCES - Based on the roll type and result, include AT LEAST ONE of these elements:
 
-STAT IMPACT: If applicable, mention how this roll might impact the character's stats, alignment, or condition (exhaustion, poisoned, etc.) according to real D&D rules.
+1. CHARACTER GROWTH OPPORTUNITY:
+   - For critical successes (natural 20): Describe an exceptional outcome that creates an opportunity for permanent character improvement
+   - For regular successes: Show how this success builds toward potential ability score improvements or skill mastery
+   - For failures: Present a learning opportunity that could lead to future growth
+   - For critical failures (natural 1): Create a dramatic setback that forces character development in an unexpected direction
+
+2. ALIGNMENT IMPACT:
+   - If the roll involved a moral choice, explain how the outcome might shift character alignment
+   - Describe how NPCs or factions react to the character's success or failure in alignment-relevant ways
+   - Show how different approaches to the same challenge might have nudged alignment in different directions
+   - Explain how alignment shifts create or close certain narrative opportunities
+
+3. ITEM OR TREASURE DISCOVERY:
+   - On exceptional successes: Include the discovery of valuable items, crafting materials, or magical objects
+   - On regular successes: Reveal useful mundane items or clues to future treasures
+   - Connect items found to the current environment and challenge in a logical way
+   - Make items discovered feel earned rather than random, tied directly to the character's actions
+
+4. SKILL OR SPELL DEVELOPMENT:
+   - For ability checks: Show how using this skill improves mastery and unlocks new applications
+   - For spellcasting: Demonstrate how spell success provides insights for more effective future casting
+   - For combat rolls: Reveal new techniques or fighting styles the character discovers through practical experience
+   - For social checks: Demonstrate interpersonal insights gained that improve future interactions
+
+RESPONSE REQUIREMENTS:
+- Narrate vivid, specific consequences directly tied to the exact roll result
+- Explain game mechanics naturally within the narrative
+- Make success or failure meaningful to character development and story progression
+- Keep the narrative flowing while providing educational value about D&D rules
 
 Your narrative should directly respond to the roll, making it clear that the character's success or failure has meaningful impact on the story while teaching D&D mechanics.`;
     } else {
@@ -235,6 +305,32 @@ VARIETY AND CREATIVITY REQUIREMENTS:
 5. Introduce a surprising element that changes the trajectory of the current scene
 6. Create memorable details and sensory descriptions that weren't present before
 7. Ensure this response meaningfully advances the narrative in a fresh direction
+
+CHARACTER DEVELOPMENT OPPORTUNITIES - Include at least one of these elements:
+
+1. ETHICAL ALIGNMENT DEVELOPMENT:
+   - Create a situation where the character's current action has clear alignment implications
+   - If morally ambiguous, explain how different responses might pull alignment in different directions
+   - Show how NPCs with different alignments would view or respond to this action
+   - Connect alignment tendencies to potential story paths or faction relationships
+
+2. ABILITY SCORE CHALLENGES AND IMPROVEMENT:
+   - Present a challenge that tests a specific ability score (STR, DEX, CON, INT, WIS, CHA)
+   - Explain how consistent practice or training in this ability could lead to improvement
+   - Show how this ability interacts with skills, saving throws, or other mechanics
+   - If appropriate, suggest a specific ability check with clear consequences
+
+3. ITEM, TREASURE OR SPELL DISCOVERIES:
+   - Integrate opportunities to find useful items or magical components as rewards for creativity
+   - Present class-appropriate equipment, spell scrolls, or enchanted items
+   - Create narrative reasons why these items exist in this location
+   - Make acquisition feel earned and connected to player actions and the environment
+
+4. SKILL MASTERY AND CLASS FEATURES:
+   - Highlight opportunities to use class-specific abilities in creative ways
+   - Show how skill proficiencies could be applied to the current situation
+   - Suggest novel applications of known abilities or spells
+   - Demonstrate how experience with certain skills leads to mastery and new possibilities
 
 EDUCATIONAL ELEMENTS: 
 1. Explain at least one real D&D 5e game mechanic that applies to this situation (ability checks, saving throws, attack rolls, etc.)
@@ -558,53 +654,133 @@ export async function generateRandomItem(options: ItemGenerationOptions = {}) {
   } = options;
   
   try {
+    // Determine an appropriate rarity based on character level if not specified
+    let effectiveRarity = rarity;
+    if (rarity === "random" || rarity === "appropriate") {
+      if (characterLevel <= 4) {
+        // Tier 1: Levels 1-4
+        const rarityOptions = ["common", "common", "common", "uncommon"];
+        effectiveRarity = rarityOptions[Math.floor(Math.random() * rarityOptions.length)];
+      } else if (characterLevel <= 10) {
+        // Tier 2: Levels 5-10
+        const rarityOptions = ["common", "uncommon", "uncommon", "rare"];
+        effectiveRarity = rarityOptions[Math.floor(Math.random() * rarityOptions.length)];
+      } else if (characterLevel <= 16) {
+        // Tier 3: Levels 11-16
+        const rarityOptions = ["uncommon", "rare", "rare", "very rare"];
+        effectiveRarity = rarityOptions[Math.floor(Math.random() * rarityOptions.length)];
+      } else {
+        // Tier 4: Levels 17-20
+        const rarityOptions = ["rare", "very rare", "very rare", "legendary"];
+        effectiveRarity = rarityOptions[Math.floor(Math.random() * rarityOptions.length)];
+      }
+    }
+    
+    // Determine effective item type based on context if not specified
+    let effectiveItemType = itemType;
+    if (itemType === "random" || itemType === "contextual") {
+      // Default item types if no context is provided
+      const defaultItemTypes = [
+        "weapon", "weapon", 
+        "armor", "armor", 
+        "apparel", "apparel",
+        "potion", "potion", "potion", 
+        "scroll", "scroll",
+        "trinket", "trinket", "trinket", 
+        "tool", "tool",
+        "miscellaneous"
+      ];
+      effectiveItemType = defaultItemTypes[Math.floor(Math.random() * defaultItemTypes.length)];
+    }
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",
-          content: `You are an expert Dungeons & Dragons narrative designer who creates immersive, context-appropriate items based on the current game story and environment.
+          content: `You are an expert Dungeons & Dragons narrative designer who creates immersive, context-appropriate items that enhance character development and ethical alignment.
           
-          Instead of randomly generating items, you carefully craft items that:
-          1. Match the narrative context provided
-          2. Feel like natural discoveries within the game world
-          3. Have a plausible origin story or connection to the environment
-          4. Follow D&D 5e rules and balance considerations
-          5. Are appropriate for level ${characterLevel} characters
-          
-          ${enemyType ? `This item is being dropped from a defeated ${enemyType}. Consider what such a creature might realistically possess.` : ''}
-          ${context ? `The current narrative context is: "${context}"` : ''}`
+Instead of randomly generating items, you carefully craft items that:
+1. Match the narrative context provided and feel like meaningful rewards
+2. Feel like natural discoveries within the game world
+3. Have a plausible origin story or connection to the environment or foe
+4. Follow D&D 5e rules and balance considerations
+5. Are appropriate for level ${characterLevel} characters
+6. Provide interesting strategic options beyond basic mechanical benefits
+7. Have evocative descriptions that bring them to life
+8. Connect to world lore and potential future storylines
+9. MOST IMPORTANTLY: Help develop character abilities and ethical alignment
+
+CHARACTER DEVELOPMENT FOCUS:
+1. ETHICAL ALIGNMENT IMPACT:
+   - Items that change or shift alignment when used (e.g., a weapon that becomes more powerful when used for evil)
+   - Items with different effects based on the user's alignment
+   - Items with moral dilemmas built into their use
+   - Sentient items with their own alignment that may conflict with the user's
+   - Items that attract certain aligned NPCs or factions
+
+2. ABILITY SCORE ENHANCEMENT:
+   - Items that temporarily boost specific ability scores in certain situations
+   - Items that provide permanent ability score increases after specific achievements
+   - Items that allow powerful abilities but at a statistical cost
+   - Items that reveal hidden talents or abilities in the character
+
+3. SKILL AND CLASS ENHANCEMENT:
+   - Items that allow limited use of abilities from other classes
+   - Items that enhance existing class features in interesting ways
+   - Items that grant proficiency in new skills or tools
+   - Items that allow creative problem-solving beyond standard character options
+
+BALANCE GUIDELINES:
+- Common items: Minor conveniences, +1 to specific situations, 1d4 damage boost, usable 1/day
+- Uncommon items: +1 weapons/armor, situational advantages, 1d6 damage boost, usable 1-3/day
+- Rare items: +2 weapons/armor, significant tactical advantages, 2d6 damage boost, 3-5/day uses
+- Very rare: +3 weapons/armor, powerful abilities, significant permanent advantages
+- Legendary: Campaign-changing abilities, famous artifacts, major power increases
+
+${enemyType ? `This item is being dropped from a defeated ${enemyType}. The item should reflect this creature's nature, abilities, and lore while being useful to adventurers.` : ''}
+${context ? `The current narrative context is: "${context}"` : ''}`
         },
         {
           role: "user",
-          content: `Create a narrative-appropriate ${rarity} item for this D&D adventure:
+          content: `Create a narrative-appropriate ${effectiveRarity} item for this D&D adventure that enhances character development and ethical alignment:
           
-          ${context ? `Story Context: ${context}` : 'No specific context provided'}
-          ${enemyType ? `Dropped by: ${enemyType}` : 'Found within the environment'}
-          ${itemType !== "random" ? `Preferred Item Type: ${itemType}` : ''}
-          ${category !== "any" ? `Category: ${category}` : ''}
-          Character Level: ${characterLevel}
-          
-          Format your response as a JSON object with these fields:
-          - name: A distinctive name for the item
-          - description: A concise description of the item's appearance and function
-          - backstory: A detailed narrative history of the item's origin, previous owners, and how it came to be in this location (8-10 sentences)
-          - type: One of "weapon", "armor", "apparel", "potion", "scroll", "tool", "trinket", "quest", or "miscellaneous"
-          - apparelSlot: If type is "apparel", include one of "head", "chest", "legs", "feet", "hands", "back", "neck", "finger", "waist"
-          - rarity: One of "common", "uncommon", "rare", "very rare", "legendary", "artifact"
-          - weight: The weight in pounds (can be decimal)
-          - value: The value in gold pieces
-          - properties: Array of special properties like "magical", "cursed", etc.
-          - attunement: Boolean, whether it requires attunement
-          - quantity: How many of this item (usually 1)
-          - isEquipped: false (default unequipped state)
-          - slot: 0 (will be assigned when added to inventory)
-          - source: One of "loot", "crafted", "quest", "purchased", "starting"`
+${context ? `Story Context: ${context}` : 'No specific context provided'}
+${enemyType ? `Dropped by: ${enemyType}` : 'Found within the environment'}
+${effectiveItemType !== "random" ? `Item Type: ${effectiveItemType}` : ''}
+${category !== "any" ? `Category: ${category}` : ''}
+Character Level: ${characterLevel}
+
+The item should:
+1. Feel meaningful and connected to the narrative context
+2. Offer interesting character development opportunities
+3. Impact or be impacted by ethical alignment choices
+4. Provide tactical options beyond simple stat bonuses
+5. Have a rich history that ties into the world
+
+Format your response as a JSON object with these fields:
+- name: A distinctive, evocative name for the item
+- description: A concise description of the item's appearance
+- function: A clear explanation of what the item does mechanically
+- alignmentEffect: How this item affects or is affected by character alignment
+- characterGrowth: How this item contributes to character development or ability growth
+- backstory: A detailed narrative history of the item's origin, previous owners, and how it came to be in this location (3-5 sentences)
+- type: One of "weapon", "armor", "apparel", "potion", "scroll", "tool", "trinket", "quest", or "miscellaneous"
+- apparelSlot: If type is "apparel", include one of "head", "chest", "legs", "feet", "hands", "back", "neck", "finger", "waist"
+- rarity: One of "common", "uncommon", "rare", "very rare", "legendary", "artifact"
+- weight: The weight in pounds (can be decimal)
+- value: The value in gold pieces
+- properties: Array of special properties like "magical", "cursed", etc.
+- attunement: Boolean, whether it requires attunement
+- quantity: How many of this item (usually 1)
+- isEquipped: false (default unequipped state)
+- slot: 0 (will be assigned when added to inventory)
+- source: One of "loot", "crafted", "quest", "purchased", "starting"`
         }
       ],
       response_format: { type: "json_object" },
       max_tokens: 800,
-      temperature: 0.7,
+      temperature: 0.8, // Slightly higher temperature for more creative items
     });
 
     return safeJsonParse(response.choices[0].message.content);
