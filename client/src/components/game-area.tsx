@@ -18,17 +18,19 @@ import {
   SearchCode, 
   UserCheck, 
   Fingerprint,
-  Users
+  Users,
+  UserX
 } from "lucide-react";
 import { Campaign, Character, GameLog } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { DiceRoller } from "@/components/dice-roll";
 import { DiceRollResults, DiceRollResult } from "@/components/dice-roll-results";
 import { InteractiveDiceSuggestions } from "@/components/interactive-dice-suggestions";
 import { DiceType } from "@/hooks/use-dice";
+import { useToast } from "@/hooks/use-toast";
 
-interface GameAreaProps {
+export interface GameAreaProps {
   campaign: Campaign;
   currentAdventure?: { 
     title: string;
@@ -55,8 +57,10 @@ export const GameArea = ({
   diceRollResults = [],
   isDm = false // Default to not being the DM
 }: GameAreaProps) => {
+  const { toast } = useToast();
   const [playerAction, setPlayerAction] = useState("");
   const [dmNarration, setDmNarration] = useState("");
+  const [isProcessingNpcActions, setIsProcessingNpcActions] = useState(false);
   const [decisionOptions, setDecisionOptions] = useState<string[]>([
     "Investigate the area",
     "Talk to nearby NPCs",
