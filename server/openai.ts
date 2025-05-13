@@ -147,176 +147,42 @@ IMPORTANT: If player attempts a creative or performative action (like somersault
     let userPrompt = "";
     
     if (isPerformativeAction) {
-      userPrompt = `Context: ${context}
+      userPrompt = `Player Performative Action: ${playerAction}
 
-Player Performative Action: ${playerAction}
+Respond in 3-4 sentences only:
+1. Briefly describe how this creative action plays out
+2. Add one small positive consequence or reaction
+3. Quickly return to the main adventure
 
-The player is performing a creative, physical, or dramatic action (like dancing, somersaulting, etc.). Respond with a LIGHT-HEARTED and ENTERTAINING narration that:
-
-1. Vividly describes how the character performs this action in the game world
-2. Shows how NPCs and the environment react to this unexpected behavior
-3. Includes humorous or amusing details without mocking the player
-4. Ties this performative action to the D&D mechanics of Performance, Acrobatics, or Athletics
-5. Gently guides the narrative back to the adventure while acknowledging the player's creativity
-
-IMPORTANT: This is a moment of levity and player expression - embrace it with good humor while maintaining the world's integrity. Suggest an appropriate skill check in [Roll: d20+modifier vs DC X for Y] format that would apply to this performance, and explain how success or failure might impact the scene.
-
-Your response should:
-- Be brief but vivid (150-200 words max)
-- Balance humor with respect for the game world
-- Acknowledge the action as valid player expression
-- Provide a natural way to return to the main adventure
-- Include at least one way this action might unexpectedly benefit the character
-
-Keep the tone warm and supportive of player creativity.`;  
+Keep your TOTAL response under 100 words. Be positive about player creativity.`;  
     } else if (isAutoAdvance) {
-      userPrompt = `Context: ${context}
+      userPrompt = `Auto-advance story request.
 
-The player wants to advance the story. Create a compelling narrative that progresses the adventure in a CREATIVE, IMAGINATIVE way that is DIFFERENT from your previous responses. Carefully read the context to identify what type of scene was MOST RECENTLY presented, then DELIBERATELY CHOOSE A DIFFERENT TYPE of scene or encounter to avoid repetition.
+Respond in under 200 words with:
+1. A scene that contrasts with recent encounters (if combat was recent, focus on exploration or social interaction)
+2. One character development opportunity 
+3. A suggested dice roll if appropriate [Roll: d20+modifier vs DC X for Y]
 
-VARIETY IS CRITICAL - analyze the context to determine:
-1. What types of challenges have been presented most recently (puzzle, combat, social, exploration)
-2. What environments or settings have been used recently (indoor, outdoor, urban, wilderness, underground)
-3. What NPCs or factions have been featured recently
-4. What tone has dominated recent interactions (serious, humorous, mysterious, action-oriented)
-5. What character abilities or aspects have been most recently developed or tested
-
-THEN CHOOSE CONTRASTING ELEMENTS to create a distinctive and fresh experience. If the story has been in a:
-- Dungeon → Move to wilderness, settlement, or planar location
-- Combat sequence → Shift to puzzle solving, diplomacy, or exploration
-- Social interaction → Introduce environmental challenges or action
-- Linear path → Open up multiple interesting choices and paths
-- Known location → Discover something unexpected or previously hidden
-- Familiar tone → Shift to a contrasting emotional atmosphere
-
-CHARACTER DEVELOPMENT REQUIREMENTS - Include at least one of these elements:
-1. ETHICAL ALIGNMENT CHALLENGE: Present a meaningful moral dilemma with explicit alignment consequences
-   - Create a situation where the Law vs. Chaos or Good vs. Evil tension is palpable
-   - Describe how the character's actions in this situation could shift their alignment
-   - Show how alignment shifts could open or close certain story paths
-   - Connect alignment choices to relationships with NPCs or factions
-
-2. STAT DEVELOPMENT OPPORTUNITY: Create a situation that tests AND could improve specific character abilities
-   - For Intelligence: Ancient texts to decipher, magical puzzles, strategic planning needed
-   - For Wisdom: Moral dilemmas, insight challenges, detecting deception or danger
-   - For Strength: Physical barriers, tests of might, endurance challenges
-   - For Dexterity: Traps to disarm, acrobatic maneuvers required, precision tasks
-   - For Constitution: Harsh environments, endurance tests, resistance challenges
-   - For Charisma: Leadership moments, performance opportunities, social influence needed
-   - Explicitly mention how success could permanently improve the relevant ability score
-
-3. TREASURE AND ITEM ACQUISITION: Include opportunities to find, craft, or earn valuable items
-   - Hidden treasures that require specific skills to locate
-   - Combat encounters with monsters carrying appropriate magical items
-   - Quest rewards from NPCs or factions
-   - Ancient relics with interesting magical properties
-   - Crafting materials and opportunities appropriate to setting
-   - Quest reward that explicitly enhances character abilities
-
-4. CLASS FEATURE OR SPELL DEVELOPMENT: Introduce opportunities to discover or improve abilities
-   - Class-appropriate training opportunities with skilled NPCs
-   - Ancient spell scrolls or spellbooks containing new magic
-   - Environmental features that enhance certain class abilities
-   - Spiritual or magical phenomena that unlock latent potential
-   - Forgotten techniques that provide new combat options
-   - Unique application of existing abilities in novel situations
-
-EDUCATIONAL ELEMENTS: Include at least one suggestion for a specific dice roll in the format [Roll: d20+modifier vs DC X for Y], explaining what the DC represents in D&D terms and how modifiers are calculated. Make sure to teach actual D&D 5e rules in a natural way through the narrative.
-
-Describe what happens next in vivid detail as the Dungeon Master, moving the story forward in an educational and open-ended way that gives the player genuine agency in how to respond.`;
+Make this response different from previous ones. Keep it concise and engaging.`;
     } else if (containsDiceRoll) {
       // Special handling for dice roll actions with educational elements
-      userPrompt = `Context: ${context}
+      userPrompt = `Dice Roll: ${playerAction}
 
-Dice Roll: ${playerAction}
+Respond in under 200 words with:
+1. The specific consequence of this roll result
+2. One brief educational element about D&D mechanics
+3. How this impacts character development OR offers an item discovery opportunity
 
-This is a dice roll result. Narrate the SPECIFIC CONSEQUENCES of this roll result in vivid detail while educating the player about D&D mechanics. Don't just acknowledge the roll - show exactly what happens because of this roll result and explain the game mechanics involved.
-
-EDUCATIONAL ELEMENT: Clearly explain what type of roll this is (attack roll, ability check, saving throw, etc.), what the numbers mean in D&D terms, and how the result affects gameplay according to actual D&D 5e rules. Include a brief explanation of how modifiers, advantage/disadvantage, or proficiency might affect similar rolls in the future.
-
-ROLL CONSEQUENCES - Based on the roll type and result, include AT LEAST ONE of these elements:
-
-1. CHARACTER GROWTH OPPORTUNITY:
-   - For critical successes (natural 20): Describe an exceptional outcome that creates an opportunity for permanent character improvement
-   - For regular successes: Show how this success builds toward potential ability score improvements or skill mastery
-   - For failures: Present a learning opportunity that could lead to future growth
-   - For critical failures (natural 1): Create a dramatic setback that forces character development in an unexpected direction
-
-2. ALIGNMENT IMPACT:
-   - If the roll involved a moral choice, explain how the outcome might shift character alignment
-   - Describe how NPCs or factions react to the character's success or failure in alignment-relevant ways
-   - Show how different approaches to the same challenge might have nudged alignment in different directions
-   - Explain how alignment shifts create or close certain narrative opportunities
-
-3. ITEM OR TREASURE DISCOVERY:
-   - On exceptional successes: Include the discovery of valuable items, crafting materials, or magical objects
-   - On regular successes: Reveal useful mundane items or clues to future treasures
-   - Connect items found to the current environment and challenge in a logical way
-   - Make items discovered feel earned rather than random, tied directly to the character's actions
-
-4. SKILL OR SPELL DEVELOPMENT:
-   - For ability checks: Show how using this skill improves mastery and unlocks new applications
-   - For spellcasting: Demonstrate how spell success provides insights for more effective future casting
-   - For combat rolls: Reveal new techniques or fighting styles the character discovers through practical experience
-   - For social checks: Demonstrate interpersonal insights gained that improve future interactions
-
-RESPONSE REQUIREMENTS:
-- Narrate vivid, specific consequences directly tied to the exact roll result
-- Explain game mechanics naturally within the narrative
-- Make success or failure meaningful to character development and story progression
-- Keep the narrative flowing while providing educational value about D&D rules
-
-Your narrative should directly respond to the roll, making it clear that the character's success or failure has meaningful impact on the story while teaching D&D mechanics.`;
+Keep your response focused and directly tied to the roll result.`;
     } else {
-      userPrompt = `Context: ${context}
+      userPrompt = `Player Action: ${playerAction}
 
-Player Action: ${playerAction}
+Respond in under 200 words with:
+1. A direct response to the player's action
+2. One character development opportunity (alignment choice, skill challenge, or item discovery)
+3. A suggested dice roll if appropriate [Roll: d20+modifier vs DC X for Y]
 
-Provide a narrative response as the DM, describing what happens next based on this specific player action. CAREFULLY ANALYZE the context and ensure your response is DIFFERENT in style, tone, and content from your previous responses.
-
-VARIETY AND CREATIVITY REQUIREMENTS:
-1. Review the recent narrative history to avoid repeating similar scenarios
-2. If recent responses featured combat, focus on exploration, puzzles, or social interaction
-3. If recent responses were dialogue-heavy, introduce environmental challenges or action
-4. If recent responses were static, dramatically move the plot or scene forward
-5. Introduce a surprising element that changes the trajectory of the current scene
-6. Create memorable details and sensory descriptions that weren't present before
-7. Ensure this response meaningfully advances the narrative in a fresh direction
-
-CHARACTER DEVELOPMENT OPPORTUNITIES - Include at least one of these elements:
-
-1. ETHICAL ALIGNMENT DEVELOPMENT:
-   - Create a situation where the character's current action has clear alignment implications
-   - If morally ambiguous, explain how different responses might pull alignment in different directions
-   - Show how NPCs with different alignments would view or respond to this action
-   - Connect alignment tendencies to potential story paths or faction relationships
-
-2. ABILITY SCORE CHALLENGES AND IMPROVEMENT:
-   - Present a challenge that tests a specific ability score (STR, DEX, CON, INT, WIS, CHA)
-   - Explain how consistent practice or training in this ability could lead to improvement
-   - Show how this ability interacts with skills, saving throws, or other mechanics
-   - If appropriate, suggest a specific ability check with clear consequences
-
-3. ITEM, TREASURE OR SPELL DISCOVERIES:
-   - Integrate opportunities to find useful items or magical components as rewards for creativity
-   - Present class-appropriate equipment, spell scrolls, or enchanted items
-   - Create narrative reasons why these items exist in this location
-   - Make acquisition feel earned and connected to player actions and the environment
-
-4. SKILL MASTERY AND CLASS FEATURES:
-   - Highlight opportunities to use class-specific abilities in creative ways
-   - Show how skill proficiencies could be applied to the current situation
-   - Suggest novel applications of known abilities or spells
-   - Demonstrate how experience with certain skills leads to mastery and new possibilities
-
-EDUCATIONAL ELEMENTS: 
-1. Explain at least one real D&D 5e game mechanic that applies to this situation (ability checks, saving throws, attack rolls, etc.)
-2. If this action could have alignment implications, explain how alignment works in D&D and how it might shift
-3. If checks or rolls would be required, explicitly suggest them in the [Roll: d20+modifier vs DC X for Y] format and explain what the DC represents and how modifiers work
-4. If applicable, teach about a relevant class feature, spell, or combat maneuver that could apply to this situation 
-5. Relate any relevant mechanics to the rules as written in the Player's Handbook
-
-Your response should be both narrative and educational, opening up new possibilities while teaching D&D mechanics. Adapt to the player's approach whether it's combat-focused, diplomacy, stealth, creative problem-solving, or something unexpected, and use this as an opportunity to teach relevant game mechanics.`;
+Make this response different in tone and content from previous responses. Keep it concise and engaging.`;
     }
     
     console.log("DEBUG: Calling OpenAI in generateGameNarration", {
