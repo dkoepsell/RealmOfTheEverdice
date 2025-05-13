@@ -329,13 +329,13 @@ export default function AdminDashboard() {
                     <Users className="h-6 w-6" />
                     <span className="text-base">User Management</span>
                   </Button>
-                  <Button onClick={() => setActiveTab("worlds")} variant="outline" className="flex items-center justify-center gap-2 py-6">
-                    <Scroll className="h-6 w-6" />
-                    <span className="text-base">World Management</span>
-                  </Button>
                   <Button onClick={() => setActiveTab("system")} variant="outline" className="flex items-center justify-center gap-2 py-6">
+                    <Scroll className="h-6 w-6" />
+                    <span className="text-base">System Management</span>
+                  </Button>
+                  <Button onClick={() => setActiveTab("settings")} variant="outline" className="flex items-center justify-center gap-2 py-6">
                     <Settings className="h-6 w-6" />
-                    <span className="text-base">System Settings</span>
+                    <span className="text-base">Settings</span>
                   </Button>
                 </div>
               </CardContent>
