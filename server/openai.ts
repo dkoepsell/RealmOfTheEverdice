@@ -379,16 +379,15 @@ Your response should be both narrative and educational, opening up new possibili
       model: "gpt-4o",
       systemPromptLength: systemPrompt.length,
       userPromptLength: userPrompt.length,
-      containsDiceRoll
+      containsDiceRoll,
+      isPerformativeAction: isPerformativeAction ? "yes" : "no"
     });
     
     try {
       // Use the proper system and user prompts
       console.log("DEBUG: Sending full request to OpenAI");
       
-      // Use a more aggressive timeout for this specific request
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(() => abortController.abort(), 45000); // 45 second timeout
+      // We created the controller earlier to ensure it's available for cleanup
       
       try {
         const response = await openai.chat.completions.create({
@@ -403,16 +402,16 @@ Your response should be both narrative and educational, opening up new possibili
               content: userPrompt
             }
           ],
-          temperature: containsDiceRoll ? 0.7 : 1.0, // Higher temperature for standard responses to maximize variety
+          temperature: isPerformativeAction ? 0.9 : (containsDiceRoll ? 0.7 : 1.0), // Different temperature based on action type
           top_p: 0.9, // Use nucleus sampling to increase creative diversity
           max_tokens: 250, // Even more reduced for better performance (from 350 to 250)
           frequency_penalty: 0.5, // Reduce repetition of same tokens
           presence_penalty: 0.5,  // Encourages model to introduce new concepts
         }, {
-          signal: abortController.signal
+          signal: controller.signal
         });
         
-        clearTimeout(timeoutId); // Clear the timeout if request completes
+        // Clear the timeout if request completes (already defined at the top level function)
         
         console.log("DEBUG: OpenAI response received in generateGameNarration", {
           responseLength: response.choices[0].message.content?.length || 0
