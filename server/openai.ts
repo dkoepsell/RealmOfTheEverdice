@@ -200,6 +200,13 @@ export async function generateAdventure(options: AdventureGenerationOptions = {}
 }
 
 export async function generateGameNarration(context: string, playerAction: string, isAutoAdvance: boolean = false) {
+  // Log entry to trace function call
+  console.log("DEBUG: generateGameNarration called", {
+    contextLength: context?.length || 0,
+    actionLength: playerAction?.length || 0,
+    isAutoAdvance
+  });
+  
   try {
     // Create a controller to allow timeout for OpenAI requests
     const controller = new AbortController();
@@ -404,7 +411,20 @@ Maintain world consistency and advance the story meaningfully.`;
     } catch (err: any) {
       clearTimeout(timeoutId);
       
-      // Enhanced fallback responses for timeout cases
+      // Detailed error logging for better diagnostics
+      console.warn("OpenAI request error details:", {
+        errorName: err?.name,
+        errorMessage: err?.message,
+        errorType: err?.type,
+        errorCode: err?.code,
+        actionType: isPerformativeAction ? "performative" : 
+                   (containsDiceRoll ? "dice" : 
+                   (isCombatAction ? "combat" : 
+                   (isSocialAction ? "social" : 
+                   (isAutoAdvance ? "auto-advance" : "standard")))),
+      });
+      
+      // Handle various error types with appropriate fallbacks
       if (err?.name === 'AbortError' || err?.message?.includes('abort') || err?.message?.includes('timeout')) {
         console.warn("Request timed out in generateGameNarration. Using enhanced fallback response.");
         
@@ -422,15 +442,62 @@ Maintain world consistency and advance the story meaningfully.`;
         } else {
           return `Your action yields unexpected results. The situation has changed, creating both an opportunity and a potential complication. The Dungeon Master raises an eyebrow. "An interesting approach! What specifically do you do next?"`;
         }
+      } else if (err?.type === 'invalid_request_error' || err?.message?.includes('invalid')) {
+        // Handle invalid request errors (like malformed prompts or content policy violations)
+        console.warn("Invalid request error in OpenAI call. Using safe fallback response.");
+        return `The Dungeon Master considers your action thoughtfully. "That's an interesting approach! Let me think about how this plays out..." What would you like to focus on or emphasize about your current situation?`;
+      } else if (err?.type === 'authentication_error' || err?.message?.includes('auth') || err?.message?.includes('key')) {
+        // Handle authentication errors
+        console.error("OpenAI authentication error. Please check API key.");
+        return `The Dungeon Master pauses for a moment. "Let's consider the possibilities here. You could explore your surroundings further, interact with nearby elements, or take a completely different approach. What interests you most?"`;
+      } else if (err?.code === 'rate_limit_exceeded' || err?.message?.includes('rate limit') || err?.message?.includes('capacity')) {
+        // Handle rate limit errors
+        console.warn("OpenAI rate limit exceeded. Using backup narration.");
+        return `The game pauses briefly as the Dungeon Master considers your action. "What an interesting choice! This creates several possible paths forward. Which aspect of the current situation would you like to focus on?"`;
+      } else {
+        // For any other error, provide a generic but still usable fallback
+        console.error("Unexpected OpenAI error:", err);
+        return `The Dungeon Master nods thoughtfully. "Your choice has several potential outcomes. Let's explore them - what specifically are you hoping to accomplish with this action?"`;
       }
-      
-      throw err;
     }
   } catch (error) {
-    console.error("Error in narration generation:", error);
+    console.error("Critical error in narration generation:", error);
     
-    // Even more robust fallback responses that drive player decision-making
-    return `The Dungeon Master considers the situation thoughtfully. "At this turning point in your adventure, you have several interesting options: you could investigate further, engage with nearby characters, try a different approach entirely, or take a moment to assess your surroundings more carefully. What would you like to do next?"`;
+    // Analyze player action to provide context-specific fallback even in total failure
+    const playerActionLower = playerAction.toLowerCase();
+    
+    // Movement-related fallback
+    if (playerActionLower.includes("go") || playerActionLower.includes("walk") || 
+        playerActionLower.includes("move") || playerActionLower.includes("travel") || 
+        playerActionLower.includes("climb") || playerActionLower.includes("north") || 
+        playerActionLower.includes("south") || playerActionLower.includes("east") || 
+        playerActionLower.includes("west")) {
+      return `You move cautiously in your chosen direction. The path reveals new surroundings with several notable features: unusual markings on nearby surfaces, signs of recent activity, and what appears to be another path branching off. Which aspect would you like to investigate further?`;
+    } 
+    // Combat-related fallback
+    else if (playerActionLower.includes("attack") || playerActionLower.includes("fight") || 
+             playerActionLower.includes("strike") || playerActionLower.includes("hit") || 
+             playerActionLower.includes("slash") || playerActionLower.includes("stab") || 
+             playerActionLower.includes("cast") || playerActionLower.includes("spell")) {
+      return `You position yourself for combat, analyzing your opponent's stance and vulnerabilities. There appear to be several tactical options available - a direct approach, a more defensive posture, or perhaps targeting a specific weakness you've noticed. [Roll: d20+your attack modifier vs their AC] How do you want to proceed with this encounter?`;
+    } 
+    // Social-related fallback
+    else if (playerActionLower.includes("talk") || playerActionLower.includes("speak") || 
+             playerActionLower.includes("ask") || playerActionLower.includes("tell") || 
+             playerActionLower.includes("persuade") || playerActionLower.includes("convince") || 
+             playerActionLower.includes("intimidate") || playerActionLower.includes("deceive")) {
+      return `Your words seem to have an impact. The individual's expression changes subtly, suggesting they're weighing how much to reveal. They appear to have valuable information if approached correctly. What specific topic would you like to pursue, or what approach do you want to take with this conversation?`;
+    }
+    // Investigation-related fallback
+    else if (playerActionLower.includes("look") || playerActionLower.includes("examine") || 
+             playerActionLower.includes("investigate") || playerActionLower.includes("search") || 
+             playerActionLower.includes("inspect") || playerActionLower.includes("check")) {
+      return `Your careful examination reveals several interesting details: unusual markings that might indicate history or purpose, signs of recent activity, and what appears to be something potentially valuable or significant partially hidden from immediate view. Which aspect would you like to focus on more closely?`;
+    }
+    // Generic fallback for any other action type
+    else {
+      return `The Dungeon Master considers the situation thoughtfully. "At this turning point in your adventure, you have several interesting options: you could investigate further, engage with nearby characters, try a different approach entirely, or take a moment to assess your surroundings more carefully. What would you like to do next?"`;
+    }
   }
 }
 

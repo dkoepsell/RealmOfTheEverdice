@@ -4267,11 +4267,45 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
         // If even the fallback creation fails, return a generic response
         console.error("Error creating fallback response:", fallbackError);
         
-        // Do not expose error details to client
-        res.status(500).json({ 
-          message: "The DM is thinking about your next move. Please try again in a moment.",
-          success: false
-        });
+        // Return a helpful response that lets the game continue
+        const playerActionLower = playerAction.toLowerCase();
+        let genericFallback = "The Dungeon Master considers your approach thoughtfully. \"An interesting choice! There are several ways this could unfold. What specifically are you hoping to accomplish with this action?\"";
+        
+        // Create minimal context-aware fallback based on action keywords
+        if (playerActionLower.includes("attack") || playerActionLower.includes("fight")) {
+          genericFallback = "You prepare for combat, evaluating possible strategies. Your opponent seems to have both strengths and vulnerabilities worth considering. How do you want to approach this encounter? [Roll: d20+attack modifier]";
+        } else if (playerActionLower.includes("look") || playerActionLower.includes("examine")) {
+          genericFallback = "You observe your surroundings carefully. There are several notable elements that draw your attention, each potentially significant. Which specific aspect do you want to focus on?";
+        } else if (playerActionLower.includes("move") || playerActionLower.includes("go")) {
+          genericFallback = "You begin moving in your chosen direction. The path ahead presents several interesting possibilities. Where specifically would you like to investigate?";
+        }
+        
+        try {
+          // Create a simple game log with the fallback
+          const emergencyLog = await storage.createGameLog({
+            campaignId,
+            content: genericFallback,
+            type: "narrative",
+            timestamp: new Date()
+          });
+          
+          // Send the emergency fallback as a regular response
+          return res.json({
+            success: true, 
+            narration: genericFallback, 
+            response: genericFallback,
+            logId: emergencyLog.id,
+            playerLogId: playerLog.id,
+            isEmergencyFallback: true
+          });
+        } catch (emergencyError) {
+          // Last resort if even the fallback creation fails
+          console.error("CRITICAL: Emergency fallback creation failed", emergencyError);
+          res.status(500).json({ 
+            message: "The DM is thinking about your next move. Please try again in a moment.",
+            success: false
+          });
+        }
       }
     }
   });
