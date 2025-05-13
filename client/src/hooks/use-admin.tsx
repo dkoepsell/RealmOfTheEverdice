@@ -435,6 +435,18 @@ export function useAdmin() {
   return {
     isAdmin,
     isSuperAdmin,
+    
+    // Analytics data
+    dashboardStats,
+    isLoadingDashboardStats,
+    dashboardStatsError,
+    userLoginStats,
+    isLoadingUserLoginStats,
+    userLoginStatsError,
+    campaignActivityStats,
+    isLoadingCampaignActivityStats,
+    campaignActivityStatsError,
+    
     users,
     isLoadingUsers,
     usersError,
