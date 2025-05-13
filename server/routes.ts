@@ -175,7 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new Everdice world
   app.post("/api/admin/worlds/create", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    if (req.user.role !== "superuser") return res.status(403).json({ message: "Super admin required" });
     
     try {
       // Don't add createdBy as the column doesn't exist in database
@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update an existing Everdice world
   app.put("/api/admin/worlds/:worldId", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    if (req.user.role !== "superuser") return res.status(403).json({ message: "Super admin required" });
     
     try {
       const worldId = parseInt(req.params.worldId);
@@ -218,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get world access list
   app.get("/api/admin/worlds/:worldId/access", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    if (!req.user.isAdmin && !req.user.isSuperAdmin) return res.status(403).json({ message: "Not authorized" });
+    if (req.user.role !== "admin" && req.user.role !== "superuser") return res.status(403).json({ message: "Not authorized" });
     
     try {
       const worldId = parseInt(req.params.worldId);
@@ -233,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Grant access to a world
   app.post("/api/admin/worlds/:worldId/access", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    if (req.user.role !== "superuser") return res.status(403).json({ message: "Super admin required" });
     
     try {
       const worldId = parseInt(req.params.worldId);
@@ -250,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update world access
   app.put("/api/admin/worlds/:worldId/access/:userId", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    if (req.user.role !== "superuser") return res.status(403).json({ message: "Super admin required" });
     
     try {
       const worldId = parseInt(req.params.worldId);
@@ -268,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Remove access to a world
   app.delete("/api/admin/worlds/:worldId/access/:userId", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-    if (!req.user.isSuperAdmin) return res.status(403).json({ message: "Super admin required" });
+    if (req.user.role !== "superuser") return res.status(403).json({ message: "Super admin required" });
     
     try {
       const worldId = parseInt(req.params.worldId);
@@ -5213,7 +5213,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
     
     try {
       // Check if user is admin or super admin
-      if (!req.user.isAdmin && !req.user.isSuperAdmin) {
+      if (req.user.role !== "admin" && req.user.role !== "superuser") {
         return res.status(403).json({ message: "Only admins can regenerate the Everdice world map" });
       }
       
@@ -5890,7 +5890,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     // Check if user is an admin or superuser
-    if (!req.user.isAdmin && !req.user.isSuperAdmin) {
+    if (req.user.role !== "admin" && req.user.role !== "superuser") {
       return res.status(403).json({ message: "Forbidden" });
     }
     
@@ -5907,7 +5907,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     // Check if user is an admin or superuser
-    if (!req.user.isAdmin && !req.user.isSuperAdmin) {
+    if (req.user.role !== "admin" && req.user.role !== "superuser") {
       return res.status(403).json({ message: "Forbidden" });
     }
     
@@ -5924,7 +5924,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     // Check if user is an admin or superuser
-    if (!req.user.isAdmin && !req.user.isSuperAdmin) {
+    if (req.user.role !== "admin" && req.user.role !== "superuser") {
       return res.status(403).json({ message: "Forbidden" });
     }
     
@@ -5941,7 +5941,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     
     // Check if user is an admin or superuser
-    if (!req.user.isAdmin && !req.user.isSuperAdmin) {
+    if (req.user.role !== "admin" && req.user.role !== "superuser") {
       return res.status(403).json({ message: "Forbidden" });
     }
     
