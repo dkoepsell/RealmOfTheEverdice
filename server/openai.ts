@@ -124,7 +124,7 @@ export async function generateGameNarration(context: string, playerAction: strin
   try {
     // Create a controller to allow timeout for OpenAI requests
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout - reduced from 45s to prevent long waiting
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout - reduced further to prevent long waiting
     
     let systemPrompt = `You are a concise and efficient D&D Dungeon Master narrating a game. Create brief responses under 200 words that move the story forward while handling all player actions respectfully.
 
@@ -147,14 +147,9 @@ IMPORTANT: If player attempts a creative or performative action (like somersault
     let userPrompt = "";
     
     if (isPerformativeAction) {
-      userPrompt = `Player Performative Action: ${playerAction}
+      userPrompt = `Action: ${playerAction}
 
-Respond in 3-4 sentences only:
-1. Briefly describe how this creative action plays out
-2. Add one small positive consequence or reaction
-3. Quickly return to the main adventure
-
-Keep your TOTAL response under 100 words. Be positive about player creativity.`;  
+Describe in 1-2 sentences how this creative action plays out, with a minor positive effect. Keep to 50 words maximum.`;  
     } else if (isAutoAdvance) {
       userPrompt = `Auto-advance story request.
 
@@ -214,14 +209,15 @@ Make this response different in tone and content from previous responses. Keep i
           ],
           temperature: isPerformativeAction ? 0.7 : (containsDiceRoll ? 0.6 : 0.8), // Reduced temperature for more stable responses
           top_p: 0.8, // Slightly more focused sampling
-          max_tokens: 200, // Further reduced for better performance
+          max_tokens: 150, // Further reduced for better performance
           frequency_penalty: 0.3, // Reduced to speed up generation
           presence_penalty: 0.3, // Reduced to speed up generation
         }, {
           signal: controller.signal
         });
         
-        // Clear the timeout if request completes (already defined at the top level function)
+        // Clear the timeout if request completes
+        clearTimeout(timeoutId);
         
         console.log("DEBUG: OpenAI response received in generateGameNarration", {
           responseLength: response.choices[0].message.content?.length || 0
@@ -230,15 +226,36 @@ Make this response different in tone and content from previous responses. Keep i
         return response.choices[0].message.content;
       } catch (err) {
         clearTimeout(timeoutId); // Make sure to clear the timeout
-        throw err; // Re-throw to be handled by the outer catch block
+        
+        // Check if this is an abort error (timeout)
+        if (err.name === 'AbortError' || err.message?.includes('abort') || err.message?.includes('timeout')) {
+          console.warn("Request timed out in generateGameNarration. Using fallback response.");
+          
+          // Create appropriate fallback responses based on the action type
+          if (isPerformativeAction) {
+            return `With a flourish, you ${playerAction}. The action adds a bit of flair to the moment, and you sense a slight boost in confidence.`;
+          } else if (containsDiceRoll) {
+            return `The Dungeon Master nods. "Go ahead and make that roll, and we'll see what happens next!"`;
+          } else if (isAutoAdvance) {
+            return `The adventure continues. The path ahead presents both challenges and opportunities. What would you like to do next?`;
+          } else {
+            return `The Dungeon Master considers your action. "Interesting approach! Let's see how that plays out as the story continues."`;
+          }
+        }
+        
+        // If it's another type of error, re-throw
+        throw err;
       }
     } catch (openaiError) {
       console.error("DEBUG: OpenAI API error in generateGameNarration:", openaiError);
-      throw openaiError;
+      
+      // Provide a generic fallback even for non-timeout errors
+      return `The Dungeon Master pauses momentarily. "Let's continue with the adventure. What would you like to do next?"`;
     }
   } catch (error) {
     console.error("Error generating narration:", error);
-    throw new Error("Failed to generate game narration");
+    // Instead of throwing, return a generic response so game can continue
+    return `The Dungeon Master nods thoughtfully. "What would you like to do next in this adventure?"`;
   }
 }
 
