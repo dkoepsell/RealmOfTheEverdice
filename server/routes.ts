@@ -3902,6 +3902,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Generate a narrated response to player action in a campaign
+  // Endpoint for NPCs to autonomously take actions based on campaign context
+  app.post("/api/campaigns/:id/npc-turns", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const campaignId = parseInt(req.params.id);
+      if (isNaN(campaignId)) {
+        return res.status(400).json({ message: "Invalid campaign ID" });
+      }
+      
+      // Get campaign data
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify that the user is the DM
+      if (campaign.dmId !== req.user.id) {
+        return res.status(403).json({ message: "Only the DM can trigger NPC turns" });
+      }
+      
+      // Get related campaign data
+      const locations = await storage.getCampaignLocations(campaignId);
+      const characters = await storage.getCampaignCharacters(campaignId);
+      const recentLogs = await storage.getGameLogsByCampaignId(campaignId, 10);
+      const npcs = await storage.getNpcsByCampaignId(campaignId);
+      
+      // Build the campaign context for NPC decision making
+      const context = {
+        summary: campaign.description || "The campaign is in progress.",
+        inCombat: req.body.inCombat || false,
+        currentLocation: req.body.currentLocation || null,
+        currentLocationNPCs: req.body.locationNpcIds || null,
+        inactiveNPCIds: req.body.inactiveNpcIds || [],
+        recentEvents: recentLogs.map(log => log.content).join("\n"),
+        partyDescription: characters.map(c => 
+          `${c.character.name} (${c.character.race || 'Unknown'} ${c.character.class || 'Unknown'}, Level ${c.character.level || 1})`
+        ).join(", ")
+      };
+      
+      // Process NPC turns
+      const requestId = uuidv4().slice(0, 8);
+      console.log(`[${requestId}] Processing autonomous NPC turns for campaign ${campaignId}`);
+      
+      const npcNarratives = await processNPCTurns(campaignId, context);
+      
+      if (npcNarratives.length === 0) {
+        return res.json({
+          success: true,
+          message: "No NPCs took actions this turn", 
+          npcActions: []
+        });
+      }
+      
+      // Create game logs for each NPC action
+      const logIds = [];
+      for (const narrative of npcNarratives) {
+        const log = await storage.createGameLog({
+          campaignId,
+          content: narrative,
+          type: "npc", // New log type for NPC actions
+          timestamp: new Date()
+        });
+        logIds.push(log.id);
+      }
+      
+      return res.json({
+        success: true,
+        npcActions: npcNarratives,
+        logIds: logIds
+      });
+    } catch (error) {
+      console.error("Error processing NPC turns:", error);
+      res.status(500).json({ 
+        message: "An error occurred while processing NPC turns", 
+        error: error.message
+      });
+    }
+  });
+
   app.post("/api/campaigns/:id/generate-response", async (req, res) => {
     try {
       // Log request info with redacted sensitive data

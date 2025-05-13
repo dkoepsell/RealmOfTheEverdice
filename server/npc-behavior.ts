@@ -123,10 +123,27 @@ Format the response as a JSON object with these fields:
     });
 
     // Parse the response
-    const content = response.choices[0].message.content;
+    const content = response.choices[0].message.content || "";
+    
+    if (content.length === 0) {
+      console.log(`[${requestId}] Empty response from OpenAI`);
+      return {
+        type: "other",
+        description: `${npc.name} stands quietly, observing the situation.`
+      };
+    }
+    
     console.log(`[${requestId}] Generated NPC action, content length: ${content.length}`);
     
-    return JSON.parse(content);
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      console.error(`[${requestId}] Error parsing JSON response:`, error);
+      return {
+        type: "other",
+        description: `${npc.name} seems uncertain about what to do next.`
+      };
+    }
   } catch (error) {
     console.error("Error generating NPC action:", error);
     

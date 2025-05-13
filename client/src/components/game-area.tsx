@@ -17,7 +17,8 @@ import {
   Footprints, 
   SearchCode, 
   UserCheck, 
-  Fingerprint 
+  Fingerprint,
+  Users
 } from "lucide-react";
 import { Campaign, Character, GameLog } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
