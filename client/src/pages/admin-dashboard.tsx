@@ -4,6 +4,17 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  Bar
+} from "recharts";
 
 import {
   Card,
@@ -1315,6 +1326,45 @@ export default function AdminDashboard() {
                     <p className="text-sm text-muted-foreground">
                       messages per campaign
                     </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium">Campaign Creation Trend</h3>
+                  <div className="mt-2 bg-muted rounded p-4">
+                    {isLoadingCampaignActivityStats ? (
+                      <div className="h-64 w-full flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <LineChart
+                          data={campaignActivityStats?.campaignCreationsByDay || []}
+                          margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="date" 
+                            tickFormatter={(date) => {
+                              const d = new Date(date);
+                              return `${d.getMonth()+1}/${d.getDate()}`;
+                            }}
+                          />
+                          <YAxis />
+                          <Tooltip 
+                            formatter={(value) => [`${value} campaigns`, 'Created']}
+                            labelFormatter={(date) => `Date: ${new Date(date).toLocaleDateString()}`}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="count" 
+                            name="Campaigns Created" 
+                            stroke="#6366f1" 
+                            activeDot={{ r: 8 }} 
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
               </CardContent>
