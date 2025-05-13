@@ -4221,32 +4221,43 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
     } catch (error) {
       console.error("Error generating response:", error);
       
-      // Create a fallback narrative response based on the player's action
-      let fallbackResponse;
+      // Save the playerAction value for use in the error handlers
+      const playerActionSafe = playerAction || ""; // Safely handle undefined
+      
+      // Generate a fallback response that doesn't rely on OpenAI
+      let fallbackResponse = "The Dungeon Master considers your action thoughtfully. \"An interesting choice! This opens up several possibilities for your adventure. You could explore further, interact with nearby elements, or pursue a different approach entirely. What would you like to do next?\"";
       
       try {
-        // Attempt to analyze the player's action to provide a contextually appropriate fallback
-        if (playerAction.toLowerCase().includes("look") || playerAction.toLowerCase().includes("examine") || playerAction.toLowerCase().includes("observe")) {
+        // Determine action type to provide a more specific fallback
+        const playerActionLower = playerActionSafe.toLowerCase();
+        
+        // Look/examine actions
+        if (playerActionLower.includes("look") || playerActionLower.includes("examine") || playerActionLower.includes("observe")) {
           fallbackResponse = `As you observe your surroundings, you notice paths leading in several directions, each with its own distinctive features and potential discoveries. There might be important details that could aid your journey. What specific area would you like to focus on next?`;
-        } else if (playerAction.toLowerCase().includes("attack") || playerAction.toLowerCase().includes("fight") || playerAction.toLowerCase().includes("cast")) {
+        } 
+        // Combat actions
+        else if (playerActionLower.includes("attack") || playerActionLower.includes("fight") || playerActionLower.includes("cast")) {
           fallbackResponse = `You ready yourself for combat, assessing your opponent carefully. They appear to have both strengths and vulnerabilities that could affect your tactics. How do you want to approach this confrontation? [Roll: d20+your combat modifier to determine success]`;
-        } else if (playerAction.toLowerCase().includes("talk") || playerAction.toLowerCase().includes("speak") || playerAction.toLowerCase().includes("ask")) {
+        } 
+        // Social interactions
+        else if (playerActionLower.includes("talk") || playerActionLower.includes("speak") || playerActionLower.includes("ask")) {
           fallbackResponse = `Your conversation partner listens to what you have to say, their expression suggesting they have valuable information to share if approached correctly. What specifically would you like to ask them about, or how do you want to steer the conversation?`;
-        } else if (playerAction.toLowerCase().includes("move") || playerAction.toLowerCase().includes("go") || playerAction.toLowerCase().includes("walk")) {
+        } 
+        // Movement actions
+        else if (playerActionLower.includes("move") || playerActionLower.includes("go") || playerActionLower.includes("walk")) {
           fallbackResponse = `You move forward carefully, taking in the changing surroundings. New paths and possibilities present themselves. The area ahead contains several points of interest that might be worth investigating. Which direction or feature draws your attention?`;
-        } else {
-          fallbackResponse = `The Dungeon Master considers your action thoughtfully. "An interesting choice! This opens up several possibilities for your adventure. You could explore further, interact with nearby elements, or pursue a different approach entirely. What would you like to do next?"`;
         }
         
-        // Create game logs even for fallback responses
+        // Create a new player log only if we need to
         const playerLog = await storage.createGameLog({
           campaignId,
-          content: playerAction,
+          content: playerActionSafe,
           type: "player",
           timestamp: new Date(),
           characterId: userCharacter?.id
         });
         
+        // Create the narrative response log
         const narrativeLog = await storage.createGameLog({
           campaignId,
           content: fallbackResponse,
@@ -4254,7 +4265,7 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
           timestamp: new Date()
         });
         
-        // Send the fallback as a regular response
+        // Send the fallback as a regular response with proper fields
         return res.json({
           success: true, 
           narration: fallbackResponse,
@@ -4264,24 +4275,13 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
           isFallback: true
         });
       } catch (fallbackError) {
-        // If even the fallback creation fails, return a generic response
+        // If even the fallback creation fails, handle that too
         console.error("Error creating fallback response:", fallbackError);
         
-        // Return a helpful response that lets the game continue
-        const playerActionLower = playerAction.toLowerCase();
-        let genericFallback = "The Dungeon Master considers your approach thoughtfully. \"An interesting choice! There are several ways this could unfold. What specifically are you hoping to accomplish with this action?\"";
-        
-        // Create minimal context-aware fallback based on action keywords
-        if (playerActionLower.includes("attack") || playerActionLower.includes("fight")) {
-          genericFallback = "You prepare for combat, evaluating possible strategies. Your opponent seems to have both strengths and vulnerabilities worth considering. How do you want to approach this encounter? [Roll: d20+attack modifier]";
-        } else if (playerActionLower.includes("look") || playerActionLower.includes("examine")) {
-          genericFallback = "You observe your surroundings carefully. There are several notable elements that draw your attention, each potentially significant. Which specific aspect do you want to focus on?";
-        } else if (playerActionLower.includes("move") || playerActionLower.includes("go")) {
-          genericFallback = "You begin moving in your chosen direction. The path ahead presents several interesting possibilities. Where specifically would you like to investigate?";
-        }
-        
         try {
-          // Create a simple game log with the fallback
+          // Create a simplified fallback message as a last resort
+          const genericFallback = "The Dungeon Master pauses for a moment. \"What would you like to do next?\"";
+          
           const emergencyLog = await storage.createGameLog({
             campaignId,
             content: genericFallback,
@@ -4295,14 +4295,13 @@ CAMPAIGN SUMMARY: ${campaign.description || 'An ongoing adventure in the world o
             narration: genericFallback, 
             response: genericFallback,
             logId: emergencyLog.id,
-            playerLogId: playerLog.id,
             isEmergencyFallback: true
           });
         } catch (emergencyError) {
-          // Last resort if even the fallback creation fails
+          // Absolute last resort if everything fails
           console.error("CRITICAL: Emergency fallback creation failed", emergencyError);
           res.status(500).json({ 
-            message: "The DM is thinking about your next move. Please try again in a moment.",
+            message: "The Dungeon Master is considering your next move. Please try again in a moment.",
             success: false
           });
         }
