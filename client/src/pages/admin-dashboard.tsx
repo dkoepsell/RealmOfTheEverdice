@@ -59,7 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, User, Shield, Users, Settings, Mail, Plus, Trash, BarChart, Scroll, Award, Compass, Map } from "lucide-react";
+import { Loader2, Send, User, Shield, Users, Settings, Mail, Plus, Trash, BarChart, BarChart3, Scroll, Award, Compass, Map } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAdmin } from "@/hooks/use-admin";
 
@@ -324,10 +324,14 @@ export default function AdminDashboard() {
                   Use this dashboard to manage all aspects of the Realm of Everdice platform. You can view user statistics, 
                   manage world access permissions, and monitor system performance from this central interface.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-2">
                   <Button onClick={() => setActiveTab("users")} variant="outline" className="flex items-center justify-center gap-2 py-6">
                     <Users className="h-6 w-6" />
                     <span className="text-base">User Management</span>
+                  </Button>
+                  <Button onClick={() => setActiveTab("analytics")} variant="outline" className="flex items-center justify-center gap-2 py-6">
+                    <BarChart3 className="h-6 w-6" />
+                    <span className="text-base">Analytics</span>
                   </Button>
                   <Button onClick={() => setActiveTab("system")} variant="outline" className="flex items-center justify-center gap-2 py-6">
                     <Scroll className="h-6 w-6" />
@@ -1057,6 +1061,181 @@ export default function AdminDashboard() {
                 )}
               </Card>
             )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="analytics">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* General Dashboard Stats */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="mr-2 h-5 w-5" />
+                  Platform Overview
+                </CardTitle>
+                <CardDescription>
+                  Key metrics for the Realm of Everdice platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <DashboardStat 
+                    title="Total Users" 
+                    value="..." 
+                    isLoading={true}
+                    icon={<Users className="h-4 w-4" />} 
+                  />
+                  <DashboardStat 
+                    title="Active Campaigns" 
+                    value="..." 
+                    isLoading={true}
+                    icon={<Scroll className="h-4 w-4" />} 
+                  />
+                  <DashboardStat 
+                    title="Characters Created" 
+                    value="..." 
+                    isLoading={true}
+                    icon={<User className="h-4 w-4" />} 
+                  />
+                  <DashboardStat 
+                    title="Adventures Completed" 
+                    value="..." 
+                    isLoading={true}
+                    icon={<Award className="h-4 w-4" />} 
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* User Activity Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="mr-2 h-5 w-5" />
+                  User Activity
+                </CardTitle>
+                <CardDescription>
+                  User engagement statistics
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium">Active Users</h3>
+                  <div className="grid grid-cols-3 gap-4 mt-2">
+                    <div className="bg-muted rounded p-3 text-center">
+                      <p className="text-xs text-muted-foreground">24 Hours</p>
+                      <p className="text-2xl font-bold">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                      </p>
+                    </div>
+                    <div className="bg-muted rounded p-3 text-center">
+                      <p className="text-xs text-muted-foreground">7 Days</p>
+                      <p className="text-2xl font-bold">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                      </p>
+                    </div>
+                    <div className="bg-muted rounded p-3 text-center">
+                      <p className="text-xs text-muted-foreground">30 Days</p>
+                      <p className="text-2xl font-bold">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium">User Return Rate</h3>
+                  <div className="bg-muted rounded mt-2 p-4 flex items-center justify-between">
+                    <p className="text-2xl font-bold">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      of users returned in the last 30 days
+                    </p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium">New Users (Last 30 Days)</h3>
+                  <div className="bg-muted rounded mt-2 p-4 flex items-center justify-between">
+                    <p className="text-2xl font-bold">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      new registrations
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Campaign Activity Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Scroll className="mr-2 h-5 w-5" />
+                  Campaign Activity
+                </CardTitle>
+                <CardDescription>
+                  Campaign and adventure metrics
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium">Campaign Distribution</h3>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div className="bg-muted rounded p-3">
+                      <p className="text-xs text-muted-foreground text-center">Human DM</p>
+                      <p className="text-2xl font-bold text-center">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                      </p>
+                    </div>
+                    <div className="bg-muted rounded p-3">
+                      <p className="text-xs text-muted-foreground text-center">AI DM</p>
+                      <p className="text-2xl font-bold text-center">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium">Campaign Status</h3>
+                  <div className="space-y-2 mt-2">
+                    <div className="bg-muted rounded p-3 flex justify-between items-center">
+                      <span className="text-sm">Active</span>
+                      <span className="font-medium">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </span>
+                    </div>
+                    <div className="bg-muted rounded p-3 flex justify-between items-center">
+                      <span className="text-sm">Completed</span>
+                      <span className="font-medium">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </span>
+                    </div>
+                    <div className="bg-muted rounded p-3 flex justify-between items-center">
+                      <span className="text-sm">On Hold</span>
+                      <span className="font-medium">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium">Average Messages Per Campaign</h3>
+                  <div className="bg-muted rounded mt-2 p-4 flex items-center justify-between">
+                    <p className="text-2xl font-bold">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      messages per campaign
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
