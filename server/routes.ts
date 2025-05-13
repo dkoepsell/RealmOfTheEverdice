@@ -3767,7 +3767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get related campaign data
       const locations = await storage.getCampaignLocations(campaignId);
       const characters = await storage.getCampaignCharacters(campaignId);
-      const recentLogs = await storage.getRecentGameLogs(campaignId, 30);
+      const recentLogs = await storage.getGameLogsByCampaignId(campaignId, 30);
       
       // Get the user's character if they have one in this campaign
       let userCharacter = null;
